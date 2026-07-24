@@ -22,6 +22,13 @@ WorkingDirectory=/home/rock/Desktop/2026_Projects/Trader36/MT5
 Environment=DISPLAY=:0
 ExecStart=/home/rock/Desktop/2026_Projects/Trader36/MT5/scripts/xau_fast_cron.sh
 TimeoutStartSec=420
+# KillMode=none: this wrapper calls start_mt5.sh, so wine helpers (winedevice,
+# rpcss, ...) land in THIS cgroup. Without it, the oneshot teardown SIGTERMs
+# them, times out after 90s and SIGKILLs winedevice.exe — which takes down the
+# shared wineserver for prefix ~/.mt5 and therefore terminal64.exe owned by
+# mt5-terminal.service. That service is RemainAfterExit=yes so it never notices
+# and never restarts: MT5 ends up alive only ~90s per firing. (2026-07-24)
+KillMode=none
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=xau-fast

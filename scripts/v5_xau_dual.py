@@ -104,14 +104,21 @@ def size_lots(conn, symbol, direction, price, sl, equity, conf, si, max_lot,
         return 0.0
     loss = abs(loss)
     risk = xt.PARAMS["risk_frac"] * bot_cfg["params"]["conf_risk_scale"][conf]
+    # float() is load-bearing, not cosmetic: equity/ATR arithmetic yields
+    # np.float64, and rpyc ships that to the Wine-side interpreter as the literal
+    # "np.float64(...)" which it eval()s WITHOUT numpy imported -> every call
+    # dies with "name 'np' is not defined". That silently disabled the trailing
+    # stop on the live cent account for hours. Keep everything crossing the
+    # bridge a plain Python float. (2026-07-24)
     lots = round(round((risk * equity) / loss / vol_step) * vol_step, 2)
+    lots = float(lots)
     if lots < vol_min:
         if force_min:
             print(f"  ! forced to min lot {vol_min}: actual risk "
                   f"{vol_min * loss / equity:.1%} (target {risk:.1%})")
             return vol_min
         return 0.0
-    return min(lots, max_lot)
+    return float(min(lots, max_lot))
 
 
 def build_plan(res, held, held_dir, pendings, tick, si, acct, bot_cfg, args,
@@ -138,12 +145,12 @@ def build_plan(res, held, held_dir, pendings, tick, si, acct, bot_cfg, args,
                          args.force_min_lot)
         if lots > 0:
             actions.append(("open_market", dict(
-                dir=pos["dir"], lots=lots, sl=round(sl, 2),
+                dir=pos["dir"], lots=lots, sl=round(float(sl), 2),
                 why="engine holds position (catch-up)")))
     elif pos is not None and held is not None and pos["sl"] is not None and \
             abs(float(held.sl or 0) - pos["sl"]) > SL_TOLERANCE:
         actions.append(("modify_sl", dict(position=held, ticket=held.ticket,
-                                          sl=round(pos["sl"], 2))))
+                                          sl=round(float(pos["sl"]), 2))))
 
     if pending is not None and pos is None and held is None and \
             pending.get("wait", 0) <= 0:
@@ -155,7 +162,7 @@ def build_plan(res, held, held_dir, pendings, tick, si, acct, bot_cfg, args,
                          args.max_lot, bot_cfg, args.force_min_lot)
         if lots > 0:
             actions.append(("open_market", dict(
-                dir=d, lots=lots, sl=round(sl, 2),
+                dir=d, lots=lots, sl=round(float(sl), 2),
                 why=f"engine signal fill (conf {conf})")))
     return actions
 

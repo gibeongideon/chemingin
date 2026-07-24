@@ -20,6 +20,33 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 from src.core.mt5_connector import get_mt5           # noqa: E402
 from v5_basket_challenge import MODELS               # noqa: E402
+from v5_basket_challenge_exec import TRADE_MODES     # noqa: E402
+
+
+def broker_restrictions(m, symmap):
+    """Symbols the broker will not let us OPEN, e.g. ('XAUUSDmicro', 'CLOSEONLY').
+
+    A mid-challenge restriction silently shrinks the book (FundingPips flipped
+    XAUUSDmicro to CLOSEONLY on 2026-07-23 and the XAU sleeve could not reopen),
+    so it belongs in the daily mail even when nothing was traded. (2026-07-24)
+    """
+    out = []
+    for meta in symmap.values():
+        if not isinstance(meta, dict):               # configs carry a "_note" string
+            continue
+        s = meta.get("fp_symbol")
+        if not s:
+            continue
+        try:
+            m.symbol_select(s, True)
+            info = m.symbol_info(s)
+        except Exception:                            # noqa: BLE001
+            continue
+        if info is None:
+            out.append((s, "UNAVAILABLE"))
+        elif getattr(info, "trade_mode", 4) != 4:
+            out.append((s, TRADE_MODES.get(info.trade_mode, str(info.trade_mode))))
+    return out
 
 
 def tz_from(name: str):
@@ -95,6 +122,7 @@ def build(cfg_path: Path, state_path: Path, port: int):
     ps = [p for p in (m.positions_get() or []) if p.magic == magic]
     floating = sum(p.profit for p in ps)
     tdays = trading_days(m, magic, tz)
+    restricted = broker_restrictions(m, cfg.get("symbols", {}))
     m.shutdown()
 
     st = json.loads(state_path.read_text()) if state_path.exists() else {}
@@ -120,6 +148,12 @@ def build(cfg_path: Path, state_path: Path, port: int):
     days_txt = (f"{tdays}/{min_days}" if tdays is not None else "?") + \
                ("" if (tdays is None or not min_days or tdays >= min_days)
                 else f"  (need {min_days - tdays} more)")
+    restr_txt = "" if not restricted else (
+        "\n⚠ BROKER RESTRICTIONS — these sleeves CANNOT OPEN, book is incomplete:\n"
+        + "\n".join(f"    {s:14s} trade_mode={mode}" for s, mode in restricted)
+        + "\n    (bot keeps retrying hourly and resumes automatically if the\n"
+          "     broker restores full trading; otherwise remap or drop the sleeve)\n")
+
     d = datetime.now(tz)
     pos_lines = "\n".join(
         f"    {p.symbol:14s} {'BUY ' if p.type == 0 else 'SELL'} {p.volume:6.2f} "
@@ -133,7 +167,7 @@ TODAY'S GAIN       {day_pl:+,.2f} {a.currency}   ({(a.equity/anchor-1)*100:+.2f}
 TOTAL P&L          {total_pl:+,.2f} {a.currency}   ({(a.equity/init-1)*100:+.2f}% from start)
 OPEN POSITIONS     {len(ps)}   floating {floating:+,.2f} {a.currency}
 {pos_lines}
-
+{restr_txt}
 PHASE {phase}  ->  target +{target*100:.0f}%
   PROGRESS   {prog:6.1f}% of target   [{bar(max(0, prog))}]
   TRADING DAYS  {days_txt}
@@ -146,7 +180,8 @@ Guards: flatten at -{cfg['guards']['daily_guard_frac']*100:.1f}% daily / halt -{
 Book: {', '.join(sum(cfg.get('classes', {}).values(), []))}   magic {magic}
 """
     subj = (f"[{firm} {cfg['model'].upper()}] {d:%d %b} — eq {a.equity:,.0f} {a.currency}, "
-            f"P{phase} {prog:.0f}% to target, compliance {compliance:.0f}%")
+            f"P{phase} {prog:.0f}% to target, compliance {compliance:.0f}%"
+            + (f"  ⚠ {len(restricted)} SLEEVE BLOCKED" if restricted else ""))
     return subj, body
 
 

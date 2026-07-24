@@ -46,6 +46,29 @@ from src.core.mt5_connector import MT5Connector  # noqa: E402
 CONFIG_FILE = ROOT / "configs" / "v5_basket_challenge.json"
 STATE_DEFAULT = ROOT / "data" / "v5_runs" / "basket_challenge_state.json"
 
+# MT5 SYMBOL_TRADE_MODE_*. Anything but FULL means the broker restricts orders
+# on that symbol, and the restriction can appear WITHOUT WARNING mid-challenge:
+# FundingPips flipped XAUUSDmicro to CLOSEONLY between 2026-07-20 and 07-23, so
+# after a manual close the XAU sleeve could never reopen. Every hourly pass just
+# printed a one-line "ORDER REJECTED: retcode=10044" and carried on looking
+# healthy, and the book silently ran 2 of 3 sleeves for ~14h. Check the mode
+# BEFORE sending and say so loudly. (2026-07-24)
+TRADE_MODES = {0: "DISABLED", 1: "LONGONLY", 2: "SHORTONLY", 3: "CLOSEONLY", 4: "FULL"}
+
+
+def open_restriction(info, want_long: bool) -> str | None:
+    """Broker-side reason this symbol cannot be OPENED/ADDED in this direction.
+
+    Reducing is always permitted, so callers only consult this when increasing
+    exposure. LONGONLY/SHORTONLY still allow the matching side.
+    """
+    if info is None:
+        return None                       # unavailable is reported separately
+    mode = getattr(info, "trade_mode", 4)
+    if mode == 4 or (mode == 1 and want_long) or (mode == 2 and not want_long):
+        return None
+    return TRADE_MODES.get(mode, str(mode))
+
 
 def apply_model_to_guards(cfg) -> None:
     """Override challenge_guards module constants from config (model-correct)."""
@@ -212,7 +235,7 @@ def main() -> None:
                    equity=round(equity, 2), action=action, phase=state["phase"],
                    progress_pct=round(prog, 3), day_dd_pct=round(day_dd, 3),
                    total_dd_pct=round(tot_dd, 3), n_symbols=len(symmap),
-                   n_mapped=0, plan="", sent=int(send))
+                   n_mapped=0, plan="", sent=int(send), blocked="")
 
         # ---- guard actions: ensure flat, no reconcile ----
         if action in ("halt", "day_lock", "locked", "complete", "realize_target"):
@@ -248,7 +271,7 @@ def main() -> None:
         # ---- normal reconcile: move each symbol toward its target ----
         # cfg["classes"] lets one engine serve several books (100K vs 10K).
         targets = target_leverage(model, cfg.get("classes"))
-        plans, n_mapped = [], 0
+        plans, n_mapped, blocked = [], 0, []
         print(f"  {'symbol':9s} {'tgt lev':>8s} {'held lot':>9s} {'tgt lot':>9s}  action")
         for esym, lev in sorted(targets.items()):
             meta = symmap.get(esym, {})
@@ -268,6 +291,19 @@ def main() -> None:
                 act = "adjust" if hl != 0 else "open"
                 plans.append((bsym, hl, tl))
             print(f"  {esym:9s} {lev:8.3f} {hl:9.2f} {tl:9.2f}  {act}")
+
+            # Broker restriction check BEFORE sending: only increases can be
+            # blocked, and a blocked sleeve must be loud — it silently halves
+            # the book's diversification otherwise.
+            if act != "hold" and tl > hl:
+                restr = open_restriction(conn.symbol_info(bsym), want_long=True)
+                if restr:
+                    blocked.append(f"{bsym}:{restr}")
+                    print(f"    !! BROKER-BLOCKED: {bsym} trade_mode={restr} — "
+                          f"cannot add {tl - hl:+.2f} lot. This sleeve stays flat "
+                          f"until the broker restores full trading.")
+                    continue
+
             if send and act != "hold":
                 delta = round(tl - hl, 2)
                 try:
@@ -284,6 +320,15 @@ def main() -> None:
                             print("    ! nothing to close (no tickets found)")
                 except Exception as exc:  # noqa: BLE001
                     print(f"    ORDER REJECTED: {exc}")
+                    # Backstop: the broker can flip a symbol between the check
+                    # above and the send. 10044 = TRADE_RETCODE_CLOSE_ONLY.
+                    if "10044" in str(exc):
+                        blocked.append(f"{bsym}:CLOSEONLY")
+                        print(f"    !! BROKER-BLOCKED: {bsym} is CLOSE-ONLY (10044)")
+
+        if blocked:
+            print(f"  *** {len(blocked)} SLEEVE(S) BROKER-BLOCKED: "
+                  f"{', '.join(blocked)} — book is running incomplete ***")
 
         if n_mapped == 0:
             print("  PLAN: DRY-RUN — no fp_symbol mapped yet (targets shown above; "
@@ -291,7 +336,8 @@ def main() -> None:
         elif not plans:
             print("  PLAN: in sync — nothing to do")
         row.update(n_mapped=n_mapped,
-                   plan="; ".join(f"{s}:{h:.2f}->{t:.2f}" for s, h, t in plans) or "in_sync")
+                   plan="; ".join(f"{s}:{h:.2f}->{t:.2f}" for s, h, t in plans) or "in_sync",
+                   blocked="; ".join(blocked))
         if not send and plans:
             print("  (dry plan — rerun with --live --execute to send)")
         if args.paper_csv:
