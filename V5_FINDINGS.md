@@ -10,6 +10,53 @@ spread column understates by 10× — use `--fixed-spread-usd 0.34`, not the raw
 
 ---
 
+## MANDATORY CONTROLS (2026-07-24) — four ways this project has fooled itself
+
+Each of these silently manufactured a "result" that evaporated when the control
+was added. Run all four before believing any new backtest.
+
+**1. Floor every cost at the LIVE broker quote.** The 10× gold understatement in
+the Conventions above is not special — it is universal, and far worse on illiquid
+names. Measured against live FTMO quotes 2026-07-24:
+
+| asset | CSV models | live | error |
+|---|---|---|---|
+| NATGAS | 4.0 bp | 199.4 bp | **50×** |
+| HEATOIL | 4.0 bp | 80.1 bp | **20×** |
+| PALL | 5.0 bp | 56.4 bp | 11× |
+| BRENT / WTI / SILVER | ~3 bp | 8–9 bp | ~3× |
+| gold H4 | $0.30/oz | $0.448/oz | 1.5× |
+| NDX / SPX / DJI / BTC / SOL / NIKKEI / DAX | — | — | already conservative |
+
+A first pass of §3i crowned `XAU+NDX+HEATOIL` the best book in the study on a 20×
+cost subsidy; at honest cost HEATOIL collapses **+0.47 → +0.09 SR** and the whole
+agriculture complex goes negative. Use `np.maximum(csv_spread, close*live_bp/1e4)`.
+
+**2. Benchmark against BUY & HOLD over the same window.** A long-only trend
+follower in a bull market posts a fine Sharpe with zero timing skill:
+
+| window | buy & hold gold | always-in champion | weekly cycle |
+|---|---|---|---|
+| 2008+ (18.4y) | **+0.57** | +0.64 | +0.44 |
+| 2022+ (4.4y) | **+1.15** | +1.11 | +1.07 |
+
+The strategy never beats owning the metal — its Sharpe just tracks gold's own
+Sharpe in whichever window you pick. It is selling **drawdown control** (−10.0% vs
+−23.1% in 2022+), not alpha. `v5_xau_weekly_cycle.py` prints this as STEP 0.
+
+**3. Walk-forward the UNIVERSE, not just the parameters.** Choosing which assets
+to trade using the full sample roughly doubles apparent Sharpe:
+quality-17 always-in **+1.03** → weekend-flat **+0.61** → walk-forward top-8
+(re-picked each January on trailing 3y) **+0.26**.
+
+**4. Quote a standard error.** Lo (2002): SE ≈ √((1+SR²/2)/years). At 4.4 years
+SE ≈ **0.6**, so a post-2022 "+1.07" has a 95% CI of roughly [−0.11, +2.25] — not
+distinguishable from the full-sample +0.44, nor from zero. Short windows cannot
+resolve a Sharpe. Watch also for the **fractal regime tell**: post-2022 looked
+strong, but within it 1st-half +0.11 vs 2nd-half +1.75, i.e. really 2024-2026.
+
+---
+
 ## Champions currently trusted (positive net edge)
 
 | Strategy | Net edge | Status | Notes |
@@ -183,6 +230,73 @@ The 5%-daily line is never approached until 10%; that is where fail-daily jumps 
 - **Nothing satisfies "raise pass% AND cut median AND hold in both half-samples."** BRENT raises pass (+0.5pp) and cuts drawdown materially (−12.3%→−9.7%, and it is the LEAST correlated asset found: max r=0.05) but is 0.4mo slower. NIKKEI is fastest (−0.6mo) and highest Sharpe but costs 0.7pp pass and deepens DD. All differences are small/within noise.
 - **Verdict: keep the 3-asset book.** It is already near-optimal; a 4th sleeve adds execution surface for no reliable gain. BRENT is the only one worth revisiting *if* the goal shifts from speed to drawdown reduction.
 - **The ONLY reliable speed lever left is the vol dial (7%→9%, −3.2mo).**
+- ⚠ **CORRECTION (2026-07-24):** this script uses raw `vbc._load_asset`, so its
+  **commodity and agriculture rows are priced 3–50× too cheap** (see MANDATORY
+  CONTROLS §1) — PALL in particular is not a real candidate. The index/crypto/metal
+  rows are unaffected (already conservative), so the **BRENT and NIKKEI conclusions
+  survive** and were independently reproduced at honest cost in §3i. Back-port the
+  live-cost floor before re-running this file.
+
+### 3h. FundingPips 10K — XAU sleeve went CLOSE-ONLY, and no replacement exists (2026-07-24, `scripts/v5_fp_xau_replacement.py`)
+FundingPips flipped **XAUUSDmicro to `trade_mode=3` (CLOSEONLY)** between 2026-07-20 and 07-23 17:00 UTC, without notice. After a manual close the sleeve could never reopen: every hourly pass logged one line `ORDER REJECTED: retcode=10044` (TRADE_RETCODE_CLOSE_ONLY) and otherwise looked healthy, so the book silently ran **2 of 3 sleeves for ~14h**. Searched the entire 43-symbol FP universe for a substitute — **nothing qualifies**, and the reason is instructive:
+
+- **The universe splits exactly along the size line, with no overlap.** Everything that FITS min-lot at $10k is FX or a redundant equity index (FX dead as always; STX50 +0.18 SR and FTSE100 +0.08, both correlated 0.40/0.32 to the DJI already held). Everything with a real diversifying edge is **structurally oversized**: SPX 1.58×, BTC 2.52×, BRENT 3.92×, NIKKEI 4.30×, WTI 5.05×, NDX 7.11×, DAX 9.88×, **GOLD (XAUUSD) 17.69×**, SILVER 21.81×.
+- SPX500 is the only near-miss on size but is **0.838 correlated with DJI30** — same factor, fails diversification anyway.
+- **Cost of losing the sleeve:** SR 1.41→1.04, pass 99.0%→96.2%, median 17.4→22.2mo, and the 2021-26 half thins to +0.49.
+- **Account size is the lever and it is a big step.** Target leverage is scale-invariant while target notional scales with equity, so full-size XAUUSD needs **~$118k** to size correctly in this book (silver ~$145k, NDX ~$47k, BTC ~$17k). This is exactly why the 100K FTMO book trades plain XAUUSD and the 10K one cannot.
+- **Verdict: the 10K book is SIZE-constrained, not idea-constrained. Do not re-run this search.** Wait for the broker to restore micro (the executor now detects `trade_mode` before sending and the daily report has a BROKER RESTRICTIONS section), or accept the 2-sleeve book.
+
+### 3i. FTMO 100K — XAU alone, and a diversifier rebuild at HONEST cost (2026-07-24, `scripts/v5_ftmo_xau_diversifiers.py`)
+Grew the book one sleeve at a time from XAU alone over the **real 167-symbol FTMO universe** (verified live). Sizing does not bind here — index CFDs have contract size 1.0, so min-lots are $62–$519 (~0.1–0.5% of equity) — so the search is purely about edge and correlation. **All costs floored at live quotes**, which changed the answer (see MANDATORY CONTROLS §1).
+
+| book | Sharpe | maxDD | pass% | median | 17-20 | 21-26 |
+|---|---|---|---|---|---|---|
+| XAU alone | +1.12 | −10.2% | 95.4 | 19.2mo | +1.02 | +1.20 |
+| XAU+NDX | +1.51 | −9.3% | 99.1 | 15.2mo | +1.76 | +1.34 |
+| **XAU+NDX+BRENT** | +1.44 | **−7.7%** | **99.2** | 16.0mo | +1.54 | +1.36 |
+| XAU+BTC+NDX (champion) | **+1.71** | −12.3% | 98.6 | **13.4mo** | +2.28 | +1.28 |
+
+- **XAU alone IS deployable** on FTMO 100K (target notional $9,846 vs $4,048 min-lot = 0.41×, fits easily) — 95.4% pass on its own.
+- **NDX, not BTC, is the best single partner for XAU** (99.1% vs 96.6% pass, −9.3% vs −13.7% DD).
+- **BRENT is the only genuine non-equity/non-crypto diversifier** that survives honest pricing (corr +0.05 to XAU, SR +0.42 at real 7.58bp, min-lot $95). Independently reproduces §3g's finding with correct costs.
+- **Sanity check that the sim is working:** stacking SPX or DJI *on top of* NDX craters pass% to ~85% despite fine Sharpe — all one US-equity factor, so the book concentrates and daily-loss failures spike.
+- **Champion caveat for the FUNDED stage, not the challenge:** its −12.3% maxDD is measured over the full 9-year path and exceeds FTMO's 10% STATIC max loss (guard halts at 8%). Challenges are short so pass% stays 98.6, but for sustained funded trading XAU+NDX+BRENT at −7.7% is materially safer, and its half-samples are far more even (+1.54/+1.36 vs +2.28/+1.28 — the champion leans on BTC's 2017-20 era).
+
+### 3j. Weekly Mon→Fri XAU cycle + profit targets — DISPROVEN (2026-07-24, `scripts/v5_xau_weekly_cycle.py`)
+Extends §3d from "what does a weekend ban cost the basket" to "can a purpose-built Monday-entry / ≤5-day XAU cycle work instead". D1 gold 2008-2026, ~950 cycles, entry at Monday's OPEN from Friday's signal (strictly causal), costs floored at live FTMO quotes and charged both ways (~52 round trips/yr).
+
+| variant (10% vol) | netSR | maxDD | 1st half | 2nd half |
+|---|---|---|---|---|
+| ALWAYS-IN D1 (benchmark) | **+0.64** | −22.4% | +0.36 | +0.83 |
+| Mon→Thu (hold ≤4d) | +0.44 | −26.5% | +0.01 | +0.73 |
+| Mon→Fri (hold ≤5d) | +0.37 | −33.5% | +0.17 | +0.51 |
+| weekend-flat, daily resize | +0.35 | −28.7% | +0.07 | +0.55 |
+| hold ≤1d | **−0.17** | −34.6% | −0.16 | −0.19 |
+
+- **The Monday restriction is NOT the cost — refusing weekend risk is.** Weekend-flat with full daily resizing (+0.35) ≈ Monday-frozen weekly size (+0.37), both ~45% below always-in. The gold trend edge genuinely lives in weekend/gap exposure; no intraweek cleverness recovers it. (Portfolio-level confirmation in §3k: +1.03 → +0.61.)
+- **Exit Thursday, not Friday** (+0.44 vs +0.37, −26.5% vs −33.5% DD). **1-day holds lose money** — you need 3–4 days to clear the round trip.
+- **PROFIT TARGETS: only wide ones help, and there is a trap.** At hold ≤5d: TP 0.50% gives a **74.7% win rate and LOSES money** (−0.25 SR, −43.6% DD) — it clips every winner while losers run to Friday. Anything optimising win% on this book optimises the wrong number. Best is **TP 1.5% move**: SR +0.37→+0.50, maxDD −33.5%→−23.4%, FTMO pass 43.5%→51.0%. Percent targets beat ATR targets at the good end (1.5% = +0.50 vs 1.5×ATR = +0.42); the 1.5–3% plateau is what a robust parameter looks like.
+- **Challenge viability: no.** Best variant passes **FTMO 51.0% / Flex 31.5%, median 25.6mo** — a coin flip, against 98.6%/99.2% for the diversified books.
+- **Post-2022 looks great and is a mirage** — see MANDATORY CONTROLS §2 and §4. Do not retry XAU-alone here.
+
+### 3k. Cushion engine — a hard 5% DD mandate is INFEASIBLE (2026-07-24, `scripts/v5_cushion_engine.py`)
+Attacked a **different objective**: maximise return subject to a hard 5% floor, weekend-flat, 100K — not a Sharpe problem. Used all three levers a floor-constrained objective allows: **breadth** (28 markets), **positive skew** (discrete breakout + ATR stop), and **path-dependent leverage** (CPPI sizing off the CUSHION = equity − floor, not off equity). Weekend-flat is load-bearing here rather than a tax: it removes the gap risk that is CPPI's classic failure mode.
+
+**The frontier — what return is actually buyable at each cap** (walk-forward universe, honest costs):
+
+| DD cap | best CAGR | via | Calmar |
+|---|---|---|---|
+| 3.0% | 0.26% | vol-target 1% | 0.11 |
+| **5.0%** | **0.50%** | vol-target 2% | 0.11 |
+| 7.5% | 0.74% | vol-target 3% | 0.11 |
+| 15.0% | 1.18% | vol-target 5% | 0.11 |
+
+- **The binding constraint is CALMAR and it is structural.** Nothing in this repo exceeds Calmar ~1.3 even with full hindsight (XAU+NDX+BRENT: SR 1.44 at −7.7%). "High return" (~20%) at 5% DD needs **Calmar 4** — 3× to 30× beyond anything measured. **Quote the frontier; do not chase it.**
+- **CPPI DOES enforce the floor:** maxDD −1.99% → −4.97% monotonically in the multiplier, never once breaching 5% over 13.2y. The architecture works.
+- **But CPPI LOSES to plain low vol-targeting at matched DD** (0.21% vs 0.50% CAGR at the 5% cap). Classic **cash-lock** — the ratcheting floor de-risks after losses and cannot re-lever on recovery. Do not reach for CPPI again.
+- **Discrete breakout + hard stop + Friday exit loses money** (−0.3% CAGR, 50.2% win rate; −11% sized off equity). Breakouts need weeks; a 2×ATR trail plus a weekly flat cuts every winner. Independently confirms §3j.
+- **Breadth is not free.** Equal-risk over all 22 names = Sharpe 0.37; the ags and weak indices have ~zero IC and add noise, not breadth. The Fundamental Law only pays for POSITIVE-IC bets.
+- **Verdict: if a 5% DD mandate is real, the honest options are ~1–2% CAGR, or relax the cap to ~10–12% where the existing books already live. No configuration delivers both.**
 
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
@@ -192,6 +306,19 @@ The 5%-daily line is never approached until 10%; that is where fail-daily jumps 
 ---
 
 ## Operational notes
-- Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown (trading completes & exits 0 first) — cosmetic but leaves orphan wine procs; teardown fix pending.
 
-_Last updated 2026-07-15._
+- ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~
+  **FIXED 2026-07-24 — and it was NOT cosmetic.** A oneshot unit whose wrapper calls `start_mt5.sh` spawns wine helpers into *its own* cgroup; with no `KillMode` the teardown SIGTERMs them, times out after 90s, then SIGKILLs `winedevice.exe`, which takes down the **shared wineserver for the prefix and therefore `terminal64.exe`**. Because `mt5-terminal.service` is `RemainAfterExit=yes`, systemd still reports it `active (exited)` and never restarts it — MT5 ended up alive only ~90s out of every 30min while looking healthy. Fix: **`KillMode=none`** on any unit that launches wine (added to `deploy/xau-fast.service`). `xau-dual.service` and `xau-challenge-dry.service` still lack it — harmless while disabled, same failure if ever enabled.
+- **`np.float64` must never cross the rpyc bridge.** rpyc ships numpy scalars to the Wine-side interpreter as the literal text `np.float64(...)` and `eval()`s it there **without numpy imported** → `NameError: name 'np' is not defined`. This silently disabled the **trailing stop** on the live cent account: every hourly pass failed, so the position kept its original stop while the engine believed it had been trailed (1.44% of equity at risk against a 1% target). Fixed by coercing to plain `float` at every boundary in `v5_xau_dual.py` (3 action sites + `size_lots`). Scope was cent-only — the basket executor reconciles by lot size and never sends a stop.
+- **A prop firm can restrict a symbol mid-challenge without notice** (§3h). `v5_basket_challenge_exec.py` now checks `trade_mode` BEFORE sending, prints `!! BROKER-BLOCKED`, records a `blocked` CSV column, and keeps retcode 10044 as a backstop; `challenge_daily_report.py` queries every mapped symbol live and adds a BROKER RESTRICTIONS section plus a subject-line flag. A blocked sleeve must never again be a one-line log entry.
+
+---
+
+## Open threads (next research)
+
+1. **Weekend-flat DIVERSIFIED book** — the one funded-stage question still unanswered. §3j killed XAU-alone and §3d says drop crypto under a weekend ban; the untested combination is Friday-flat applied to **XAU+NDX+BRENT**, where the portfolio vol-target and DD scaler do the work a single asset cannot. Harness exists (`v5_cushion_engine.py::build_book(weekend_flat=True)`).
+2. **Back-port the live-cost floor to `v5_instrument_search.py`** so its commodity/ag rows become usable (see §3g correction).
+3. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
+4. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
+
+_Last updated 2026-07-24._
