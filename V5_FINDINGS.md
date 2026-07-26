@@ -298,6 +298,45 @@ Attacked a **different objective**: maximise return subject to a hard 5% floor, 
 - **Breadth is not free.** Equal-risk over all 22 names = Sharpe 0.37; the ags and weak indices have ~zero IC and add noise, not breadth. The Fundamental Law only pays for POSITIVE-IC bets.
 - **Verdict: if a 5% DD mandate is real, the honest options are ~1–2% CAGR, or relax the cap to ~10–12% where the existing books already live. No configuration delivers both.**
 
+### 3l. Martingale "gambling" bot on the direction predictor — the spec RUINS; only a gentle progression survives (2026-07-24, `scripts/v5_martingale_predictor.py`)
+User spec: martingale from the smallest lot, recover losses, reset on win, steered by the turning-point ML bottom detector (§3), on 100K with a **hard 10% wall** ($90k floor). Objective = return, not Sharpe. Reuses `v5_xau_fade_martingale.simulate` (flat/double4/recover4 + $-ruin model) and `v5_xau_turning_ml` features; costs floored at the live gold quote; block-bootstrap MC preserves loss clustering. Engine wiring sanity-checked (synthetic p=0.55 → survive, p=0.40 → 100% bust).
+
+**Reconfirms and refines §2's law: a martingale is an edge LEVER, and AGGRESSIVENESS is the ruin dial.** The whole outcome reduces to Stage A — does the predictor's directional bet clear breakeven `p* = 1/(1+b)` after real spread?
+
+- **All flags (proba≥0.5):** p = 43.5% vs p* = 43.7% = **dead breakeven**, flat P&L −3.5%. Every martingale ruins (double4 27%, recover4 95–99%). Matches the "precision ≠ P&L, lost to buy&hold" finding in §3.
+- **High-conviction only (proba≥0.7, ~378 bets/2.5y, stop 1.5×ATR, target 1.5×stop):** p = 44.2% vs p* = 41.7% = **+2.5 pts, half-sample STABLE** (+2.7/+2.4), zero ≥8 loss-streaks — but only **~1 SE** (SE 2.6) and flat P&L +11.3% still loses ~12× to **buy&hold gold +130.8%**. (Rich-target rr=3.0 cells looked better but DECAY across halves +6.8→+0.6 — overfit, control caught them.)
+
+Ruin frontier ON the +edge cell (500 block-bootstrap paths):
+
+| engine | base$ | K | P(ruin) | medRet | maxDD |
+|---|---|---|---|---|---|
+| flat | 40k | any | 0.0% | +4.6% | −4.2% |
+| double4 | 20k | 3 | 0.2% | +6.9% | −4.3% |
+| double4 | 40k | 3 | 7.0% | +13.8% | −8.0% |
+| double4 | 20k | 5 | 44.4% | −2.7% | −12.5% |
+| **recover4 (the spec)** | 20k | 3 | **71.0%** | **−10.0%** | −20% |
+| recover4 | 40k | 4 | 91.0% | −10.0% (p95 +253%) | −19% |
+
+- **The user's exact mechanic — deficit-targeted "recover ALL losses" (recover4) — RUINS 71–97% even WITH the positive edge.** Recovering the whole deficit in one bet needs stakes a 5–6-loss cluster (which occurs) drives through the floor; return profile is a lottery (median −10% dead, p95 +250–580%). **Do not ship.**
+- **Only a GENTLE progression survives:** classic doubling capped at **K=3** with a **small base** ($20–40k notional) = ~0–7% ruin, +7–14% median, maxDD <8%. K≥5 or base $80k → 44–89% ruin regardless of engine. Escalation depth and base ARE the ruin dial.
+- **All of it rests on a ~1-SE edge that loses to buy&hold.** If the true edge is the thr=0.5 breakeven, the gentle cells revert to ruin too. **Verdict: not deployable.** The detector's honest use remains a long-entry FILTER, never a standalone or a martingale base.
+- **INTRADAY 1:2R variant (2026-07-27, same tool `--tf M15/M30/H1 --rr 2.0`) — FAILS harder, do not build.** The gate degrades monotonically as the bar shrinks: M15 edge **−3 to −4.4 pts**, flat P&L **−40% to −104%** (every config); M30 +0.7 (±1.3 SE = noise, +9.6% but loses to buy&hold +114%); H1 ~+1.4 (~1 SE). Cause: the fixed ~$0.85 round-trip cost is a huge fraction of the shrinking intraday target (M15 target ≈ a few $ → spread eats 15–25%/trade; H4 ≈ $30 → ~3%) — same mechanism as §1's fade dying net of spread. 1:2R needs p*≈37%; detector nets ~34–37% intraday = at/below breakeven, and loss streaks cluster harder (≥8 losses 13× at M30 vs 0× at H1). recover4 on the least-bad cell ruins 89–99%. **Third confirmation the intraday XAU edge dies net of spread; the predictor's edge lives at swing/H4 scale only. Do not retry sub-H1 martingales.**
+
+### 3m. Prop-firm account selection + two-stage weekend-flat plan (2026-07-27, `configs/v5_fundingpips_funded.json`, `scripts/v5_cushion_engine.asset_stream`)
+Chose between three $100K prop plans for the deployed book. **All three restrict weekend holding** (evaluation AND master), so every arm is measured weekend-flat (live-cost floored, `asset_stream(weekend_flat=True)`).
+
+| Plan | P1/P2 | Max loss | Daily | Split | Price | Verdict |
+|---|---|---|---|---|---|---|
+| A (FP 2-Step Std 8/5) | 8/5 | 10% | 5% | 80% | $522 | **reject** — *striking system* on master (warning at 1.2% floating loss/idea → split halves → 20% → breach) shreds a floating-position book; news restricted; lowest split, highest price |
+| **B (10/6)** | 10/6 | **12%** | 4% | **95%** | **$499** | **BUY** — most DD room, best split, cheapest, no striking system |
+| C (6/6) | 6/6 | 6% | 3% | 80% | $422 | **reject** — 6% max < the book's natural DD (the [3k] infeasibility); forces ~4% vol → slowest, lowest pay |
+
+**Two-stage book split (the key finding — the stages want DIFFERENT books):**
+- **CHALLENGE = XAU+BTC+NDX+BRENT weekend-flat @ ~7%.** You must HIT +10%/+6%, so BTC's return is required: with BTC pass 99.9%@6% / 87%@7%; without BTC (SR 1.09) it maxes at **80%** pass and grinds 25mo (too weak to reach the target, and the extra days rack up 4%-daily breaches). KEEP BTC.
+- **FUNDED = XAU+NDX+BRENT weekend-flat @ 6%.** No target, just don't breach — so BTC's 24/7 weekend-gap risk is pure downside; drop it (§3d). @6%: −6.3% path DD (vs 12% limit), worst-day×1.5 −3.94% (0 breaches of the 4% daily line in 9.5y), ~$550/mo gross → **~$523/mo net @95%**. Config `configs/v5_fundingpips_funded.json` (magic 360563, vol 0.06).
+
+**Honest caveats:** (1) B's **4% daily line is punishing weekend-flat** — Monday gaps mean pushing vol for speed spikes fail-daily fast, so the challenge takes **~15–20mo** to pass safely (vs ~10mo if weekends were allowed). (2) Two build gaps before live: the executor has **no Friday-flatten** feature yet, and the FP 100K symbol names (`XAUUSD`/`NDX100`/`UKOIL`) need live verification. Both flagged in the config; deferred until the account is bought & passed.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.

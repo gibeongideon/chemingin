@@ -1,0 +1,66 @@
+{
+  "created_on": "2026-07-27",
+  "purpose": "FundingPips MASTER/FUNDED stage (Option B, 2-Step). WEEKEND-FLAT book XAU + NDX + BRENT, equal 1/3, long-only champion recipe + portfolio vol-target, at the 6% SAFE vol dial. NO crypto: BTC trades 24/7 so a mandatory Friday flat misses weekend moves and eats Monday gaps (V5_FINDINGS 3d/3k). This is the FUNDED book only; the CHALLENGE runs the always-in XAU+BTC+NDX+BRENT @9% where weekends are allowed (configs/v5_ftmo_challenge.json). NOT LIVE — forward artifact, activate after passing B.",
+  "firm": "FundingPips",
+  "model": "ftmo",
+  "vol": 0.06,
+  "_vol_note": "6% chosen 2026-07-27 for the FUNDED account (real capital, breach = permanent loss). Frontier (weekend-flat XAU+NDX+BRENT, funded.py): 6% -> -6.3% maxDD, worst-day x1.5 -3.94% (0 breaches of the 4% daily line in 9.5y), ~$550/mo gross (~$523 net @95% split). 7% earns ~$632/mo but shows 2 proxy daily-breaches; only step up to 7% if you accept the 2-min guard flattening early to protect the 4% line. 12% overall limit is never near (even 10% dial draws only -9.7%). Never RAISE vol on a funded account.",
+  "weekend_flat": true,
+  "_weekend_flat_note": "REQUIRES an executor feature that does not exist yet: flatten ALL positions at Friday close (broker cutoff) and re-enter Monday per signal. FundingPips master forbids weekend holding. Build this into v5_basket_challenge_exec (or a dedicated Friday-flatten guard pass) BEFORE going live on the funded account. Until then this config is a spec, not runnable.",
+  "magic": 360563,
+  "run_id": "v5-fp-funded",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo, vol override 6%)",
+  "reset_tz": "UTC+3",
+  "_reset_tz_note": "FundingPips daily reset = 00:00 platform time (UTC+3).",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": ["XAUCHAMP"],
+    "eq_us": ["NDX"],
+    "energy": ["BRENT"]
+  },
+  "_classes_note": "Crypto DROPPED vs the challenge book: under a weekend-holding ban BTC is the worst sleeve (24/7, forced Friday flat misses weekend moves and worsens the tail). XAU+NDX+BRENT are all closed on weekends anyway, so weekend-flat only costs the Monday gap.",
+  "symbols": {
+    "_note": "engine symbol -> FundingPips broker name. VERIFY LIVE once the 100K account is purchased (names below are from the FP 10K universe enumeration 2026-07-24; the 100K product may differ). Contract/price read live at execute time.",
+    "XAUCHAMP": {
+      "fp_symbol": "XAUUSD",
+      "class": "xau",
+      "tf": "H4",
+      "_broker": "FP XAUUSD full (contract 100oz, min-lot ~$4,048 -> needs the 100K account). VERIFY."
+    },
+    "NDX": {
+      "fp_symbol": "NDX100",
+      "class": "eq_us",
+      "tf": "D1",
+      "_broker": "FP NDX100 (contract 1.0, min-lot ~$5,693). VERIFY name on the 100K product."
+    },
+    "BRENT": {
+      "fp_symbol": "UKOIL",
+      "class": "energy",
+      "tf": "D1",
+      "_broker": "FP UKOIL (contract 1000, min-lot ~$987, spread ~5bp). VERIFY name."
+    }
+  },
+  "guards": {
+    "daily_guard_frac": 0.030,
+    "overall_halt_frac": 0.10,
+    "phase_targets": {
+      "1": 9.99,
+      "2": 9.99
+    },
+    "_note": "FUNDED = no profit target (never 'complete'/stop); phase_targets set to 9.99 so the target branch never fires and the bot just trades within limits. FundingPips-B limits: daily 4% -> guard flatten at 3.0% (1% buffer); overall 12% -> halt at 10% (2% buffer)."
+  },
+  "min_trading_days": 0,
+  "news_filter": {
+    "enabled": true,
+    "currencies": ["USD"],
+    "impact": "High",
+    "before_min": 5,
+    "after_min": 5,
+    "major_before_min": 5,
+    "major_after_min": 5,
+    "close_in_profit": false,
+    "refresh_minutes": 60,
+    "cache_file": "data/news_cache.json",
+    "_note": "FundingPips master RESTRICTS news: no open/close 5min before/after red-folder USD events; news profits deducted. Tighter than evaluation."
+  }
+}

@@ -1,11 +1,9 @@
 {
   "created_on": "2026-07-18",
-  "purpose": "FTMO 2-Step challenge executor. BALANCED SAFEST BOOK: XAU champion + BTC + NDX + BRENT, equal 1/4 (long-only champion recipe, portfolio vol-target) at the 9% vol dial. BRENT (least-correlated sleeve, corr +0.05 to XAU) is added purely to trim drawdown: it lifts pass and cuts path DD -14.9%->-11.8% at ~zero speed cost. Same generic executor as the FundingPips basket (scripts/v5_basket_challenge_exec.py --config this).",
+  "purpose": "FTMO 2-Step challenge executor. FOCUSED BOOK: XAU champion + BTC + NDX, equal 1/3 (long-only champion recipe, portfolio vol-target). Same generic executor as the FundingPips basket (scripts/v5_basket_challenge_exec.py --config this).",
   "firm": "FTMO",
   "model": "ftmo",
-  "vol": 0.09,
-  "_vol_note": "9% BALANCED operating point (chosen 2026-07-24). Frontier @9% (v5_ftmo_xau_diversifiers.py): XAU+BTC+NDX 96.3%/10.3mo/-14.9%; +BRENT (this book) 97.1%/10.5mo/-11.8%; XAU+NDX+BRENT only 87.2% (BTC's return is needed at higher vol). Override consumed by apply_model_to_guards (default MODELS ftmo vol=7%). Never RAISE vol mid-challenge; for the FUNDED stage drop back to 7% (XAU+NDX+BRENT, -7.7% DD).",
-  "_model_note": "FTMO 2-Step (ftmo.com/en/trading-objectives, verified 2026-07-18): P1 +10% / P2 +5% target; 5% max daily loss (equity incl. floating, resets 00:00 CE(S)T); 10% max overall loss STATIC on initial; min 4 trading days; NO time limit; no 2-Step consistency rule; 1:100 leverage. This 4-asset book @9% sim: SR 1.67, ~97.1% pass, median ~10.5mo, path DD -11.8% (guard halts at 8%; the -11.8% is the 9-yr path, rarely realised inside a short challenge). Never raise vol mid-challenge.",
+  "_model_note": "FTMO 2-Step (ftmo.com/en/trading-objectives, verified 2026-07-18): P1 +10% / P2 +5% target; 5% max daily loss (equity incl. floating, resets 00:00 CE(S)T); 10% max overall loss STATIC on initial; min 4 trading days; NO time limit; no 2-Step consistency rule; 1:100 leverage. Focused book @ 7% vol sim: eval SR 1.71, ~98.8% pass, 0% daily breaches, fail-DD 1.2%, median 13.3mo. Never raise vol mid-challenge.",
   "magic": 360561,
   "run_id": "v5-ftmo-challenge",
   "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo)",
@@ -14,8 +12,7 @@
   "classes": {
     "xau": ["XAUCHAMP"],
     "crypto": ["BTC"],
-    "eq_us": ["NDX"],
-    "energy": ["BRENT"]
+    "eq_us": ["NDX"]
   },
   "_classes_note": "The 100K-capable book. NOT sizeable below ~$100K (gold min-lot $4,020, BTC $640). For a $10K account use configs/v5_fp_flex_10k.json (SPX+ASX+ETH).",
   "_buffer_note": "no-trade band: skip a symbol whose target vs held leverage differs by < buffer x its own target (cuts churn).",
@@ -32,12 +29,6 @@
       "class": "crypto",
       "tf": "D1",
       "_broker": "FTMO FULL, contract 1.0 BTC/lot, vmin 0.01, spread ~$1 (1.5bp)"
-    },
-    "BRENT": {
-      "fp_symbol": "UKOIL.cash",
-      "class": "energy",
-      "tf": "D1",
-      "_broker": "FTMO FULL, contract 100, vmin 0.01, min-lot ~$95, spread 7.58bp (verified live 2026-07-24)"
     },
     "NDX": {
       "fp_symbol": "US100.cash",

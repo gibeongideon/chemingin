@@ -77,6 +77,11 @@ def apply_model_to_guards(cfg) -> None:
     cg.OVERALL_HALT_FRAC = float(g["overall_halt_frac"])
     cg.PHASE_TARGETS = {int(k): float(v) for k, v in g["phase_targets"].items()}
     cg.set_reset_tz(cfg.get("reset_tz"))   # FundingPips UTC+3 / FTMO CE(S)T
+    # Per-config vol-dial override (default 7% lives in MODELS). Lets one config
+    # pick a faster/riskier operating point on the pass%-vs-speed frontier
+    # without editing the shared MODELS table. (2026-07-24)
+    if cfg.get("vol") is not None:
+        MODELS[cfg["model"]]["vol"] = float(cfg["vol"])
 
 
 def log_row(path, row) -> None:
