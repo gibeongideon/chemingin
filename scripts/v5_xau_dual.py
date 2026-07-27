@@ -109,7 +109,10 @@ def size_lots(conn, symbol, direction, price, sl, equity, conf, si, max_lot,
             return vol_min
         return 0.0
     loss = abs(loss)
-    risk = xt.PARAMS["risk_frac"] * bot_cfg["params"]["conf_risk_scale"][conf]
+    # per-bot risk_frac override (FundingPips champ runs at 0.5% to survive the
+    # 10% overall wall; the cent config omits it and inherits PARAMS 1%).
+    risk = (bot_cfg["params"].get("risk_frac", xt.PARAMS["risk_frac"])
+            * bot_cfg["params"]["conf_risk_scale"][conf])
     # float() is load-bearing, not cosmetic: equity/ATR arithmetic yields
     # np.float64, and rpyc ships that to the Wine-side interpreter as the literal
     # "np.float64(...)" which it eval()s WITHOUT numpy imported -> every call
@@ -176,6 +179,9 @@ def build_plan(res, held, held_dir, pendings, tick, si, acct, bot_cfg, args,
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--bot", choices=["ls", "champ"], required=True)
+    ap.add_argument("--config", default=str(CONFIG_FILE),
+                    help="bot config JSON (default: cent dual; FP champ = "
+                         "configs/v5_xau_champ_fundingpips.json)")
     ap.add_argument("--live", action="store_true",
                     help="acknowledge trading a REAL account (required for real)")
     ap.add_argument("--execute", action="store_true",
@@ -186,7 +192,7 @@ def main() -> None:
     ap.add_argument("--journal", default=str(ROOT / "data" / "live_trades.db"))
     args = ap.parse_args()
 
-    cfg = json.loads(CONFIG_FILE.read_text())
+    cfg = json.loads(Path(args.config).read_text())
     bot_cfg = cfg["bots"][args.bot]
     magic, run_id = bot_cfg["magic"], bot_cfg["run_id"]
     demo.RUN_ID = run_id  # tag order comments
