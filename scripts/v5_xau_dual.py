@@ -94,6 +94,12 @@ def size_lots(conn, symbol, direction, price, sl, equity, conf, si, max_lot,
               bot_cfg, force_min):
     mt5 = conn._mt5
     order = mt5.ORDER_TYPE_BUY if direction > 0 else mt5.ORDER_TYPE_SELL
+    # price/sl are np.float64 (ATR/equity arithmetic). rpyc ships args to the
+    # Wine interpreter as the literal "np.float64(...)" and eval()s them there
+    # WITHOUT numpy -> NameError. Every arg crossing the bridge must be a plain
+    # float. This is the SAME class of bug as the trailing-stop fix; missed here
+    # because order_calc_profit takes price/sl as ARGUMENTS. (2026-07-27)
+    price, sl = float(price), float(sl)
     loss = mt5.order_calc_profit(order, symbol, 1.0, price, sl)
     vol_min = getattr(si, "volume_min", 0.01)
     vol_step = getattr(si, "volume_step", 0.01)
