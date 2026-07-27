@@ -22,6 +22,19 @@ WINE_PIP="$WINE_PYTHON_DIR/Scripts/pip.exe"
 
 export WINEPREFIX
 
+# ─── Wayland/Xwayland env (local desktop only; VPS uses Xvfb, no cookie) ──────
+# terminal64.exe dies at launch with `nodrv_CreateWindow` unless it gets the
+# mutter Xwayland auth cookie — ~/.Xauthority does NOT work, and the cookie name
+# changes every login, so resolve the live one dynamically. On the VPS there is
+# no such file, the block is skipped, and the existing Xvfb DISPLAY is used.
+_cookie=$(ls -t /run/user/"$(id -u)"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
+if [ -n "$_cookie" ]; then
+    export XAUTHORITY="$_cookie"
+    export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+    export DISPLAY="${DISPLAY:-:0}"
+    echo "Wayland session: XAUTHORITY=$XAUTHORITY  DISPLAY=$DISPLAY"
+fi
+
 # ─── helpers ───────────────────────────────────────────────────────────────
 check_wine() {
     if ! command -v wine &>/dev/null; then

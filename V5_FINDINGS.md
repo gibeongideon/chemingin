@@ -337,6 +337,11 @@ Chose between three $100K prop plans for the deployed book. **All three restrict
 
 **Honest caveats:** (1) B's **4% daily line is punishing weekend-flat** — Monday gaps mean pushing vol for speed spikes fail-daily fast, so the challenge takes **~15–20mo** to pass safely (vs ~10mo if weekends were allowed). (2) Two build gaps before live: the executor has **no Friday-flatten** feature yet, and the FP 100K symbol names (`XAUUSD`/`NDX100`/`UKOIL`) need live verification. Both flagged in the config; deferred until the account is bought & passed.
 
+### 3n. Claude (LLM) as an H4 XAU analyst — NO tradeable edge (2026-07-27, `scripts/v5_claude_h4_backtest.py`)
+Measure-first backtest of the Lumibot-style "AI Agent Strategy" the repo already scaffolds (`src/bots/ai_bot.py`, `src/v5/agents.py`) before any live 100K wiring. Feeds each closed H4 gold bar's metrics (price, RSI, SMA20/50, ATR, range, 10 recent candles) to **claude-opus-5** (adaptive thinking, structured output, prompt+response cached), gets `{action, confidence, reason}`, simulates net of the real $0.45 FTMO spread. 150 bars ≈ 1 month.
+
+**Result: no edge, don't deploy.** 97 hold / 34 sell / 19 buy; confidence 97 medium / **0 high** (Claude never had high conviction on choppy gold — honest). Gated (medium+) traded bars 12, **hit rate 50.0%** (coin flip). **Net −2.07% vs buy&hold −1.25%** — lost AND underperformed inaction. All 53 raw directional calls hit 54.7% but that's within 1 SE (±6.9%) of 50% and dies to the spread; the confidence signal was useless (medium calls did *worse* than low). An LLM has no structural edge reading gold direction and pays the same spread wall as §1/§3l — **4th independent confirmation** the intraday-to-H4 XAU direction edge is uneconomic, now with a frontier LLM. Coherent narration ≠ predictive edge. The measure-first harness cost ~$2-4 on paper, zero capital risked — the correct way to vet any "let the LLM trade" idea. Honest LLM uses stay non-directional (regime/news FILTER on the trend book, never standalone). Do not re-run expecting a different sign.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
