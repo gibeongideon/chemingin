@@ -344,6 +344,15 @@ Measure-first backtest of the Lumibot-style "AI Agent Strategy" the repo already
 
 **Overlay/veto framing also fails** (`scripts/v5_claude_overlay.py`, free — reuses the cached decisions). Claude as a VETO/downsize filter on the trend book (never opens its own trade): on the ls long/short base (active all 150 bars) it took base **+0.54% → VETO −1.96%**, downsize −0.71%. Claude opposed the trend on only 4 med+ bars and the base MADE +2.46% there (75% winning bars) — the vetoes **clipped winners**. A 50%-hit signal used as a veto just removes good trades. **All three LLM-directional framings (standalone, veto, downsize) add no value — close the thread.** Remaining honest LLM uses are non-trading: trade review/journaling, or macro/news synthesis for human decisions.
 
+### 3o. SMC / supply-demand (break-of-structure) on XAU H4 — looked promising, FAILED walk-forward (2026-07-28, `scripts/v5_smc_xau.py`)
+Smart-Money-Concepts engine (causal fractal swings; modes = liquidity **sweep**, **BOS** break-of-structure, **sr_bounce** zone reaction) with an OOS-honest grid. A textbook case of why the MANDATORY CONTROLS exist.
+
+- **Single 70/30 split looked great:** BOS-long test Sharpe **1.44** at 38% exposure, 0.61 corr to the champion, grid train-test corr +0.67. But the test half (2023-2026) was a pure gold bull, so the number was **bull-beta, not skill**.
+- **Walk-forward (re-select best config each year on past-only data, 2018-2026): Sharpe +0.54, net +62%, maxDD −14% — vs buy&hold +209%.** Underperforms passive gold ~3.4×. Made money only in the strong bull years (2020 +28%, 2023 +9%, 2025 +36%); lost/flat in every other year and **missed the +27% 2024 bull entirely (−1%)**.
+- **Regime split (smoking gun):** BOS-long Sharpe by regime — 2015-18 chop +0.44, 2019-20 bull +1.34, **2021-22 FLAT −0.39 (loses)**, 2023-26 bull +1.51. A breakout/trend strategy that harvests uptrends and **bleeds when gold is flat** = bull-beta, same family as the champion (which is itself **0.96 correlated with buy&hold**), but worse than holding gold.
+- **H1/intraday version already loses** (median test Sharpe −0.49 — turnover×spread).
+- **Verdict: not deployable, not a new sleeve.** Real trend/breakout STRUCTURE (train-test corr +0.67 is genuine) but no regime-robust EDGE. Same trap as §3j (gold beta in a bull window). See [[smc-bos-h4-promising]]. Grids: `data/v5_runs/smc_grid_{H4,H1}.csv`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
