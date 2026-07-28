@@ -1,0 +1,5 @@
+k,q,b,sharpe,dsr,t,turnover,dd,yrs_pos,yrs,null_p95,mean_auc,ic,null_sd,stage1,stage2,kind
+24,0.3,0.5,1.184,0.096,-2.16,21.8,-13.2,3,9,1.131,0.593,-0.026,0.0259,False,False,champmeta
+24,0.3,1.0,1.338,0.25,-2.11,26.8,-9.4,3,9,1.155,0.593,-0.026,0.0259,False,False,champmeta
+48,0.3,0.5,1.125,0.037,-2.77,20.9,-13.3,2,9,1.141,0.623,-0.016,0.0328,False,False,champmeta
+48,0.3,1.0,1.171,0.083,-2.81,24.4,-10.5,2,9,1.191,0.623,-0.016,0.0328,False,False,champmeta

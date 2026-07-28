@@ -84,7 +84,7 @@ def atr(df: pd.DataFrame, n: int = 14) -> pd.Series:
 
 # ------------------------------------------------------------------- engine
 def engine(df: pd.DataFrame, fc: pd.Series, *, buffer_frac: float = BUFFER,
-           delay: int = 1) -> tuple[dict, pd.Series]:
+           delay: int = 1, eval_start: str = EVAL_START) -> tuple[dict, pd.Series]:
     """Continuous vol-targeted engine — mirrors xau_lab.run but ALSO returns the
     daily return series, which paired testing requires. Verified to reproduce
     xau_lab's champion Sharpe (see --approach 1 regression line)."""
@@ -109,7 +109,7 @@ def engine(df: pd.DataFrame, fc: pd.Series, *, buffer_frac: float = BUFFER,
     net = (pos * ret - pos.diff().abs().fillna(0.0) * cost_frac).fillna(0.0)
     eq = (1.0 + net).cumprod()
 
-    e = eq.loc[EVAL_START:]
+    e = eq.loc[eval_start:]
     e = e / e.iloc[0]
     daily = e.resample("D").last().pct_change(fill_method=None).dropna()
     yrs = (e.index[-1] - e.index[0]).days / 365.25
@@ -328,16 +328,242 @@ def approach1(cost_usd: float | None) -> None:
     print(f"\n  wrote {out / f'oracle_screen_{tag}.csv'}")
 
 
+# ============================ APPROACH 4 ==================================
+# Forward-DOWNSIDE probability. Stage 0 says this is the best-conditioned target:
+# oracle dSR +0.70 at t=10.8, 10/10 years, and its attainability frontier clears
+# +0.20 even at precision 0.60 / recall 0.20 (unlike the economic label, which goes
+# NEGATIVE at 0.60/0.60). It is a DRAWDOWN-AVOIDANCE filter, not a top detector.
+
+OOS_START_YEAR = 2018
+PURGE = 8                      # tol+order: a pivot at i is unconfirmable until i+5
+
+
+def fwd_min_atr(df: pd.DataFrame, k: int) -> pd.Series:
+    """Forward maximum adverse excursion over the next k bars, in ATR units.
+    Negative = drawdown ahead. Label only — deliberately forward-looking."""
+    close = df["close"].values
+    n = len(close)
+    out = np.full(n, np.nan)
+    for i in range(n - k):
+        out[i] = close[i + 1:i + 1 + k].min() / close[i] - 1.0
+    a = (atr(df) / df["close"]).values          # ATR as a fraction of price
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return pd.Series(out / np.where(a > 0, a, np.nan), index=df.index)
+
+
+def build_features(df: pd.DataFrame) -> pd.DataFrame:
+    """The §3 causal feature set MINUS `hour` (on H4 gold that is a within-day
+    position index and finds a session artifact off ragged Sunday bars), plus
+    vol/trend context that a downside model needs."""
+    from scripts.v5_xau_turning_ml import features as f23
+    F = f23(df).drop(columns=["hour"], errors="ignore")
+    close = df["close"]
+    a = atr(df)
+    F["atr_frac"] = a / close
+    F["ema200_dist"] = (close - close.ewm(span=200, min_periods=100).mean()) / a
+    F["dd_from_hi"] = close / close.rolling(120, min_periods=60).max() - 1.0
+    F["vol_ratio"] = (close.pct_change().rolling(12).std()
+                      / close.pct_change().rolling(72).std())
+    return F
+
+
+def _calibrated_fit_predict(Xtr, ytr, Xte, seed=7):
+    """Fit on the head of train, fit an isotonic calibrator on a PURGED tail slice.
+    (src/v5/xau_meta_oos.py uses unpurged StratifiedKFold(cv=3) for this, which on
+    overlapping labels yields over-confident probabilities.)"""
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.isotonic import IsotonicRegression
+    cut = int(len(Xtr) * 0.80)
+    Xf, yf = Xtr[:cut], ytr[:cut]
+    Xc, yc = Xtr[cut + PURGE:], ytr[cut + PURGE:]
+    clf = HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, max_depth=4,
+                                         l2_regularization=1.0, random_state=seed)
+    clf.fit(Xf, yf)
+    p_te = clf.predict_proba(Xte)[:, 1]
+    if len(Xc) > 50 and 0 < yc.mean() < 1:
+        iso = IsotonicRegression(out_of_bounds="clip")
+        iso.fit(clf.predict_proba(Xc)[:, 1], yc)
+        p_te = iso.predict(p_te)
+    return p_te
+
+
+def badness(df: pd.DataFrame, champ_fc: pd.Series, kind: str, k: int) -> pd.Series:
+    """Continuous forward 'badness' target — LOW values = bad window ahead. Label
+    only (forward-looking by construction). The three families Stage 0 endorsed."""
+    if kind == "dsq":                 # forward max adverse excursion, ATR units
+        return fwd_min_atr(df, k)
+    if kind == "econ":                # plain forward k-bar return
+        return df["close"].shift(-k) / df["close"] - 1.0
+    if kind == "champmeta":           # the CHAMPION's own forward k-bar P&L
+        ret = df["close"].pct_change()
+        return (champ_fc.shift(1).fillna(0.0) * ret).rolling(k).sum().shift(-k)
+    raise ValueError(kind)
+
+
+def walk_forward_prob(df: pd.DataFrame, F: pd.DataFrame, k: int, q: float,
+                      tgt: pd.Series, seed: int = 7) -> tuple[pd.Series, list[dict]]:
+    """Expanding yearly refits. Purge: a train row's label window (t..t+k) must end
+    at least PURGE bars before test_start, else the label peeks into the test set.
+    The 'bad' threshold is taken from the TRAIN slice only (no expanding-quantile
+    peek). Returns calibrated p_bad on OOS bars + per-fold diagnostics."""
+    X = F.values
+    ok = np.isfinite(X).all(axis=1) & np.isfinite(tgt.values)
+    years = sorted({t.year for t in df.index if t.year >= OOS_START_YEAR})
+    p_out = pd.Series(np.nan, index=df.index)
+    folds = []
+    for yr in years:
+        ts, te = pd.Timestamp(f"{yr}-01-01"), pd.Timestamp(f"{yr+1}-01-01")
+        pos = np.arange(len(df))
+        # purge: label window (t..t+k) must close PURGE bars before test start
+        tr_m = ok & (df.index < ts) & (pos < np.searchsorted(df.index, ts) - k - PURGE)
+        te_m = ok & (df.index >= ts) & (df.index < te)
+        if tr_m.sum() < 800 or te_m.sum() < 30:
+            continue
+        thr = np.quantile(tgt.values[tr_m], q)          # train-only threshold
+        y = (tgt.values <= thr).astype(int)
+        p = _calibrated_fit_predict(X[tr_m], y[tr_m], X[te_m], seed)
+        p_out.iloc[np.where(te_m)[0]] = p
+        yt = y[te_m]
+        folds.append(dict(year=yr, n_tr=int(tr_m.sum()), n_te=int(te_m.sum()),
+                          base=round(float(yt.mean()), 3), thr=round(float(thr), 3),
+                          auc=_auc(yt, p), ic=_ic(p, tgt.values[te_m])))
+    return p_out, folds
+
+
+def _auc(y, p) -> float:
+    from sklearn.metrics import roc_auc_score
+    return round(float(roc_auc_score(y, p)), 3) if 0 < np.mean(y) < 1 else float("nan")
+
+
+def _ic(p, t) -> float:
+    from scipy.stats import spearmanr
+    m = np.isfinite(p) & np.isfinite(t)
+    if m.sum() < 30:
+        return float("nan")
+    return round(float(spearmanr(p[m], t[m]).correlation), 3)
+
+
+def block_shuffle(s: pd.Series, block: int = 30, rng=None) -> pd.Series:
+    """Resample in blocks: preserves the marginal AND the autocorrelation (hence the
+    exposure profile and turnover) while destroying TIMING. This is the control that
+    a matched CONSTANT multiplier cannot provide — the champion is vol-targeted, so
+    champ*{0.4..1.0} is Sharpe-neutral and free to beat."""
+    rng = rng or np.random.default_rng(0)
+    v = s.values.copy()
+    fin = np.where(np.isfinite(v))[0]
+    if len(fin) < block * 3:
+        return s
+    seg = v[fin]
+    nb = int(np.ceil(len(seg) / block))
+    starts = rng.integers(0, max(1, len(seg) - block), size=nb)
+    out = np.concatenate([seg[st:st + block] for st in starts])[:len(seg)]
+    new = v.copy()
+    new[fin] = out
+    return pd.Series(new, index=s.index)
+
+
+def approach4(cost_usd: float | None, ks=(24, 48), qs=(0.30,), kind: str = "dsq") -> None:
+    df = load_h4(cost_usd)
+    close = df["close"]
+    champ_fc = champion_signal(close)
+    F = build_features(df)
+    ev = f"{OOS_START_YEAR}-01-01"
+    lab = "blessed CSV" if cost_usd is None else f"${cost_usd:.3f} floor"
+
+    ch_m, ch_d = engine(df, champ_fc, eval_start=ev)
+    bh_m, bh_d = engine(df, pd.Series(1.0, index=df.index), eval_start=ev)
+    NAMES = {"dsq": "FORWARD-DOWNSIDE (max adverse excursion)",
+             "econ": "ECONOMIC (forward k-bar return)",
+             "champmeta": "CHAMPION-TRADE META (champion's own fwd P&L)"}
+    print(f"\n=== {NAMES[kind]} PROBABILITY -> TRIM  (cost {lab}) ===")
+    print(f"    walk-forward: expanding yearly refits, first OOS {OOS_START_YEAR}, "
+          f"purge {PURGE} bars + label window k")
+    print(f"    eval {ev}+   CHAMPION SR {ch_m['sharpe']:+.3f}   "
+          f"buy&hold(vt) SR {bh_m['sharpe']:+.3f}\n")
+
+    rows = []
+    for k in ks:
+        for q in qs:
+            tgt = badness(df, champ_fc, kind, k)
+            p, folds = walk_forward_prob(df, F, k, q, tgt)
+            FD = pd.DataFrame(folds)
+            cov = float(p.notna().mean())
+            print(f"--- k={k} q={q:.2f} --- OOS bars {int(p.notna().sum())} ({cov*100:.0f}%)")
+            print(f"    per-fold AUC: " + " ".join(f"{r.year}:{r.auc}" for r in FD.itertuples()))
+            print(f"    per-fold  IC: " + " ".join(f"{r.year}:{r.ic}" for r in FD.itertuples()))
+            mean_auc = float(FD.auc.mean())
+            ic_all = _ic(p.values, tgt.values)
+            sign_ok = int((FD.ic < 0).sum())   # p_bad HIGH should mean fwd_min LOW
+            # ---- STAGE 1: information gates
+            msk = p.notna() & tgt.notna()
+            top = p[msk] >= p[msk].quantile(0.90)
+            dec_spread = float(tgt[msk][top].mean() - tgt[msk].mean())
+            # block-permutation null for IC
+            rng = np.random.default_rng(11)
+            null = [_ic(block_shuffle(p, 30, rng).values, tgt.values) for _ in range(60)]
+            null_sd = float(np.nanstd(null))
+            print(f"    mean AUC {mean_auc:.3f} | full IC {ic_all:+.4f} "
+                  f"(null sd {null_sd:.4f}, gate |IC|>={2*null_sd:.4f}) | "
+                  f"folds with correct sign {sign_ok}/{len(FD)}")
+            sd_t = float(tgt[msk].std())
+            spread_gate = -0.15 if kind == 'dsq' else -0.15 * sd_t
+            print(f"    top-decile fwd-badness spread {dec_spread:+.4f} "
+                  f"(gate <= {spread_gate:+.4f})  coverage {float(top.mean()):.2f}")
+            s1 = (abs(ic_all) >= 2*null_sd) and (sign_ok >= 7) and (dec_spread <= spread_gate)
+            print(f"    STAGE 1 {'PASS' if s1 else 'FAIL'}")
+
+            # ---- STAGE 2: paired overlay vs champion + shuffled-p null
+            pf = p.fillna(0.0)
+            for b in (0.5, 1.0):
+                fc = champ_fc * (1.0 - b * pf)
+                m, d = engine(df, fc, eval_start=ev)
+                dm, t, n = paired(d, ch_d)
+                yp, yn = per_year(d, ch_d)
+                # shuffled-p null (timing destroyed, exposure preserved)
+                rng2 = np.random.default_rng(5)
+                nulls = []
+                for _ in range(60):
+                    ps = block_shuffle(p, 30, rng2).fillna(0.0)
+                    mm, _ = engine(df, champ_fc * (1.0 - b * ps), eval_start=ev)
+                    nulls.append(mm["sharpe"])
+                p95 = float(np.percentile(nulls, 95))
+                dsr = m["sharpe"] - ch_m["sharpe"]
+                ok2 = (dsr >= 0.20) and (t >= 2.0) and (m["sharpe"] > p95) and (yp >= 7)
+                print(f"    trim b={b}: SR {m['sharpe']:+.3f} (dSR {dsr:+.3f}) t {t:+.2f} "
+                      f"turn {m['turnover']:.1f} dd {m['dd']:+.1f}% yrs+ {yp}/{yn} | "
+                      f"shuffled-p null p95 {p95:+.3f} | STAGE 2 "
+                      f"{'PASS' if ok2 else 'FAIL'}")
+                rows.append(dict(k=k, q=q, b=b, sharpe=m["sharpe"], dsr=round(dsr, 3),
+                                 t=round(t, 2), turnover=m["turnover"], dd=m["dd"],
+                                 yrs_pos=yp, yrs=yn, null_p95=round(p95, 3),
+                                 mean_auc=round(mean_auc, 3), ic=ic_all,
+                                 null_sd=round(null_sd, 4), stage1=s1, stage2=ok2,
+                                 kind=kind))
+    R = pd.DataFrame(rows)
+    out = ROOT / "data" / "v5_runs" / "turnprob"
+    out.mkdir(parents=True, exist_ok=True)
+    tag = ("blessed" if cost_usd is None else f"{cost_usd:.3f}") + f"_{kind}"
+    R.to_csv(out / f"approach4_{tag}.csv", index=False)
+    print(f"\nwrote {out / f'approach4_{tag}.csv'}")
+    if not R.empty and R.stage2.any():
+        print("VERDICT: a cell PASSED Stage 2 -> proceed to Stage 3 sizing + certification")
+    else:
+        print("VERDICT: no cell passed Stage 2 -> DISPROVEN at this stage; do not deploy")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--approach", type=int, default=1)
+    ap.add_argument("--label", default="dsq", choices=["dsq","econ","champmeta"])
     ap.add_argument("--cost", default="blessed",
                     help="blessed | live | stress | a $ figure e.g. 0.448")
     args = ap.parse_args()
     cost = COST_LEVELS.get(args.cost, None) if args.cost in COST_LEVELS else float(args.cost)
     if args.approach == 1:
         approach1(cost)
+    elif args.approach == 4:
+        approach4(cost, kind=args.label)
     else:
         raise SystemExit(f"approach {args.approach} not implemented yet")
 

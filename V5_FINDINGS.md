@@ -10,10 +10,10 @@ spread column understates by 10× — use `--fixed-spread-usd 0.34`, not the raw
 
 ---
 
-## MANDATORY CONTROLS (2026-07-24) — four ways this project has fooled itself
+## MANDATORY CONTROLS (2026-07-24, #5 added 2026-07-29) — five ways this project has fooled itself
 
 Each of these silently manufactured a "result" that evaporated when the control
-was added. Run all four before believing any new backtest.
+was added. Run all five before believing any new backtest.
 
 **1. Floor every cost at the LIVE broker quote.** The 10× gold understatement in
 the Conventions above is not special — it is universal, and far worse on illiquid
@@ -54,6 +54,15 @@ SE ≈ **0.6**, so a post-2022 "+1.07" has a 95% CI of roughly [−0.11, +2.25] 
 distinguishable from the full-sample +0.44, nor from zero. Short windows cannot
 resolve a Sharpe. Watch also for the **fractal regime tell**: post-2022 looked
 strong, but within it 1st-half +0.11 vs 2nd-half +1.75, i.e. really 2024-2026.
+
+**5. QUOTE THE ORACLE CEILING before building a detector** (added 2026-07-29, §3p).
+Trade the label with PERFECT HINDSIGHT first and report (a) standalone Sharpe,
+(b) paired dSharpe + t vs the incumbent, (c) the (precision, recall) contour that
+reaches dSharpe +0.20. **If oracle dSharpe < +0.20 or oracle t < 2.5, do not build the
+detector** — no calibration, encoder, or walk-forward can lift a ceiling. This control
+retroactively explains §3: five studies chased gold BOTTOMS, whose perfect-hindsight
+value is **+0.017** (and **-0.675** standalone), while the value was in TOPS (+0.26).
+It costs ~5 minutes and would have saved months. `scripts/v5_xau_turn_prob.py --approach 1`.
 
 ---
 
@@ -353,6 +362,67 @@ Smart-Money-Concepts engine (causal fractal swings; modes = liquidity **sweep**,
 - **H1/intraday version already loses** (median test Sharpe −0.49 — turnover×spread).
 - **Verdict: not deployable, not a new sleeve.** Real trend/breakout STRUCTURE (train-test corr +0.67 is genuine) but no regime-robust EDGE. Same trap as §3j (gold beta in a bull window). See [[smc-bos-h4-promising]]. Grids: `data/v5_runs/smc_grid_{H4,H1}.csv`.
 
+### 3p. Top/bottom PROBABILITY -> sizing, re-asked with an ORACLE CEILING first (2026-07-29, `scripts/v5_xau_turn_prob.py`)
+
+Re-ran the "detect tops/bottoms with probability, size by it" program with a new
+mandatory pre-flight — **Stage 0: trade the label with PERFECT HINDSIGHT and measure
+what it is worth before building any detector.** This reversed the program's premise.
+
+**THE ORACLE CEILING (perfect hindsight; champion eval 1.041, buy&hold-vt 0.927):**
+
+| perfect knowledge of | dSharpe vs champ | paired t | yrs+ |
+|---|---|---|---|
+| geometric **BOTTOMS** boost | +0.017 | 2.01 | 7/10 |
+| geometric **BOTTOMS** standalone long | **-0.675** | -3.31 | - |
+| geometric **TOPS** trim | +0.259 | 3.83 | 9/10 |
+| downside-quantile k24 trim | +0.697 | 10.8 | 10/10 |
+| champ-meta fwd-12bar P&L<0 trim | +0.824 | 11.7 | 10/10 |
+
+**§3 optimized the worthless side.** The champion is long-only and near-always-in, so
+it is ALREADY LONG at bottoms — perfect bottom knowledge is worth +0.017 and loses
+0.675 standalone. All value is in **trimming before bad forward windows**. Plugging
+§3's measured top spec (prec 0.70, recall 0.10) into the overlay gives ~0.99, i.e.
+**worse than the champion — reproducing §3's overlay failure from the spec alone.**
+Also: the "turnover explosion" §3 blamed was a SYMPTOM — the oracle runs 123
+turnover/yr and still scores 1.86. **Recall was the disease.** Attainability frontiers
+survive live $0.448 cost unchanged; downside-quantile clears +0.20 even at
+precision 0.60 / recall 0.20.
+
+**HONEST MODELS (walk-forward, expanding yearly refits from 2018, purge 8 bars + label
+window, isotonic calibration on a PURGED train tail, `hour` feature dropped):**
+all three label families **FAIL both pre-registered gates.**
+
+| label | mean AUC | full IC (gate) | dSR b=1.0 | paired t | yrs+ | vs shuffled-p p95 |
+|---|---|---|---|---|---|---|
+| downside-quantile k24 | 0.537 | -0.037 (0.052) | +0.024 | **-2.93** | 2/9 | fails |
+| economic fwd-24 | 0.531 | -0.009 (0.062) | +0.023 | **-2.94** | 2/9 | fails |
+| **champ-meta k24** | **0.593** | -0.026 (0.052) | **+0.250** | **-2.11** | **3/9** | **1.338 > 1.155 PASSES** |
+
+**champ-meta carries REAL information but it is a RISK CONTROL, not alpha.** AUC
+0.59-0.62 (0.73 in 2021) is genuinely above chance, and it beats BOTH nulls — the
+block-shuffled-p null (1.338 vs p95 1.155) and, decisively, the **matched-constant
+control**: at the same average exposure, `const x0.62` gives SR 1.079 / CAGR 11.4% /
+DD -10.6% / Calmar 1.08 while the timed trim gives **SR 1.338 / CAGR 12.5% / DD -9.4%
+/ Calmar 1.33**. So the *timing of where to de-risk* is skillful.
+
+But it **buys safety with return**: CAGR 18.7% -> 12.5% (-6.2pp) while maxDD 16.9% ->
+9.4% (-44%), paired t **-2.11** (significantly negative), and it works in only **3 of 9
+years**. Identical at live $0.448. That is the §4 law again — *probability sizing cuts
+drawdown, adds no return* — but this time with the mechanism measured: the information
+is real and is spent entirely on risk reduction.
+
+**VERDICT: NOT DEPLOYED.** Fails Stage 1 (information) and Stage 2 (paired t >= 2.0,
+>= 7/9 years) as pre-registered. Do not re-run bottom detectors of any kind. The one
+legitimate follow-up is narrow: **as a DRAWDOWN control** (not an alpha overlay) on a
+book where DD headroom is the binding prop-firm constraint — but 3/9-year robustness
+must be explained first.
+
+**Reusable deliverable: `--approach 1` is now the mandatory Stage-0 oracle screen.**
+Before building a detector for any new label L, trade L with hindsight and report
+(a) standalone SR, (b) paired dSR + t vs the incumbent, (c) the (precision, recall)
+contour reaching dSR +0.20. If the oracle dSR < +0.20 or oracle t < 2.5, **do not build
+the detector.** This is MANDATORY CONTROL #5.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
@@ -376,4 +446,4 @@ Smart-Money-Concepts engine (causal fractal swings; modes = liquidity **sweep**,
 3. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
 4. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
 
-_Last updated 2026-07-24._
+_Last updated 2026-07-29._
