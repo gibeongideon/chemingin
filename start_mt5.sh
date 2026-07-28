@@ -35,6 +35,27 @@ if [ -n "$_cookie" ]; then
     echo "Wayland session: XAUTHORITY=$XAUTHORITY  DISPLAY=$DISPLAY"
 fi
 
+# Render terminal64 inside a Wine VIRTUAL DESKTOP (explorer /desktop=). Under
+# Wayland/XWayland, letting Wine map each window through the native compositor
+# produces a garbled ("deformed") UI; a virtual desktop makes Wine draw its own
+# top-level window and manage children itself, which renders correctly. Set
+# MT5_NO_DESKTOP=1 to fall back to native windowing.
+# Sized to the local screen (1536x864) so a maximized MT5 fills it and the Wine
+# desktop frame is fully hidden behind MT5. Override with MT5_DESKTOP=WxH.
+MT5_DESKTOP="${MT5_DESKTOP:-1536x864}"
+
+# A stale HEADLESS wineserver (e.g. one started by the bridge with no display env)
+# poisons every terminal it spawns -> nodrv / deformed UI. Reset it once so the
+# fresh wineserver inherits the Wayland env above. Skipped with MT5_KEEP_SERVER=1.
+reset_wineserver() {
+    if [ "${MT5_KEEP_SERVER:-0}" = "1" ]; then return; fi
+    if pgrep -f "wineserver" >/dev/null 2>&1 && ! pgrep -f "terminal64.exe" >/dev/null 2>&1; then
+        echo "Resetting stale headless wineserver (frees bridge port, no terminal was running)..."
+        wineserver -k 2>/dev/null || true
+        sleep 2
+    fi
+}
+
 # ─── helpers ───────────────────────────────────────────────────────────────
 check_wine() {
     if ! command -v wine &>/dev/null; then
@@ -81,7 +102,13 @@ start_terminal() {
     local TEMP_LAUNCHER="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Temp/mt5_launcher"
     mkdir -p "$TEMP_LAUNCHER"
     cp "$TERMINAL" "$TEMP_LAUNCHER/terminal64.exe"
-    WINEPREFIX="$WINEPREFIX" WINEDEBUG=-all wine "$TEMP_LAUNCHER/terminal64.exe" &
+    if [ "${MT5_NO_DESKTOP:-0}" = "1" ]; then
+        WINEPREFIX="$WINEPREFIX" WINEDEBUG=-all wine "$TEMP_LAUNCHER/terminal64.exe" &
+    else
+        echo "Launching in Wine virtual desktop ($MT5_DESKTOP) to avoid deformed XWayland UI..."
+        WINEPREFIX="$WINEPREFIX" WINEDEBUG=-all wine explorer /desktop=MT5,"$MT5_DESKTOP" \
+            "$TEMP_LAUNCHER/terminal64.exe" &
+    fi
     echo "MT5 terminal launched (PID: $!)"
     echo "  → Log in to your broker account"
     echo "  → Enable: Tools > Options > Expert Advisors > Allow algorithmic trading"
@@ -119,6 +146,7 @@ check_wine
 echo "=== Starting MT5 on Ubuntu ==="
 echo "WINEPREFIX: $WINEPREFIX"
 echo ""
+reset_wineserver
 start_terminal
 start_bridge
 echo ""

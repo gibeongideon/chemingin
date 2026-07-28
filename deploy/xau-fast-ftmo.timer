@@ -1,0 +1,7 @@
+[Unit]
+Description=FAST XAU on FTMO demo — hourly at :26 (staggered from champion :22, guard :00)
+[Timer]
+OnCalendar=*-*-* *:26:00
+Persistent=true
+[Install]
+WantedBy=timers.target

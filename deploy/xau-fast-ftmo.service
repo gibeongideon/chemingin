@@ -1,0 +1,7 @@
+[Unit]
+Description=FAST intraday XAU trend (magic 360543) on FTMO demo, bridge 18814 — spread-guarded
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/ftmo_fast_cron.sh
+TimeoutStartSec=300
