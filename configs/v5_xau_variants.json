@@ -1,0 +1,62 @@
+{
+  "created_on": "2026-07-29",
+  "validated_by": "V5_FINDINGS §3p — oracle-gated top/bottom probability study; scripts/v5_xau_turn_prob.py",
+  "symbol": "XAUUSD",
+  "timeframe": "H4",
+  "exit_mode": "trail",
+  "flip_mode": "confidence",
+  "note": "ONE strategy, three risk settings. trim50/trim100 are the champion scaled by a calibrated P(forward P&L<0); their position is <= the champion's on 100% of bars and daily returns correlate 0.96. Run ONE variant per account — stacking two is leverage on a single correlated bet, paying the spread twice. Magics are distinct so a variant can be isolated per account.",
+  "honesty": "champ-meta FAILED its pre-registered research gates (paired t -2.11 vs champion, positive in only 3 of 9 OOS years). It buys drawdown protection with return; it is NOT an alpha source. Deploy trim variants only where a hard drawdown limit binds.",
+  "backtest_2018plus_live_cost": {
+    "full":    {"cagr_pct": 18.6, "maxdd_pct": -17.0, "sharpe": 1.084, "avg_exposure": 0.78},
+    "trim50":  {"cagr_pct": 15.5, "maxdd_pct": -13.2, "sharpe": 1.178, "avg_exposure": 0.61},
+    "trim100": {"cagr_pct": 12.4, "maxdd_pct": -9.4,  "sharpe": 1.329, "avg_exposure": 0.44}
+  },
+  "weekend_flat_cost": "Fri 16:00 UTC flat: full 18.6->14.2% CAGR and maxDD -17.0->-19.9% (WORSE); trim100 12.4->9.9% and -9.4->-10.9%. Turnover ~24->~100/yr. Friday 16:00 beats Thursday 20:00 clearly. Enable only if the prop firm forbids weekend exposure.",
+  "bots": {
+    "full": {
+      "run_id": "v5-xau-var-full",
+      "magic": 360546,
+      "variant": "full",
+      "expected_sharpe": 1.084,
+      "expected_maxdd_pct": -17.0,
+      "news_filter": {"enabled": false, "close_in_profit": true},
+      "weekend_flat": {"enabled": false, "friday_hour_utc": 16, "sunday_open_hour_utc": 22},
+      "params": {
+        "sl_atr": 3.0,
+        "trail_atr": 3.0,
+        "conf_risk_scale": {"low": 0.5, "med": 1.0, "high": 1.5}
+      }
+    },
+    "trim50": {
+      "run_id": "v5-xau-var-trim50",
+      "magic": 360547,
+      "variant": "trim50",
+      "model_path": "data/models/xau_pbad_h4",
+      "expected_sharpe": 1.178,
+      "expected_maxdd_pct": -13.2,
+      "news_filter": {"enabled": false, "close_in_profit": true},
+      "weekend_flat": {"enabled": false, "friday_hour_utc": 16, "sunday_open_hour_utc": 22},
+      "params": {
+        "sl_atr": 3.0,
+        "trail_atr": 3.0,
+        "conf_risk_scale": {"low": 0.5, "med": 1.0, "high": 1.5}
+      }
+    },
+    "trim100": {
+      "run_id": "v5-xau-var-trim100",
+      "magic": 360548,
+      "variant": "trim100",
+      "model_path": "data/models/xau_pbad_h4",
+      "expected_sharpe": 1.329,
+      "expected_maxdd_pct": -9.4,
+      "news_filter": {"enabled": false, "close_in_profit": true},
+      "weekend_flat": {"enabled": false, "friday_hour_utc": 16, "sunday_open_hour_utc": 22},
+      "params": {
+        "sl_atr": 3.0,
+        "trail_atr": 3.0,
+        "conf_risk_scale": {"low": 0.5, "med": 1.0, "high": 1.5}
+      }
+    }
+  }
+}
