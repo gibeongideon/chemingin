@@ -423,6 +423,64 @@ Before building a detector for any new label L, trade L with hindsight and repor
 contour reaching dSR +0.20. If the oracle dSR < +0.20 or oracle t < 2.5, **do not build
 the detector.** This is MANDATORY CONTROL #5.
 
+### 3q. Deep book-improvement study — 8 approaches, ALL DEAD; and the FINANCING correction (2026-08-08, workflow wf_dce6ad0a-25b, 18 agents)
+
+Attacked the deployed 4-asset FTMO book (XAU+BTC+NDX+BRENT @9%) from eight angles. Every
+agent reproduced the baseline to 7 decimals (Sharpe 1.4640761, CAGR 13.68%/14.20%, maxDD
+-12.69%, n=2229) before testing. **Nothing survived. All 9 adversarial verifications refuted.**
+
+| approach | dSharpe | paired t | yrs better | beat shuffled null | trials | median trial |
+|---|---|---|---|---|---|---|
+| defensive regime overlay | +0.1047 | +2.02 | 9/9 | yes | 225 | -0.0913 |
+| sizing / signal shape | +0.0766 | +0.77 | 6/9 | no | 339 | +0.0070 |
+| correlation-aware sizing | +0.0461 | +1.45 | 7/9 | no | 103 | +0.0179 |
+| carry (swap-based) | +0.0246 | +0.23 | 5/9 | no | 93 | -0.0543 |
+| trend-speed ladder | +0.0215 | +0.63 | 6/9 | no | 94 | -0.1074 |
+| cross-sectional momentum | -0.0283 | -1.51 | 3/9 | no | 960 | -0.0963 |
+| profit-capture / re-entry | -0.0497 | -1.78 | 2/9 | no | 104 | +0.0117 |
+| new diversifiers (70 cands) | -0.1467 | -0.36 | 1/9 | no | 6615 | -0.1688 |
+
+**The defensive overlay was the only one to clear the gates — and it was the cleanest
+selection-bias trap in this project.** It cut the book to zero when cross-sectional trend
+agreement was in its bottom quintile: dSharpe +0.1047, t 2.02, 9/9 years. Refuted because
+the brief PRE-ANNOUNCED that 2018 and 2022 were the losing years, and a 225-way search
+duly found the overlay that fixes exactly those two. Independent re-tests: **-0.096, -0.010,
+-0.095**. Median of its own 225 trials was -0.0913 and ZERO trials passed all four gates.
+*Lesson: naming the target years in the prompt manufactured the result. Do not brief a
+search with the answer you hope to find.*
+
+Other notable disproofs:
+- **Carry is NOT unexploited.** BRENT's +9.6%/yr is real but harvesting it always-long
+  gives Sharpe 0.42 at 0.457 correlation to the book — it dilutes. And BTC's brutal
+  -30.4%/yr is already neutralised: **vol-targeting has shrunk BTC's notional to 0.055 of
+  equity**, so its total bill is only -1.68%/yr. A permutation null over all 4! carry-to-asset
+  assignments put the TRUE mapping at the 12.5th percentile — worse than random relabelling.
+- **XS-momentum did NOT replicate** (-0.028, t -1.51, 3/9 yrs) across 960 trials, despite the
+  earlier standalone Sharpe 0.74 / corr 0.15 result. It does not survive as a book sleeve.
+- **Profit-capture/re-entry fails** (-0.050, t -1.78, 2/9) — dies on turnover, as the prior said.
+- **70 candidate diversifiers, 6615 trials, median -0.169.** Breadth still fails. Bonds
+  (UST 2/5/10/30Y) did not rescue it.
+
+**THE REAL FINDING — FINANCING IS -3.79%/yr, NOT -2.59%.** Measured per sleeve on live FTMO
+swap rates against each sleeve's actual vol-targeted notional:
+
+| sleeve | mean notional | rate | drag |
+|---|---|---|---|
+| XAUCHAMP | 0.245 | -6.6%/yr | -1.615%/yr |
+| BTC | 0.055 | -30.4%/yr | -1.677%/yr |
+| NDX | 0.215 | -6.9%/yr | -1.485%/yr |
+| BRENT | 0.103 | **+9.6%/yr** | **+0.991%/yr** |
+| **book** | | | **-3.785%/yr** |
+
+**Impact: Sharpe 1.4641 -> 1.1763, CAGR +14.20% -> +11.16%, maxDD -12.69% -> -13.36%.**
+FTMO 2-step pass net of financing: 95.0%/17.4mo @7%, **90.4%/12.9mo @9%**, 65.9%/8.8mo @11%
+(previously quoted 94.6%/11.0mo @9% GROSS). Monthly on $100k net: mean $916, median $587,
+59% of months positive, worst -$5,212.
+
+**VERDICT: keep the book byte-identical. It is at its frontier for this signal family.**
+Financing is now the single largest lever in the book (-0.29 Sharpe) and the only untested
+way to move it is EXECUTION (a venue with cheaper overnight rates), not signal research.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
@@ -446,4 +504,4 @@ the detector.** This is MANDATORY CONTROL #5.
 3. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
 4. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
 
-_Last updated 2026-07-29._
+_Last updated 2026-08-08._
