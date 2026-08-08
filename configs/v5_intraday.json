@@ -1,0 +1,39 @@
+{
+  "created_on": "2026-08-07",
+  "status": "ENTRY DISABLED — awaiting a validated rule from the Phase-0/Phase-1 research",
+  "why_disabled": "scripts/v5_intraday_lab.py measured RANDOM intraday entries on XAU at -0.11R (M15 3xATR RR2) to -0.18R (M15 2xATR RR3) per trade net of live FTMO cost. Until an entry beats that empirical baseline with t>=2 and a stable per-year record, arming this bot would automate a measured loss.",
+  "symbol": "XAUUSD",
+  "timeframe": "M15",
+  "magic": 360551,
+  "bridge_port": 18814,
+
+  "entry": {
+    "rule": "none",
+    "stop_atr": 3.0,
+    "rr": 2.0,
+    "_viable_cells_from_phase0": {
+      "A": "M15 stop 3.0xATR RR2 max_bars 96 — random win 36.5%, cost/R 13.3%, time-exits 11%, edge needed +1.29pp",
+      "B": "M30 stop 2.0xATR RR2 max_bars 48 — random win 35.3%, cost/R 13.3%, time-exits 9%, edge needed +2.42pp",
+      "C": "M15 stop 2.0xATR RR3 max_bars 96 — random win 27.5%, cost/R 20.0%, time-exits 6%, edge needed +2.48pp"
+    },
+    "_rejected_cells": "H1 and 3xATR/RR3 disqualified — 37-60% of trades exit at the time barrier, so the nominal RR is never realised (the same trap that gave the candle model a 77.8% win rate on +4.9% return)"
+  },
+
+  "manage": {
+    "early_sl_r": null,
+    "giveback_frac": null,
+    "giveback_arm_r": 1.0,
+    "breakeven_at_r": null,
+    "max_minutes": null,
+    "_note": "All null = pure fixed stop/target, which is the CONTROL. Phase 2 must prove each rule beats that control on expectancy in R before it is switched on. Cutting losers early raises effective RR but lowers win rate — judge on expectancy only, never win rate."
+  },
+
+  "risk": {
+    "risk_frac": 0.005,
+    "max_lot": 0.10,
+    "max_positions": 1,
+    "daily_loss_limit": 0.03,
+    "max_total_loss": 0.06,
+    "_loss_streak_warning": "At RR2-3 with a ~30% win rate, runs of 8-12 consecutive losses are STATISTICALLY NORMAL, not a malfunction. At 0.5% risk that is a 4-6% drawdown and must be survivable by design. NEVER add martingale/recovery sizing — V5_FINDINGS 3l measured it ruining 71-97% of paths even on a positive-edge base."
+  }
+}
