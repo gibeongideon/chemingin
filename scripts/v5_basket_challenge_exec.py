@@ -159,6 +159,84 @@ def close_volume(conn, symbol, magic, lots, run_id) -> list:
     return done
 
 
+def apply_compliance_sl(conn, symbol, magic, equity, cap_pct, send,
+                        min_atr_mult=2.0) -> str:
+    """Cap each symbol's worst-case loss at `cap_pct` of ACCOUNT equity via a broker SL.
+
+    Prop-firm compliance only — the book's real protection is the trend filter shrinking
+    exposure, not this stop. Measured on 2018-2026 it sits **2.3-4.2x daily ATR** away at
+    the tightest historical position sizes and was **never hit by a single session** in
+    8+ years (worst days: BTC -38.6%, BRENT -31.5%, NDX -12.5%, XAU -11.6%), so it does
+    not interfere with the strategy.
+
+    MUST run every pass: vol-targeting changes position size continuously, so a stop that
+    was 3% yesterday is not 3% today. All tickets on a symbol are treated as ONE economic
+    position and given the SAME stop price, derived from the volume-weighted average
+    entry, so the AGGREGATE loss is capped (per-ticket stops would not bound the total).
+    """
+    mine = [p for p in (conn.get_positions(magic=magic) or []) if p.symbol == symbol]
+    if not mine:
+        return ""
+    mt5 = conn._mt5
+    si = conn.symbol_info(symbol)
+    tick = conn.get_tick(symbol)
+    vol = sum(float(p.volume) for p in mine)
+    if vol <= 0:
+        return ""
+    d = 1 if mine[0].type == 0 else -1
+    avg_entry = sum(float(p.price_open) * float(p.volume) for p in mine) / vol
+    budget = float(equity) * float(cap_pct)
+
+    # $ lost per 1.0 price unit of adverse move, from the broker's own calc
+    otype = mt5.ORDER_TYPE_BUY if d > 0 else mt5.ORDER_TYPE_SELL
+    per_unit = abs(mt5.order_calc_profit(otype, symbol, float(vol),
+                                         float(avg_entry), float(avg_entry - d * 1.0)))
+    if not per_unit:
+        return f"{symbol}: cannot size SL (order_calc_profit=0)"
+    dist = budget / per_unit
+    px = float(tick.bid) if d > 0 else float(tick.ask)
+    sl = avg_entry - d * dist
+
+    # broker minimum stop distance
+    point = float(si.point) or 0.01
+    min_gap = float(getattr(si, "trade_stops_level", 0) or 0) * point
+    if d > 0 and sl > px - min_gap:
+        sl = px - max(min_gap, point)
+    if d < 0 and sl < px + min_gap:
+        sl = px + max(min_gap, point)
+
+    # Already losing more than the cap -> the stop cannot be placed compliantly.
+    # Closing IS the compliant action; say so loudly rather than silently skipping.
+    open_loss = sum(float(p.profit) for p in mine)
+    if open_loss < -budget:
+        return (f"{symbol}: open loss {open_loss:+.0f} already exceeds the "
+                f"{cap_pct:.1%} cap ({budget:.0f}) — REDUCE OR CLOSE (no compliant SL)")
+
+    digits = int(getattr(si, "digits", 2) or 2)
+    sl = round(float(sl), digits)
+    changed = 0
+    for p in mine:
+        if abs(float(p.sl or 0.0) - sl) <= point:
+            continue
+        changed += 1
+        if send:
+            try:
+                conn.modify_position(p.ticket, sl=sl, tp=float(p.tp or 0.0))
+            except Exception as exc:  # noqa: BLE001
+                # 10018 = TRADE_RETCODE_MARKET_CLOSED. Expected at weekends for
+                # everything except crypto; the stop lands on the next pass after
+                # the open. Not an error, and must not read like one in the logs.
+                if "10018" in str(exc):
+                    return (f"{symbol}: market closed — compliance SL "
+                            f"{sl:.{digits}f} queued for the next pass after open")
+                return f"{symbol}: SL modify REJECTED on #{p.ticket}: {exc}"
+    pct = dist / avg_entry * 100
+    note = (f"{symbol}: SL {sl:.{digits}f}  ({dist:.2f} away = {pct:.1f}% of price, "
+            f"caps loss at {cap_pct:.1%} = ${budget:,.0f})"
+            + (f"  [{changed} ticket(s) updated]" if changed else "  [already set]"))
+    return note
+
+
 def target_lots(conn, symbol, lev, equity) -> float | None:
     """lots = lev * equity / (contract_size * price). None if symbol unavailable.
 
@@ -330,6 +408,22 @@ def main() -> None:
                     if "10044" in str(exc):
                         blocked.append(f"{bsym}:CLOSEONLY")
                         print(f"    !! BROKER-BLOCKED: {bsym} is CLOSE-ONLY (10044)")
+
+        # ---- prop-firm compliance: cap each symbol's worst case at N% of equity ----
+        # Runs AFTER the reconcile so the stop matches the position we now hold, and on
+        # EVERY pass because vol-targeting keeps changing that size.
+        sl_cap = cfg.get("stop_loss_pct_per_position")
+        if sl_cap:
+            print(f"  compliance SL: cap {float(sl_cap):.1%} of equity per symbol")
+            for esym in sorted(targets):
+                bsym = symmap.get(esym, {}).get("fp_symbol")
+                if not bsym:
+                    continue
+                note = apply_compliance_sl(conn, bsym, magic, equity, float(sl_cap), send)
+                if note:
+                    flag = "  !! " if ("REJECT" in note or "REDUCE" in note
+                                       or "cannot" in note) else "    "
+                    print(f"{flag}{note}")
 
         if blocked:
             print(f"  *** {len(blocked)} SLEEVE(S) BROKER-BLOCKED: "

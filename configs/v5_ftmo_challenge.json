@@ -12,10 +12,18 @@
   "reset_tz": "Europe/Prague",
   "reconcile_buffer": 0.25,
   "classes": {
-    "xau": ["XAUCHAMP"],
-    "crypto": ["BTC"],
-    "eq_us": ["NDX"],
-    "energy": ["BRENT"]
+    "xau": [
+      "XAUCHAMP"
+    ],
+    "crypto": [
+      "BTC"
+    ],
+    "eq_us": [
+      "NDX"
+    ],
+    "energy": [
+      "BRENT"
+    ]
   },
   "_classes_note": "The 100K-capable book. NOT sizeable below ~$100K (gold min-lot $4,020, BTC $640). For a $10K account use configs/v5_fp_flex_10k.json (SPX+ASX+ETH).",
   "_buffer_note": "no-trade band: skip a symbol whose target vs held leverage differs by < buffer x its own target (cuts churn).",
@@ -50,7 +58,7 @@
     "daily_guard_frac": 0.035,
     "overall_halt_frac": 0.08,
     "phase_targets": {
-      "1": 0.10,
+      "1": 0.1,
       "2": 0.05
     },
     "_note": "FTMO: daily limit 5% -> flatten at 3.5% from 00:00-CET anchor; max loss 10% -> halt at 8% from initial; targets +10% (P1) / +5% (P2). 1.5% buffer before each firm line."
@@ -58,7 +66,9 @@
   "min_trading_days": 4,
   "news_filter": {
     "enabled": true,
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "impact": "High",
     "before_min": 30,
     "after_min": 30,
@@ -67,5 +77,7 @@
     "close_in_profit": true,
     "refresh_minutes": 60,
     "cache_file": "data/news_cache.json"
-  }
+  },
+  "stop_loss_pct_per_position": 0.03,
+  "_stop_loss_note": "Prop-firm compliance only. Caps each symbol's worst case at 3% of account equity via a broker-side SL, recomputed every pass (vol-targeting changes position size continuously). Measured 2018-2026: sits 2.3-4.2x DAILY ATR away at the tightest historical position sizes and was NEVER hit by a single session in 8+ years (worst days BTC -38.6%, BRENT -31.5%, NDX -12.5%, XAU -11.6%). The book's real protection is the trend filter shrinking exposure; this stop is a backstop, not a strategy component. All tickets on a symbol get the SAME stop price derived from the volume-weighted average entry, so the AGGREGATE loss is capped."
 }
