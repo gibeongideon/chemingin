@@ -481,6 +481,78 @@ FTMO 2-step pass net of financing: 95.0%/17.4mo @7%, **90.4%/12.9mo @9%**, 65.9%
 Financing is now the single largest lever in the book (-0.29 Sharpe) and the only untested
 way to move it is EXECUTION (a venue with cheaper overnight rates), not signal research.
 
+### 3r. XAU H4 fwd-direction classifier (regime features) — ONE real accuracy edge found, FIVE trade structures ALL fail to monetise it (2026-08-10/11, `scripts/v5_xau_intermarket_accuracy.py`, `v5_xau_fwd6_regime_pnl.py`, `v5_xau_multihorizon_pnl.py`, `v5_xau_bracket_gridsearch.py`)
+
+Re-opened §3's turning-point question — "predict XAUUSD short trends, accuracy only,
+explore new feature families" — because the user's own H4 zigzag trend follower motivated
+another pass. **Read this whole entry before re-trying any of it; it is the fifth+ time
+this exact class of question has been asked in this repo.**
+
+**THE ONE POSITIVE RESULT (genuine, robustness-checked, the only thing worth reusing):**
+price+regime features (Hurst exponent, ADX, Choppiness Index, short/long ATR ratio, a
+daily-timeframe EMA-slope+z filter) fed to HistGBoost, walk-forward expanding yearly
+2018-2026, predict XAUUSD H4's next ~1-trading-day direction (sign of the 6-bar-forward
+return) at **52.0% accuracy vs a 49.8% PERSISTENCE baseline (not a coinflip) — +2.12
+percentage points, positive in 8 of 9 years, block-bootstrap (block=60, 2000 draws) 90%
+CI [+0.51pp, +3.69pp], P(edge<=0)=1.5%.** This is real, causal (no lookahead), and the
+first result in this project's turning-point research to survive that level of scrutiny.
+**It is a statement about predictability, not about profitability — see below.**
+
+What did NOT add to it (so don't re-build these as features for this question):
+- **Zigzag-in-progress state** (causal leg direction/age/extension/streak) — redundant
+  with the z-score/momentum already used; adds noise.
+- **Intermarket panel** (DXY proxy from the FX basket, UST10Y/2Y curve, SPX/NDX/DJI, BTC,
+  silver/platinum/palladium, copper, oil, all correctly lagged 1 day) — no incremental
+  signal despite real effort and a real alignment bug fixed along the way (holiday-
+  calendar mismatches were silently corrupting ~27% of rows before the fix).
+- **Multi-window Hurst, a hand-rolled causal HMM regime state, and rolling Haar wavelet
+  spectral-energy features** — all layered on top of the winning regime recipe, tested
+  across 5 model implementations (logreg/RandomForest/HistGBoost/XGBoost/LightGBM); none
+  reliably beat the plain regime block. A naive Hurst-window sweep (30-500) was noisy and
+  non-monotonic — picking a "best" window off it would be a look-elsewhere artifact.
+- **SELL/tops detection stayed at ~0% recall @ 70% precision under every one of the above** —
+  a 6th confirmation of §3's bottoms>tops asymmetry; none of the new families touched it.
+
+**THE P&L VERDICT — accuracy != trading edge, proven FIVE separate ways:**
+1. **Standalone** (probability-sized continuous position, live $0.448 cost): Sharpe
+   **-0.44**, paired t vs buy&hold **-3.3**, vs champion **-3.6**. Turnover (217-623/yr, a
+   ~1-day-horizon signal) burns through the thin edge faster than it pays.
+2. **As a tilt/overlay on the incumbent long-only champion**: light blend is
+   statistically indistinguishable from the champion alone (t +0.4); a stronger blend is
+   worse (t -1.7). No value as a filter either.
+3. **Confidence-gated (trade only the top-conviction subset, flat otherwise)**: accuracy
+   DOES rise with confidence (up to 55.6% at the sparsest, most-extreme threshold), but the
+   paired t-stat vs both benchmarks stays significantly NEGATIVE at every threshold tested
+   (-2.5 to -3.7) — sitting flat ~98% of the time forfeits gold's own structural drift
+   faster than the improved-but-still-small edge can repay. Not a sample-size artifact of
+   turnover; a structural opportunity-cost problem.
+4. **Longer horizons (2/4/8/16 trading days)**: the diagnosed mechanism (position size
+   grows, drawdown improves, paired-t creeps toward zero as horizon lengthens) is real and
+   directionally confirmed, but NONE of 1/2/4/8/16-day horizons cross into beating either
+   benchmark. Pushing further converges on the champion's own EWMAC/breakout speed range —
+   any eventual "win" there is more likely a worse reimplementation of the champion already
+   deployed than a new edge.
+5. **Discrete SL/TP bracket trades** (enter on signal direction, exit only via an
+   open-ended take-profit or a small stop, no fixed time horizon — 80-cell grid, SL
+   0.05-0.75%, TP 0.10-2.00% of price): **79 of 80 cells Sharpe-negative, 0 of 80 clear
+   +0.3.** The single best cell (SL 0.50%/TP 2.00%, a 1:4 R:R needing only 20% win rate)
+   scored Sharpe +0.015 (indistinguishable from zero) with a **-33.7% maxDD** and a
+   textbook noise signature: -0.9/+0.2/-8.2/-7.6/-13.9% then +8.8/+11.5/+12.0/-3.1% —
+   three bad years cancelled by three good ones, not a stable effect.
+
+**VERDICT: do not build anything tradeable on this classifier.** Five structurally
+different ways of turning a genuinely-measured 52%-accuracy signal into a position all
+fail the same way, which is strong evidence the ceiling is the signal itself (barely above
+persistence), not the wrapper around it. **Do not re-try:** more feature engineering on
+this exact question (price/regime/zigzag-state/intermarket/HMM/wavelet all covered), a
+different confidence threshold, a different horizon, or a different SL/TP grid — all
+five of those knobs were turned already and none worked. The only thing that could change
+the answer is a **materially different data type** (real order flow / tick-level
+microstructure, or an actual historical news/sentiment feed — this repo's
+`src/v5/news_filter.py` only caches the LIVE current-week ForexFactory calendar for
+trade-blocking, not a backtestable archive). Full numeric detail, per-round: Claude memory
+`xau-regime-features-fwd-accuracy`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
@@ -503,5 +575,11 @@ way to move it is EXECUTION (a venue with cheaper overnight rates), not signal r
 2. **Back-port the live-cost floor to `v5_instrument_search.py`** so its commodity/ag rows become usable (see §3g correction).
 3. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
 4. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
+5. Do **not** re-open (§3r): the fwd-direction/regime classifier as a tradeable signal —
+   standalone, champion overlay, confidence-gating, 1-16 day horizons, and an 80-cell SL/TP
+   bracket grid all failed. Its ONE reusable result is the accuracy finding itself (52.0%
+   vs 49.8% persistence, block-bootstrap confirmed) — a fact about predictability, not a
+   strategy. Only a materially different data type (order flow, real historical news/
+   sentiment) would justify reopening this.
 
-_Last updated 2026-08-08._
+_Last updated 2026-08-11._
