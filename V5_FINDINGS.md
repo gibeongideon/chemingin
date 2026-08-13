@@ -73,6 +73,7 @@ It costs ~5 minutes and would have saved months. `scripts/v5_xau_turn_prob.py --
 | Sharpe-1.6 drift portfolio | eval SR **1.59**, DSR 0.9998 | backtested, **not deployed** | champion recipe across BTC/indices/XAU/silver + LS diversifiers; the real upside |
 | Long-only XAU champion | eval **0.99–1.04**, live ~0.97 | **LIVE** (acct 360542) | H4, vol-targeted EWMAC+breakout, conc^1.5, long-only. `data/v5_runs/xau-longonly-champion/` |
 | LS ensemble | SR **0.81** | **LIVE** (acct 360541) | long-short trend diversifier |
+| 2nd independent basket: NIKKEI+COFFEE+ETH+DAX | eval SR **0.81**, CI [+0.05,+1.58] | backtested, **not deployed**, weaker than flagship | same recipe, DIFFERENT asset set, ~0.3 corr to BTC/NDX. Detail below. |
 
 Single-XAU ceiling ≈ 1.06; the jump to 1.6 is multi-asset diversification only.
 
@@ -96,6 +97,71 @@ Prompted by a live basket drawdown scare (a −1% wobble at 3 days = pure noise 
 | +SILVER (eq ¼) | 4 | 1.56 | 1.19 | 98.2 | 1.8 | 12.2mo |
 
 **XAU+BTC+NDX (equal ⅓) dominates the basket on every FP metric with ¼ the symbols.** Correlations 2017+: XAU/BTC 0.08, XAU/NDX 0.04, BTC/NDX 0.12 (truly independent); the old basket diluted into correlated index clones (SPX≈NDX≈DJI 0.86) and gold-correlated SILVER (0.58). **DEPLOYED: engine `CLASSES` + `configs/v5_basket_challenge.json` switched to the 3-asset focused book (old 6-class kept as `BASKET_FULL` for revert).** Verified: `--backtest` SR 1.706 / pass 98.7%; `--targets` emits XAU/BTC/NDX only.
+
+### A second, independent basket exists — NIKKEI+COFFEE+ETH+DAX, weaker than the flagship (2026-08-11)
+
+User asked whether the SAME champion recipe works on a genuinely different instrument
+set, independent of the deployed XAU+BTC+NDX+BRENT book. Screened every non-deployed
+`data/*_D1_long.csv` instrument (~24 candidates: metals, energies, softs/ags, equity
+indices, crypto alts, bonds) with the identical recipe, reusing
+`v5_basket_challenge.py`'s `_load_asset`/`build()` directly rather than a new engine.
+
+**Two real bugs caught during the search, both worth remembering:**
+1. Blindly trusting `v5_instrument_search.py`'s STEP-1 screen would have kept NATGAS as a
+   "CANDIDATE" (standalone SR +0.30 on the raw CSV spread) — but MANDATORY CONTROL #1's own
+   documented live cost for NATGAS is 199.4bp (50× the CSV). Applying it flips NATGAS to SR
+   **-0.36** — dead. PALL similarly weakens +0.40→+0.17 at its documented 56.4bp live cost.
+   Any candidate without a documented live quote (softs/ags, alt-crypto) was instead
+   stress-tested at 1×/3×/5×/10× the CSV spread before being trusted; SUGAR/WHEAT/SOY/FTSE/
+   PLAT failed even mild stress and were dropped.
+2. `vbc.build()`'s class-stream math does `al[m].fillna(0.0)` for missing history, which
+   silently ZERO-FILLS (not excludes) a newer asset's pre-listing period — this
+   under-weights the book for however long a new member (SOL: data from 2020-04; ETH: from
+   2017-11) didn't exist yet, AND makes a `.dropna()`-based buy&hold comparison cover a
+   different, shorter window than the strategy's own blended statistic. Caught via a
+   buy&hold Sharpe (+1.26) that looked disconnected from the strategy window it was meant to
+   benchmark. Any new basket construction with mixed asset ages MUST restrict eval start to
+   strictly after the youngest member's data begins, or discard/replace that member.
+
+**The survivor: NIKKEI + COFFEE + ETH + DAX**, one per class, equal-class-risk, same
+vol-target+DD-scaler as the deployed book. Max pairwise correlation among the four is 0.20
+(NIKKEI-DAX); NIKKEI and DAX are both already on MANDATORY CONTROL #1's "cost verified
+conservative" list. Clean window (2018-01-01+, strictly after ETH's start):
+
+| metric | this new basket | deployed XAU+BTC+NDX (same window/sim) |
+|---|---|---|
+| eval SR | **+0.81** (95% CI [+0.05,+1.58]) | +1.41 |
+| paired-t vs buy&hold of same assets | +1.31 (favourable, not significant) | (already established) |
+| FTMO realistic pass% / median | **84.9% / 21.1mo** | 97.0% / 15.5mo |
+| corr to deployed book | XAU 0.08, BRENT 0.07, BTC 0.32, NDX 0.30 | — |
+| years positive (of 10) | 7-8 | — |
+
+**Verdict: real, but clearly a second-tier book, not a replacement.** The CI barely
+excludes zero, and unlike the XAU champion's "sells drawdown control" story, this book's
+maxDD is roughly a wash vs its own buy&hold (-13.1% vs -13.6%) — most of the honest claim
+here is "the recipe generalizes to a new asset set with a plausible edge," not "found
+another 1.4+ Sharpe book." Survives a 2x cost-stress test (SR 0.92→0.84). NOT deployed;
+backtested only, same status as the Sharpe-1.6 drift portfolio above. Backup: swap ETH for
+LTC (data from 2014, no history-length caveat) for a fully clean, slightly weaker (SR
+~0.76-0.78) alternative. Full methodology + correlation matrix: Claude memory
+`new-independent-basket-nikkei-coffee-eth-dax`.
+
+**Do not re-open naively:** the 70-candidate diversifier search (§3q) already found breadth
+mostly fails as an ADDITION to the existing book — that is a different question from "is
+there a second standalone book," which is what this entry answers, but the same caution on
+over-fitting to a full-sample instrument pick (MANDATORY CONTROL #3) applies if this is
+pushed further.
+
+**Tested combining it with the flagship anyway (same day) — confirms §3q, don't merge.**
+Equal-class merge (7 classes total) makes the flagship WORSE: SR 1.41->1.26, FTMO pass
+97.0%->93.9%, median 15.5->16.2mo, paired t -0.88, only 3/9 years better — the new basket's
+lower standalone Sharpe (0.81) and non-trivial correlation to BTC/NDX (0.30-0.32) means
+equal-class-weighting (~4/7 risk budget) dilutes more than it diversifies. A hand-tuned
+SMALL tilt (15-25% allocation, not equal-class) is closer to a wash: Sharpe ticks up
+~2% (1.426->1.453) but that is a pure volatility-reduction effect — CAGR actually falls
+(14.3%->12.9%), the paired-t of the tilt is **-1.81** (mean return is lower, not higher),
+and FTMO pass-rate does not improve (96.7%->96.0%). **No weight tested helps. Run it as
+its own separate account/sleeve, never merged into the flagship.**
 
 ---
 
