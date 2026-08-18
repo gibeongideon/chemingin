@@ -619,6 +619,142 @@ microstructure, or an actual historical news/sentiment feed — this repo's
 trade-blocking, not a backtestable archive). Full numeric detail, per-round: Claude memory
 `xau-regime-features-fwd-accuracy`.
 
+### 3s. Borrowed from Forven comparison: a lookahead probe (new) + this repo's own DSR/PBO (existing, finally used) + SuperTrend (2026-08-19, `src/evaluation/lookahead_probe.py`, `scripts/v5_xau_supertrend.py`)
+
+Following `FORVEN-COMPARISON.md`, borrowed two validation techniques and one strategy idea,
+implemented fresh in this repo's own style (not copied — Forven is AGPL).
+
+**New: `src/evaluation/lookahead_probe.py`** — right-truncation-invariance probe (build a
+synthetic OHLC panel, compute a feature/signal function on it and on right-truncated
+copies, assert interior bars match). Ran against every feature function from §3r plus the
+LIVE champion/ls signals — **all PASS**; `zigzag_swings` (the forward-looking TARGET
+generator) correctly **FAILS**, confirming the probe can actually detect a real violation
+and that this repo's causal/target boundary has held throughout. Gotcha: the champion's
+slowest EWMA span is 1536 H4 bars (256 trading days x 6) — a synthetic panel shorter than
+that "passes" by comparing nothing; always size the probe panel to the function's slowest
+window.
+
+**Existing but never applied to this session's grids: `src/evaluation/dsr_pbo.py`**
+(Deflated Sharpe Ratio + PBO, already in this repo per `AGENT_INSTRUCTIONS.MD` Phase 6).
+Applied properly for the first time this session:
+- §3r's 80-cell SL/TP bracket search: **DSR = 0.0000** — formal confirmation it was noise.
+  **PBO = 0.000 on the SAME grid** looks contradictory but isn't: PBO measures whether the
+  IS-best config's RANK holds up OOS, and the ranking here is dominated by a monotonic cost
+  gradient (tighter stop -> mechanically more stop-outs -> always worse, every sub-period)
+  — trivially rank-stable even with zero real edge. **DSR and PBO answer different
+  questions; a low PBO must not be read as "not overfit" when a grid's variation is driven
+  by a structural cost gradient rather than a genuine edge gradient.**
+- The new SuperTrend grid below: **DSR = 0.9948** — the contrast against 0.0000 on the same
+  session's other grid is itself a useful demonstration that the tool discriminates.
+
+**New strategy borrowed: SuperTrend** (re-implemented from the public ATR-band
+trend-state-machine formula, not copied). Structurally different from the champion's
+EWMA-crossover + smoothed-Donchian blend. Lookahead-probe: PASS. Standalone, long-only, H4,
+live cost: **all 20 of 20 parameter cells tested had POSITIVE Sharpe** (ATR period
+7-21 x multiplier 2.0-4.0) — remarkably consistent, unlike almost every other grid this
+session. Best cell (period=21, mult=2.5): **SR +1.067, CAGR +10.1%, maxDD -11.1%** — Sharpe
+comparable to and drawdown clearly better than the deployed champion (SR 1.084, DD -17.0%).
+**Does not beat the champion in paired comparison** (t -2.21, 2/9 years better); as a
+champion overlay it's a statistical wash (t -0.10 to -0.39). Correlation to the champion's
+own XAU return stream: **0.77** — both ride the same structural gold trend via different
+mechanics, so there is little diversification benefit combining them on the SAME asset.
+Consistent with [[xau-longonly-champion]]'s "single-XAU ceiling ~1.06": a different
+well-built long-only trend mechanism on the same asset lands near the same ceiling, not
+above it.
+
+**Verdict:** the validation tooling is a durable win (found nothing broken, and cleanly
+told a real signal from a fake one in the same session). SuperTrend itself is genuinely
+validated, real, NOT noise — unusual for this session — but not deployable as an XAU
+replacement or overlay.
+
+**Follow-up, same day (`scripts/v5_supertrend_basket.py`): ran the "diversify elsewhere"
+idea — closes too, more decisively.** Applied SuperTrend to the second independent basket
+(NIKKEI/COFFEE/ETH/DAX). All 4 standalone-positive, DSR 0.71-0.93 (the family is real),
+but **PBO is high for 3 of 4** (NIKKEI 0.77, ETH 0.71, DAX 0.74) — the specific "best"
+parameter cell is not stable across resampled sub-periods even though SuperTrend-in-general
+beats the null (only COFFEE has both good DSR and low PBO, 0.056 — a genuinely robust
+pick). **Correlation to the champ-recipe version of the SAME asset: 0.86-0.87 across all
+four** — even higher than XAU's 0.77 — and the SuperTrend-basket vs champ-recipe-basket
+built from the same 4 assets score nearly identical Sharpe (0.811 vs 0.814) at 0.880
+correlation to each other. Blended with the flagship at the "sweet spot" weight, raw
+Sharpe ticks up (1.426->1.457) exactly like the champ-recipe basket's own tilt test did —
+but checked properly (paired-t + FTMO pass-sim, not just the raw number): **t=-1.60
+(negative), pass-rate 96.7%->96.2% (flat to worse), CAGR falls.** Same
+volatility-reduction-not-return mirage as before, just wearing a different signal.
+
+**Follow-up #2, same day (`scripts/v5_supertrend_fx.py`): does SuperTrend revive FX,
+which the champ-recipe already found "comprehensively dead post-2016" (`v5_instrument_
+search.py`)?** FX has no long-run drift (no kill-the-shorts prior applies), so tested both
+long-only and long/short across all 18 pairs (36 combos), 9-cell ATR-period x multiplier
+grid each. **0 of 36 combos cleared SR>0.30 + DSR>0.90 + PBO<0.30 together.** The standout,
+AUDJPY long-only (SR +0.55, 9/9 cells positive, PBO 0.08 — the pick IS rank-stable),
+reported an encouraging within-grid DSR of 0.78 — but that number only deflated against
+AUDJPY's OWN 9-cell grid, when the search that actually produced it scanned 36 pair x
+direction combinations. **Recomputed DSR using the cross-sectional dispersion of the
+best-per-combo Sharpe across all 36 as the trial variance (the correct, screen-level trial
+count — the exact "swarm-level selection" correction Forven's own DSR implementation uses,
+see `FORVEN-COMPARISON.md`): AUDJPY's properly-deflated DSR is 0.4278 — a coin flip.**
+Also cost-stress-tested directly (D1 signals trade rarely, so turnover was never the
+risk): survives 10x the CSV spread (SR barely moves, 0.554->0.454) — so this fails on pure
+statistics, not cost, a cleaner kill than most of this session's closures.
+
+**Lesson: DSR's trial count must reflect the ENTIRE search that produced the candidate,
+not just the innermost grid.** A within-family DSR can look excellent and still be a coin
+flip once the outer screen that selected that family is accounted for — any future
+per-instrument grid nested inside a wider instrument screen needs both numbers reported,
+and the screen-level one trusted.
+
+**Closed, not open, on both fronts.** A different long-only trend-following MECHANISM on
+a strongly-trending asset converges to the same net exposure the champ-recipe already
+extracts (XAU, the second basket, the flagship blend); on assets where the champ-recipe
+already found nothing (FX), SuperTrend finds nothing either, once honestly deflated. Don't
+re-try SuperTrend, or by the same logic any other single-mechanism trend filter, on either
+front. A genuinely different return stream needs a genuinely different EDGE SOURCE
+(mean-reversion, cross-sectional, carry, a different risk premium entirely) — not another
+way to detect the same trend.
+
+### 3t. Cross-asset divergence mean-reversion — a genuine different edge source, not proven yet but NOT closed (2026-08-19, `scripts/v5_cross_asset_divergence.py`)
+
+Took §3s's own conclusion seriously and tried the actual different-edge-source candidate:
+Forven's cross-asset-divergence idea — fade the z-scored divergence between two
+correlated assets' RETURNS, expecting reversion. 7 pairs, `src/evaluation/fitness.py`
+(new: composite Sharpe/DD/DSR/correlation ranking score, since this repo's continuous
+engines have no natural win-rate/PF/trade-count to reuse from Forven's version).
+
+**Thin-CSV-cost screen was misleading — commodities pairs were cost mirages, again.**
+GOLD/SILVER topped the ranking (SR +0.667, DSR 0.843) despite a prior disproof
+([[gold-silver-spread-disproven]]) — but at the ALREADY-DOCUMENTED live cost floor
+(8.5bp, not a stress test, MANDATORY CONTROL #1's own number): **SR +0.667 -> +0.382, DSR
+0.843 -> 0.183, paired-t vs buy&hold-gold -2.16, only 2/9 years better.** PLAT/PALL: same
+pattern, worse (PALL's 56.4bp floor drops SR +0.374 -> +0.020, DSR 0.636 -> **0.000**).
+The prior disproof holds — reached again, via a different (simpler, unweighted) signal
+construction, killed by a different mechanism (cost, not lack of cointegration) — good
+confirmation the earlier verdict wasn't an artifact of that specific methodology.
+
+**FX and equity pairs don't have the cost problem, but aren't confidently real either.**
+EURUSD/GBPUSD survives a 2x cost stress (genuinely liquid, no CSV-understatement trap):
+SR +0.365, DSR 0.589, PBO 0.313 — "more likely real than not," short of the >=0.90 bar.
+SPX/NDX and DAX/STOXX need no cost correction (both on the "already conservative" list):
+SPX/NDX SR +0.500, DSR 0.681, PBO 0.274 (best-balanced survivor); DAX/STOXX SR +0.390,
+DSR 0.549, PBO **0.758** (parameter pick unstable, same pattern as §3s's SuperTrend PBO
+problem on NIKKEI/ETH/DAX).
+
+**The one genuinely new, encouraging number this whole line has produced: correlation to
+the champion.** GOLD/SILVER's divergence signal correlates to the LIVE XAU champion at
+just **+0.088** — the lowest correlation to the champion found all session (SuperTrend was
+0.77 on the SAME asset). Confirms mean-reversion signals occupy real, different territory
+from every trend-following variant tried in §3s — the commodities pairs' failure is a DATA
+problem (understated CSV cost, the same recurring trap), not evidence mean-reversion can't
+work here.
+
+**Verdict: not proven, but genuinely not closed either — unlike SuperTrend.** No pair
+clears DSR>=0.90 + PBO<0.30. Two honest next steps, neither tried yet: (a) rebuild
+GOLD/SILVER or PLAT/PALL with a proper rolling-hedge-ratio spread (closer to the original
+disproof's more careful construction) instead of this session's simpler 1:1
+return-divergence — might behave differently even at honest cost; (b) push SPX/NDX's
+parameter grid further as the cost-clean, best-balanced survivor. Detail: Claude memory
+`cross-asset-divergence-explored`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
@@ -639,13 +775,27 @@ trade-blocking, not a backtestable archive). Full numeric detail, per-round: Cla
 
 1. **Weekend-flat DIVERSIFIED book** — the one funded-stage question still unanswered. §3j killed XAU-alone and §3d says drop crypto under a weekend ban; the untested combination is Friday-flat applied to **XAU+NDX+BRENT**, where the portfolio vol-target and DD scaler do the work a single asset cannot. Harness exists (`v5_cushion_engine.py::build_book(weekend_flat=True)`).
 2. **Back-port the live-cost floor to `v5_instrument_search.py`** so its commodity/ag rows become usable (see §3g correction).
-3. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
-4. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
-5. Do **not** re-open (§3r): the fwd-direction/regime classifier as a tradeable signal —
+3. **Cross-asset divergence mean-reversion (§3t)** — the correlation-to-champion (0.088)
+   is the best diversification signature found this session; no pair proven yet. Two
+   untried next steps: (a) a proper rolling-hedge-ratio spread on GOLD/SILVER or
+   PLAT/PALL instead of the simple 1:1 return-divergence used so far; (b) push SPX/NDX's
+   grid further as the cost-clean, best-balanced survivor (DSR 0.68, PBO 0.27).
+4. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
+5. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
+6. Do **not** re-open (§3r): the fwd-direction/regime classifier as a tradeable signal —
    standalone, champion overlay, confidence-gating, 1-16 day horizons, and an 80-cell SL/TP
    bracket grid all failed. Its ONE reusable result is the accuracy finding itself (52.0%
    vs 49.8% persistence, block-bootstrap confirmed) — a fact about predictability, not a
    strategy. Only a materially different data type (order flow, real historical news/
    sentiment) would justify reopening this.
+7. Do **not** re-open (§3s): SuperTrend, or any other single-mechanism trend filter, as a
+   diversification source OR as an FX revival attempt. Validated real on XAU (DSR 0.995)
+   but interchangeable with the champ-recipe there (corr 0.77), on the second independent
+   basket (corr 0.86-0.88), and blended with the flagship (paired-t -1.60, pass-rate
+   flat-to-worse). On FX (18 pairs x 2 directions, 36 combos): 0 pass; the best-looking
+   pair (AUDJPY) drops from DSR 0.78 to 0.43 (coinflip) once properly deflated for the
+   36-combo screen that produced it, not just its own 9-cell grid. A different edge SOURCE
+   is needed, not another trend-detection algorithm — and any future nested grid-inside-a-
+   screen must deflate DSR against the OUTER screen's trial count, not the inner grid's.
 
-_Last updated 2026-08-11._
+_Last updated 2026-08-19._
