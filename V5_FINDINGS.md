@@ -64,6 +64,61 @@ retroactively explains §3: five studies chased gold BOTTOMS, whose perfect-hind
 value is **+0.017** (and **-0.675** standalone), while the value was in TOPS (+0.26).
 It costs ~5 minutes and would have saved months. `scripts/v5_xau_turn_prob.py --approach 1`.
 
+**6. A "CONFIDENTLY REAL" claim needs DSR>=0.90 AND PBO<0.30 AND a walk-forward re-check
+— never a raw Sharpe alone** (added 2026-08-19, §3s/§3t). Borrowed from Forven's Deflated
+Sharpe Ratio + Probability of Backtest Overfitting (both already implemented in
+`src/evaluation/dsr_pbo.py`, rarely actually invoked before this date) after this project
+kept re-learning the same lesson on its own leads within a single session:
+- **SuperTrend on XAU** (§3s): DSR 0.9948 on a 20-cell grid — genuinely real, survives
+  every check. This is what "confidently real" looks like.
+- **The SL/TP bracket search** (§3r round 5): DSR 0.0000 on an 80-cell grid, despite a
+  cell that looked fine on raw Sharpe (+0.015) and even had a low PBO (0.000) — **PBO can
+  be misleadingly low when a grid's variation is a monotonic COST gradient rather than a
+  genuine edge gradient; check DSR too, the two are not redundant.**
+- **Cross-asset divergence on SPX/NDX** (§3t): the full-sample-picked cell's Sharpe
+  (+0.547) was cut MORE THAN HALF (+0.238) by a proper walk-forward re-selection (trailing
+  3y, re-picked each January — this repo's own precedent from control #3). **DSR/PBO on a
+  full-sample grid is necessary but not sufficient — a walk-forward re-check of the
+  SELECTION PROCESS itself, not just the winning cell's own robustness tests, is what
+  actually caught this.**
+- **The bar, stated plainly: standalone DSR>=0.90, PBO<0.30, AND the winning
+  configuration must survive being re-selected walk-forward (not just tested walk-forward
+  after being picked on the full sample).** Below that bar, a result is "a real, unproven
+  lead" (cross-asset divergence's residual correlation/DD effect) or "noise" (the bracket
+  search) — never quietly rounded up to "found an edge."
+
+**Guiding principle behind all six controls — evidence may only DOWNGRADE, never let a
+good story UPGRADE.** A verified failure (dead cost-adjusted Sharpe, a walk-forward
+collapse, a lookahead-probe fail) always overrides an exciting-looking number; an
+exciting-looking number never overrides a verified failure, no matter how good the
+narrative for why "this time is different." This session's own arc is the case study:
+GOLD/SILVER divergence, SuperTrend-basket blends, and the cross-asset-divergence flagship
+blend all *looked* like discoveries before the actual checks (honest cost, decomposition,
+walk-forward re-selection) downgraded them — never the reverse.
+
+---
+
+## HARD RULES — consolidated risk limits by account/model
+
+One glance-able table instead of re-deriving these from `v5_basket_challenge.py`'s
+`MODELS` dict and `CHALLENGEBOT.MD`'s prose each time. `guard_frac`/`halt_frac` are this
+repo's own proactive de-risk/flatten thresholds, set BELOW the broker's hard limit so the
+bot always has a buffer before a real breach.
+
+| Account / model | vol dial | Phase 1 target | Phase 2 target | Daily loss (hard) | Max loss (hard, static) | Guard (de-risk) | Halt (flatten) |
+|---|---|---|---|---|---|---|---|
+| FundingPips Standard (default) | 7% | 8% | 5% | 5% | 10% | 3.5% | 8% |
+| FundingPips Flex | 7% | 10% | 6% | 4% | 12% | 3.0% | 10% |
+| FundingPips Pro | 5% | 6% | 6% | 3% | 6% | 2.2% | 5% |
+| FundingPips OneStep | 7% | 10% | — | 5% | 6% | 3.5% | 5% |
+| FTMO 2-Step | 7% | 10% | 5% | 5% | 10% | 3.5% | 8% |
+| Cent account (live, HFM Live2) | n/a — single XAU champion, ~1% risk/0.01 lot | — | — | — | — | — | — |
+
+Daily loss is measured on floating P&L (equity, not just closed balance), resets at the
+broker's platform-time midnight. Max loss is static against the INITIAL account size, not
+a trailing high-water mark. Source of truth for FundingPips mechanics: `CHALLENGEBOT.MD`
+§1; for the numeric dials: `scripts/v5_basket_challenge.py::MODELS`.
+
 ---
 
 ## Champions currently trusted (positive net edge)
@@ -748,12 +803,133 @@ problem (understated CSV cost, the same recurring trap), not evidence mean-rever
 work here.
 
 **Verdict: not proven, but genuinely not closed either — unlike SuperTrend.** No pair
-clears DSR>=0.90 + PBO<0.30. Two honest next steps, neither tried yet: (a) rebuild
-GOLD/SILVER or PLAT/PALL with a proper rolling-hedge-ratio spread (closer to the original
-disproof's more careful construction) instead of this session's simpler 1:1
-return-divergence — might behave differently even at honest cost; (b) push SPX/NDX's
-parameter grid further as the cost-clean, best-balanced survivor. Detail: Claude memory
+clears DSR>=0.90 + PBO<0.30. Two honest next steps flagged; both run same day (see below).
+
+**Follow-up, same day (`scripts/v5_hedge_ratio_divergence.py`): ran both flagged next
+steps.**
+
+**(a) Rolling hedge-ratio spread** (rolling-OLS beta shifted 1 bar, spread =
+logA-beta*logB, z-scored, discrete entry/exit/stop state machine — closer to the ORIGINAL
+gold-silver disproof's construction) on GOLD/SILVER, PLAT/PALL, SPX/NDX, tested straight at
+honest/documented cost (no thin-CSV screening this time). **GOLD/SILVER meaningfully
+improved**: SR +0.382 (simple, honest cost) -> **+0.719** (hedge-ratio, same honest cost);
+paired-t vs buy&hold-gold improved from **-2.16 to -0.85** (no longer significantly worse
+than holding gold, though not better either). Still not confident: properly deflated
+against the FULL 81-cell search space (3 pairs x 27 cells — caught and fixed an
+under-counted first attempt that used only the 3 pair-level bests, the exact mistake
+flagged as a lesson in §3s), **DSR = 0.376**. Correlation to the champion held at +0.080.
+**PLAT/PALL stayed dead** (DSR 0.048). **SPX/NDX got WORSE with the more complex
+construction** (DSR 0.127 vs the simple version's 0.681, PBO 0.726 vs 0.274) — the
+hedge-ratio machinery suits precious metals' cointegration-adjacent behaviour specifically,
+not a generic upgrade.
+
+**(b) Finer SPX/NDX grid** (simple divergence, no cost correction needed, 81 cells: window
+10-100, threshold 1.0-3.0). Best cell (window=10, thr=2.0): SR +0.547, **60 of 81 cells
+positive** (the family works broadly), DD only -9.4%. Properly deflated for all 81 cells:
+DSR 0.523, PBO 0.452 — moderate, still short of confident. Paired-t vs buy&hold-SPX -1.39,
+2/9 years better. **Correlation to the champion: -0.014 — the single best (most
+orthogonal) diversification number found in this entire session.**
+
+**Final verdict on this line:** every variant — simple and hedge-ratio, commodities and
+equities — lands in the same place: genuinely, consistently low-to-negative correlation to
+the champion (relative-value mean-reversion IS a different edge source), but DSR that tops
+out around 0.5-0.6 even after real methodological improvement, never reaching this
+session's >=0.90 bar for "confidently real." **A genuine, small, currently-unproven
+signal — not "nothing," not "found alpha."** Chose to size the diversification allocation
+rather than stop — result below.
+
+**Follow-up #2, same day: the flagship-blend test — the FIRST blend result this session
+that survives full scrutiny, with an important twist.** SPX/NDX-divergence and
+GOLD/SILVER-hedge are themselves near-zero correlated (-0.019); a naive 50/50 "mean-
+reversion sleeve" blended into the flagship looked spectacular (SR 1.43->1.66, DD -16%->
+-6%, correlation to flagship -0.000) — but **decomposing it caught a real problem**:
+GOLD/SILVER-hedge ALONE actually **drops the FTMO pass-rate from 96.7% to 84.5%**, despite
+looking fine on annual Sharpe and even helping 2022. The daily-granularity pass-sim (real
+5%-daily-loss / 10%-max-loss rules) catches something the annual Sharpe view completely
+misses.
+
+**SPX/NDX-divergence ALONE is the clean, real result.** Blended with the flagship at
+w=0.20-0.35: SR 1.42->1.53, DD -16.2%->-7 to -10%, **FTMO pass-rate 97.0%->99.1% (w=0.25),
+median 15.4->14.7mo** — better on every metric that was actually checked, concentrated
+exactly in the flagship's two worst years (2022 delta +0.94, 2018 +0.49), costing a little
+in the flagship's best years (2019/2024/2025). **A sharp cliff past ~35-40% weight**:
+pass-rate collapses to 71.9% (w=0.40), 59.8% (w=0.50), 32.7% (w=0.75) while annualized
+Sharpe only degrades gradually (1.48 at w=0.40 — would look fine on Sharpe alone). **Sizing
+this by Sharpe/DD would be a real mistake — the FTMO constraint breaks well before the
+Sharpe curve warns you; always run the pass-sim across the full weight range before
+choosing one.**
+
+**Caveats before treating this as a find:** the winning cell (window=10, threshold=2.0)
+was chosen via a full-sample grid search, not walk-forward year-by-year re-selection —
+MANDATORY CONTROL #3's exact warning, untested here. DSR for this cell is 0.523 (moderate,
+short of the >=0.90 bar this repo's confirmed findings clear) — real uncertainty remains
+about the underlying edge itself, even though the near-zero correlation and multi-metric
+portfolio improvement are measured facts.
+
+**Follow-up #3, same day: ran the walk-forward re-validation — it substantially deflates
+the finding, exactly as MANDATORY CONTROL #3 predicts.** Re-selected the best
+(window, threshold) cell each year on a trailing 3y Sharpe only (this repo's own
+precedent: "re-picked each January on trailing 3y"), applied strictly OOS, 2018-2026.
+
+- **Walk-forward honest Sharpe: +0.238 — less than HALF the full-sample-picked cell's
+  +0.547.** Selected cell jumps around erratically year to year (window
+  30->15->15->15->100->10->10->30->40) — itself a fragility signal. 2024 and 2025 are
+  both clearly negative (SR -1.48, -1.21). PSR = 0.767 ("more likely positive than not,"
+  not confident).
+- **Re-ran the flagship blend with this honest series**: correlation held at +0.001 (the
+  orthogonality is real, survives honest selection) — but the pass-rate improvement
+  **collapsed from 97.0%->99.1% down to just 97.0%->97.5-97.8%**, turning negative past
+  w=0.40. Drawdown still improves monotonically with weight (a real, separate effect).
+  2024/2025 now show the sleeve actively HURTING the blend.
+
+**Final verdict: SURVIVES — near-zero correlation to the champion (+0.001) and a real,
+modest drawdown-reduction effect at small weights. DOES NOT SURVIVE — the dramatic
+pass-rate story and the "saves the worst years" narrative, both substantially inflated by
+full-sample parameter selection.** Closed as a return-source lead; the only thing left
+worth considering is a small allocation sized purely as a drawdown-hedge with this
+weaker, honest number — not as found alpha. This is MANDATORY CONTROL #3 demonstrated
+end-to-end on a lead this session generated itself. Detail: Claude memory
 `cross-asset-divergence-explored`.
+
+### 3u. Regime-GATING the champion (not another ML feature) — DISPROVEN, cleanly (2026-08-19, `scripts/v5_xau_regime_gate.py`)
+
+Every prior regime study fed Hurst/ADX/Choppiness into a NEW ML classifier
+([[xau-regime-features-fwd-accuracy]]: real accuracy, zero tradeable P&L across 5 trade
+structures). This tested the one genuinely different application, borrowed from
+Forven's `regime_gate.py` concept: don't predict anything — GATE the CHAMPION'S OWN
+already-proven forecast directly. Cut its size when a causal, rolling ADX-percentile
+rank says "not trending," full size otherwise. Lookahead-probed clean (needed a
+4200-bar synthetic panel + 1700-bar warmup to clear both the champion's slowest
+1536-bar EWMA and the 252-trading-day percentile lookback).
+
+**Walk-forward selection built in from the start this time** — direct lesson from §3t:
+every number below re-selects the best (threshold, reduction) cell each year on only a
+trailing 3y Sharpe, never the full-sample-best cell (which, for the record, was thr=60/
+red=0.75 at SR +1.058 — doesn't even beat the champion's own 1.084 at its rosiest, an
+early warning the full grid confirmed).
+
+**Decisively worse on every single metric:**
+- Walk-forward gated Sharpe **+1.007 vs champion alone +1.084**.
+- **Drawdown got WORSE, not better: -19.9% vs -17.0%** — the entire premise of a regime
+  gate is risk reduction in bad regimes, and it did the opposite.
+- Only **1 of 9 years better** (a trivial +0.07); every other year flat-to-clearly-worse,
+  no clean "helps in chop" pattern.
+- **Paired-t = -2.88** — one of the most statistically decisive negative results this
+  session produced.
+- **FTMO pass-rate collapsed 95.2% -> 80.3%.**
+
+**Why:** the champion's own continuous vol-target + drawdown-scaler is already a
+REACTIVE risk control; ADX is a smoothed, LAGGING trend-strength read. Stacking a second,
+lagging gate on an already-adaptive signal doesn't add information — it mistimes the
+de-risking (cutting exposure just as a real trend is confirming, not before the chop that
+already hurt).
+
+**Verdict: closes the SECOND of two plausible regime applications on XAU** (ML feature:
+real-but-untradeable; discrete gate: actively harmful) — both now disproven for
+well-understood, different reasons. Not a blanket statement that regime-gating never
+works anywhere — untested: gating a DIFFERENT signal, or gating on an asset that lacks
+the champion's own adaptive risk control. Detail: Claude memory
+`regime-gate-champion-disproven`.
 
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
@@ -775,11 +951,12 @@ parameter grid further as the cost-clean, best-balanced survivor. Detail: Claude
 
 1. **Weekend-flat DIVERSIFIED book** — the one funded-stage question still unanswered. §3j killed XAU-alone and §3d says drop crypto under a weekend ban; the untested combination is Friday-flat applied to **XAU+NDX+BRENT**, where the portfolio vol-target and DD scaler do the work a single asset cannot. Harness exists (`v5_cushion_engine.py::build_book(weekend_flat=True)`).
 2. **Back-port the live-cost floor to `v5_instrument_search.py`** so its commodity/ag rows become usable (see §3g correction).
-3. **Cross-asset divergence mean-reversion (§3t)** — the correlation-to-champion (0.088)
-   is the best diversification signature found this session; no pair proven yet. Two
-   untried next steps: (a) a proper rolling-hedge-ratio spread on GOLD/SILVER or
-   PLAT/PALL instead of the simple 1:1 return-divergence used so far; (b) push SPX/NDX's
-   grid further as the cost-clean, best-balanced survivor (DSR 0.68, PBO 0.27).
+3. ~~Cross-asset divergence mean-reversion~~ **RESOLVED (§3t) — walk-forward validation
+   run, the exciting version was substantially a full-sample-selection artifact.** Honest
+   SR 0.24 (not 0.55), pass-rate benefit 97.0%->97.7% (not 99.1%). Correlation to the
+   champion (+0.001) and a modest drawdown effect survive; do not re-open expecting the
+   original numbers. Remaining option, untaken: a small allocation sized purely as a
+   drawdown hedge on the honest, weaker figures — not as a return source.
 4. **FundingPips micro** — ticket the broker: temporary restriction or is the micro contract being retired? Determines whether the 10K book stays 2-sleeve permanently (§3h).
 5. Do **not** re-open: XAU-alone weekly cycles, profit-take overlays, CPPI, breadth-for-its-own-sake, or a 4th sleeve on the FTMO book.
 6. Do **not** re-open (§3r): the fwd-direction/regime classifier as a tradeable signal —
@@ -797,5 +974,46 @@ parameter grid further as the cost-clean, best-balanced survivor. Detail: Claude
    36-combo screen that produced it, not just its own 9-cell grid. A different edge SOURCE
    is needed, not another trend-detection algorithm — and any future nested grid-inside-a-
    screen must deflate DSR against the OUTER screen's trial count, not the inner grid's.
+8. Do **not** re-open (§3u): regime-gating the champion's own forecast (ADX-percentile or
+   any similar trend-strength cut). Walk-forward-honest from the start: SR 1.08->1.01, DD
+   WORSE not better (-17.0%->-19.9%), paired-t -2.88, FTMO pass 95.2%->80.3%. Both ways of
+   using regime info on XAU (ML feature, discrete gate) are now disproven.
+
+## Honest Gaps — what we still don't know, where this is weakest
+
+Not a to-do list (that's Open Threads above) — a standing, refreshed statement of the
+blind spots, so a reader doesn't mistake "extensively researched" for "fully understood."
+
+- **We don't know WHY the single-XAU ceiling sits at ~1.06, only that it does.** Every
+  well-implemented long-only trend mechanism tried (the champion's own EWMAC+breakout
+  blend, SuperTrend §3s) converges to roughly the same Sharpe on gold. Whether that's a
+  property of gold's own return-generating process, of this repo's specific cost/data
+  window, or of long-only trend-following as a category, is not established.
+- **Tops/sell-side detection has failed 6+ times across every feature family tried**
+  (price, regime, HMM, wavelet, intermarket) — but all 6 attempts were variations on
+  SUPERVISED classification of a swing-high label. Whether tops are fundamentally less
+  detectable than bottoms in gold, or whether every attempt so far has shared some blind
+  spot the framing itself creates, is not resolved.
+- **No historical news/sentiment data exists locally.** `src/v5/news_filter.py` only
+  caches the live current-week ForexFactory calendar for real-time trade-blocking. An
+  entire class of potential edge (event-driven, sentiment-driven) is untested, not
+  disproven — absence of evidence, not evidence of absence.
+- **No tick-level order flow or COT (Commitment of Traders) positioning data.** Forven's
+  crowding/liquidation-cascade concepts need data this repo doesn't have; COT reports are
+  free, public, and cover exactly this repo's asset universe (gold, silver, FX, index
+  futures) but have never been fetched or tested.
+- **FX trend-following is "comprehensively dead" on the strength of TWO mechanisms**
+  (the champ-recipe, and SuperTrend across 18 pairs/36 combos) — a real, repeated result,
+  but two mechanisms is not an exhaustive search of "does any trend-following approach
+  work on FX," only "these two don't."
+- **Every walk-forward validation in this repo re-selects a discrete grid** (a
+  finite list of parameter combinations) rather than continuously re-optimizing — the
+  walk-forward machinery is proven to catch full-sample-selection inflation (§3t is the
+  clean demonstration) but has not been stress-tested against a MUCH larger or continuous
+  parameter space, where the same trap could reappear in a subtler form.
+- **The cross-asset divergence residual finding (correlation +0.001 to the champion, a
+  mild drawdown effect) is real but small, and has not been tried on any pair beyond the
+  7 originally screened** — SPX/NDX was the best of a small, ad hoc set, not a systematic
+  search of the full correlated-pair universe this repo's data could support.
 
 _Last updated 2026-08-19._

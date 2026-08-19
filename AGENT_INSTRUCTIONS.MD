@@ -390,5 +390,10 @@ Highlight uncertainty where conclusions are not definitive.
 Clearly distinguish between facts, hypotheses, and speculation.
 Do not recommend changing strategies without first proving why the current approach failed.
 Focus on building a repeatable, statistically defensible edge—not merely improving backtest performance.
+Evidence may only DOWNGRADE a conclusion, never let a good narrative UPGRADE one — a
+verified failure (dead cost-adjusted Sharpe, a lookahead-probe fail, a walk-forward
+collapse) always overrides an exciting-looking number, never the reverse, no matter how
+persuasive the story for why "this time is different" (see V5_FINDINGS.md MANDATORY
+CONTROLS #6 for the worked examples this rule was extracted from).
 
 The ultimate objective is not to maximize historical Sharpe, but to identify and validate a persistent, economically meaningful trading edge that survives realistic out-of-sample testing, transaction costs, changing market regimes, and live deployment. Every recommendation should move us closer to that objective while minimizing research waste and avoiding repeated exploration of already disproven ideas.
