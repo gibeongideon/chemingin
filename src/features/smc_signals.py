@@ -126,7 +126,12 @@ def fair_value_gaps(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
     -------
     fvg_bull : 1 where bullish FVG detected
     fvg_bear : 1 where bearish FVG detected
-    fvg_size : gap size in pips (EURUSD 4-decimal, 1 pip = 0.0001)
+    fvg_size : gap size in basis points of price (gap / close * 1e4) -- universal
+        across instruments, unlike a fixed pip constant. FIXED 2026-08-19: this used
+        to divide by a hardcoded 0.0001 (EURUSD's 4-decimal pip size), which silently
+        produced a meaningless number on every non-EURUSD-like instrument (gold,
+        indices, JPY crosses, ...). Never backtested before this fix -- caught during
+        the ICT/SMC concept-sweep plan review, not by a live discrepancy.
     """
     o, h, l, c, idx = _ohlcv(df)
     n = len(c)
@@ -146,7 +151,7 @@ def fair_value_gaps(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
         if b_t3 and b_t2 and b_t1 and b_confirm:
             gap = l[i] - h[i - 2]
             fvg_bull[i] = 1.0
-            fvg_size[i] = max(gap / 0.0001, 0.0)
+            fvg_size[i] = max(gap / c[i] * 1e4, 0.0)
 
         # Bearish FVG
         bea_t3 = c[i - 3] > o[i - 3]
@@ -158,7 +163,7 @@ def fair_value_gaps(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
         if bea_t3 and bea_t2 and bea_t1 and bea_confirm:
             gap = l[i - 2] - h[i]
             fvg_bear[i] = 1.0
-            fvg_size[i] = max(gap / 0.0001, 0.0)
+            fvg_size[i] = max(gap / c[i] * 1e4, 0.0)
 
     return (
         pd.Series(fvg_bull, index=idx, name="fvg_bull"),

@@ -931,6 +931,166 @@ works anywhere — untested: gating a DIFFERENT signal, or gating on an asset th
 the champion's own adaptive risk control. Detail: Claude memory
 `regime-gate-champion-disproven`.
 
+### 3v. ICT/SMC concept sweep, Phase 1 — BOS/Displacement/OTE-BOS/Breaker/PO3 all DISPROVEN on XAU (2026-08-20, `src/features/ict_primitives.py`, `scripts/v5_ict_structure_xau.py`, `v5_ict_blocks_xau.py`, `v5_ict_sessions_xau.py`)
+
+Deep, planned sweep of ICT/Smart-Money-Concepts (plan:
+`~/.claude/plans/i-wanttt-you-to-playful-widget.md`) — the user's full concept list (BOS,
+Displacement, Premium/Discount, OTE, Breaker Block, Mitigation Block, IFVG, Silver
+Bullet, PO3/AMD, Judas Swing, SMT Divergence) plus Equal Highs/Lows, Killzones, Turtle
+Soup, Unicorn, decomposed into 10 reusable causal primitives (`ict_primitives.py`, all
+individually lookahead-probe-verified) rather than 11+ one-off implementations. Phase 0
+(infra) also fixed a real bug found by code review, never by a live discrepancy:
+`smc_signals.py::fair_value_gaps()`'s gap-size was hardcoded to EURUSD's 0.0001 pip
+convention, silently meaningless on every other instrument including gold — fixed to
+`gap/close*1e4` (universal bp).
+
+Phase 1 (Bucket A — trend/breakout-continuation concepts, expected to replicate §3o's
+BOS bull-beta failure) ran the FULL mandatory pipeline (lookahead-probe -> walk-forward
+selection from day one, trailing-3y re-pick each January -> paired-t vs buy&hold AND
+champion -> DSR/PBO on the full grid searched -> regime split) on XAU H4/H1, five
+concepts:
+
+| concept | walk-forward SR | DD | t vs B&H | t vs champ | DSR | PBO |
+|---|---|---|---|---|---|---|
+| BOS (baseline, `v5_smc_xau.py`'s continuous-engine re-run) | +0.04 | -21.9% | -2.59 | -3.40 | 0.42 | 0.29 |
+| Displacement (P9, large-ATR-body candle -> directional state) | +0.41 | -6.9% | -2.22 | -2.83 | 0.50 | 0.46 |
+| OTE-filtered BOS (P1+P2+P8, full size only if recently in the 62-79% retracement zone) | -0.38 | -8.1% | -3.00 | -3.44 | 0.01 | 0.73 |
+| Breaker Block (P4+P6, trade the post-flip role of a broken order block) | -0.67 | -42.2% | -3.62 | -4.08 | 0.00 | 0.00 |
+| PO3/AMD (P7, Asian-accumulation/London-manipulation-fade/NY-distribution, H1) | -0.40 | -11.6% | -3.13 | -3.44 | 0.00 | 0.10 |
+
+**All five DISPROVEN — none clear MANDATORY CONTROL #6 (DSR>=0.90 AND PBO<0.30 AND
+walk-forward-survival).** buy&hold-vt SR=+0.94, champion SR=+1.08 over the same window;
+every concept above is decisively below both, statistically (paired-t -2.2 to -4.1,
+1-2 of 9 years better against either benchmark).
+
+**Breaker Block is not just noise, it's actively harmful** (SR -0.67, DD -42.2%, DSR
+0.00) — sanity-checked by mirroring the sign (`-fc`): mirrored is SR -1.0 to -1.1, i.e.
+even worse, so this is not an inverted edge waiting to be flipped, it's genuinely
+information-free at best, anti-correlated with realized moves at worst.
+
+**Doesn't cleanly replicate BOS's specific "bull-beta" signature** — the plan expected a
+uniform "wins in bull, bleeds in 2021-22 flat" pattern; only BOS itself and (loosely) the
+OTE-filtered variant show that shape. Displacement is actually the OPPOSITE: best in
+2021-22 flat (+0.82) and 2015-18 chop (+0.56), weakest in 2019-20 bull (+0.12) — a
+different, still-losing failure mode, not the same one. PO3/AMD is negative in every
+single regime segment (-0.15 to -0.63), no regime-dependence at all. Read: Bucket A's
+common thread is "no real edge, cost-and-noise-dominated," not one single mechanism —
+worth stating precisely rather than forcing a uniform bull-beta narrative onto results
+that don't actually share it.
+
+**PO3/AMD had to move to H1**: an H4-bar first attempt found the London killzone window
+(5h wide) contains at most one H4 bar/day, so almost the entire (tol, hold) grid had zero
+signal fires and zero variance (SR=-inf) — a resolution mismatch, not a result, per the
+plan's own anticipation that session concepts need M15/M30/H1. Also caught mid-build: a
+real bug in the asian-range helper — `Series.cummax()/cummin()` do NOT forward-fill
+through NaN in this pandas version (verified directly), so a `.where(asian_mask)`-based
+running high/low silently reverted to NaN outside the asian window itself, zeroing the
+signal everywhere it needed to fire; fixed with an explicit per-day `.ffill()`.
+
+**Verdict: Bucket A (trend/breakout-continuation reading of ICT concepts) closes on
+XAU, cleanly, per plan.**
+
+**Phase 2 (Bucket B — contrarian/fade concepts, genuinely uncertain, top plan priority)
+also closes, just as cleanly, same day.** Same full pipeline, four more concepts:
+
+| concept | walk-forward SR | DD | t vs B&H | t vs champ | DSR | PBO |
+|---|---|---|---|---|---|---|
+| Mitigation Block (P4+P6, fade AT a still-active/unflipped zone) | -1.06 | -59.1% | -4.13 | -4.36 | 0.00 | 0.07 |
+| Inversion FVG (P5-fixed+P6, flip-and-continue, FVG-sourced) | -0.60 | -48.1% | -3.50 | -4.03 | 0.00 | 0.02 |
+| PO3/AMD (moved here from Phase 1 table — H1, Asian-acc/London-manip-fade) | -0.40 | -11.6% | -3.13 | -3.44 | 0.00 | 0.10 |
+| Judas Swing (P7+daily-open, displacement-then-reversal-through-open, H1) | -0.76 | -28.8% | -3.53 | -3.79 | 0.00 | 0.75 |
+| EQH/EQL liquidity-pool fade (P1+equal_levels+P3, sweep filtered to equal-level pools) | -0.44 | -31.4% | -2.97 | -3.26 | 0.01 | 0.66 |
+
+**Mitigation Block is the worst single result of the entire ICT sweep** (SR -1.06, DD
+-59.1%) — mirror-checked (`-fc`) same as Breaker Block, and here the mirror actually
+matters: the OPPOSITE reading (fade AWAY from a still-active zone rather than bounce
+toward it) comes back to a mildly-positive-but-still-nowhere-near-viable +0.13, meaning
+the classic "bounce at an unflipped order block" read is backwards on XAU H4, not merely
+noisy — worth stating precisely since a future attempt might otherwise re-derive the same
+(wrong) bounce intuition. Inversion FVG's mirror stayed decisively negative either way
+(-0.74 to -0.79), i.e. genuinely information-free like its OB-sourced sibling, not a
+sign-flip case.
+
+**EQH/EQL-fade's regime split has one loud outlier** (+1.54 in 2021-22 flat vs -0.71 to
+-1.12 everywhere else) that could look like a real regime-specific edge on a quick read —
+it isn't: overall walk-forward SR is -0.44, DSR 0.012, PBO 0.659 (high overfitting risk),
+i.e. exactly what one four-segment split throwing up one lucky segment by chance looks
+like when the concept has no real edge underneath. Flagged explicitly so it isn't
+mistaken for a lead later.
+
+**Verdict: Phase 1 + Phase 2 together close NINE ICT/SMC concepts on XAU** (BOS,
+Displacement, OTE-filtered BOS, Breaker Block, Mitigation Block, Inversion FVG, PO3/AMD,
+Judas Swing, EQH/EQL-fade) — none clear DSR>=0.90/PBO<0.30/walk-forward-survival, most
+are decisively negative in absolute terms (not merely "not better than champion"), several
+carry WORSE drawdown than a flat book. Per plan, since nothing survived to the "genuine
+uncertainty" bar, the EURUSD generalization check and FTMO pass-sim are skipped (nothing
+to generalize or size).
+
+### 3w. ICT/SMC sweep, Phases 3-6 — SMT Divergence/PD-filter/confluence: SWEEP CLOSED, zero survivors (2026-08-20, `scripts/v5_ict_smt_divergence.py`, `v5_ict_premium_discount_filter.py`, `v5_ict_confluence.py`)
+
+**Phase 3, SMT Divergence** (P1+P10) — mechanistically different from the existing
+`v5_cross_asset_divergence.py` family (Z-scored relative RETURNS vs SMT's discrete
+STRUCTURAL disagreement: asset A confirms a new swing extreme, asset B doesn't), tested
+walk-forward (trailing-3y re-pick, same discipline as everything else this sweep):
+
+| pair | walk-forward SR | DD | DSR | PBO |
+|---|---|---|---|---|
+| SPX/NDX (existing infra, prior line's best pair) | -0.40 | -30.8% | 0.43 | 0.30 |
+| GOLD/SILVER (checked against `gold-silver-spread-disproven`) | -0.51 | -27.8% | 0.08 | 0.78 |
+
+Textbook MANDATORY CONTROL #6 catch: SPX/NDX's full-sample-best cell looked mildly
+interesting (SR +0.27) — walk-forward collapses it to -0.40. GOLD/SILVER stays dead under
+this DIFFERENT mechanism too, consistent with (not just analogous to) the z-score
+precedent. **SMT Divergence disproven on both pairs tested.**
+
+**Phase 4, the mandatory Premium/Discount-as-champion-filter test** (runs regardless of
+Phase 1-3 outcomes, explicitly compared to `regime-gate-champion-disproven`'s ADX gate):
+reduce the LIVE CHAMPION's forecast when its own direction disagrees with premium/
+discount (long forecast while price sits in premium = "buying high," and the mirror).
+Walk-forward selection consistently picked the MILDEST gate in the sweep (reduction=0.75,
+i.e. only a 25% cut, selected in 8/9 years — not an erratic/fragile selection, a stable
+one) — itself a tell: **walk-forward SR +1.035 vs champion alone's own +1.084, DD -18.4%
+vs -17.0%, paired-t -3.30 (only 2/9 years better)**. DSR=0.855 (short of the >=0.90 bar).
+**Disproven as an improvement** — but notably much MILDER damage than the ADX gate (SR
+delta -0.05 vs ADX's -0.08; DD delta +1.4pp vs ADX's +2.9pp worse) — worth the comparison
+since the plan flagged this test as "priced-in skepticism" going in, and the result
+confirms the skepticism without being as decisively bad as its nearest precedent.
+
+**Phase 5, confluence** — of the plan's 6 bounded combos, #2 (BOS+OTE) and #6
+(Premium/Discount-as-filter) were already run as their own standalone tests above. The
+other four had every ingredient already individually disproven, so per the plan's own
+rule each got ONE quick full-sample sanity check, not a re-investment:
+
+| combo | SR (full-sample, single config) |
+|---|---|
+| Unicorn (Breaker Block ∩ IFVG agreement) | -0.34 |
+| Judas-proxy(sweep) confirmed by BOS | -0.48 |
+| SMT Divergence confirmed by liquidity sweep (SPX) | -0.03 |
+| PO3/AMD-style: BOS filtered to NY-open window only | -0.49 |
+
+**No rescue effect anywhere — confluence closes clean, zero exceptions.**
+
+**SWEEP VERDICT: every concept on the user's list, plus every additional concept the plan
+added (Equal Highs/Lows, Killzones-as-session-filter, Turtle-Soup-adjacent EQHL-fade,
+Unicorn), individually AND combined, on XAU (H4/H1) plus SPX/NDX for the one concept that
+needed a second correlated instrument — DISPROVEN.** Twelve standalone tests, four
+confluence checks, zero survivors of MANDATORY CONTROL #6 (DSR>=0.90 AND PBO<0.30 AND
+walk-forward-survival). This is not an implementation-quality verdict — every primitive
+passed its lookahead probe, two real bugs were caught and fixed during the build (the FVG
+pip-size bug pre-dating this sweep, and the `cummax`/`cummin`-doesn't-ffill-through-NaN bug
+found live in the PO3 build), and mirror-checks confirmed the negative results are
+genuine, not sign-flip artifacts (except Mitigation Block's bounce read, which is
+backwards, not merely noisy — flagged so a future attempt doesn't re-derive the same wrong
+intuition). It is a verdict about XAU H4's actual information content relative to what
+ICT/SMC price-action patterns claim to capture: this repo's already-proven champion
+(continuous EWMAC/breakout trend-following, walk-forward SR ~1.08) already captures
+whatever real directional information is in XAU's price action at this timeframe: none of
+these more elaborate, more specific structural/session/liquidity readings add anything
+the champion doesn't already have, and several (Breaker Block, Mitigation Block, IFVG)
+are actively worse than noise. EURUSD-generalization and true-M5-Silver-Bullet were never
+reached because nothing survived Phase 1-3 to warrant generalizing. Detail: Claude memory
+`ict-smc-sweep-disproven`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
