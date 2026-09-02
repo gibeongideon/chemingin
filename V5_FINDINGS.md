@@ -1351,6 +1351,99 @@ short carry is worth at most ~+2.5%/yr of notional, against a short leg running 
 on a **raw/ECN account ($0.12, where ewmac(12-60h) reaches +0.51)** and with swap modelled
 explicitly — not on Maven's $0.44. Detail: Claude memory `xau-fast-longshort-disproven`.
 
+### 3ab. Five UNTRIED champion lifts — 4 fail outright, the 5th is a 2022+ artifact that does NOT reach the live bot (2026-09-03, `scripts/v5_xau_champion_lifts.py`, `v5_xau_volest_validate.py`)
+
+User asked for five ways to lift the long-only champion's Sharpe, explicitly NOT rehashing
+anything already tried, researched independently. Checked each against §3a-§3aa + memory
+first; none of the five mechanisms appears anywhere prior.
+
+1. **Risk-normalisation quality** — swap the engine's close-to-close EWMA vol denominator
+   for a range-based estimator (Parkinson / Garman-Klass / Rogers-Satchell / Yang-Zhang),
+   which are 5-8x more statistically efficient on the same data.
+2. **Endogenous conviction** — scale exposure by AGREEMENT among the champion's own 6
+   constituents (3 EWMAC pairs + 3 breakout windows). Unlike §3u's ADX gate the
+   conditioning variable is the signal's own internal structure, and nothing is fitted.
+3. **Momentum life-cycle** — the champion is trend-AGE-blind; taper by how long the trend
+   has already run.
+4. **Parameter-cloud averaging** — average the champion's forecast over a dense
+   neighbourhood of nearby parameterisations instead of using the swept point estimate.
+5. **Third-moment conditioning** — trailing realised SKEW / downside-vs-upside semi-vol
+   (every prior regime study used first/second moment only).
+
+**A METHOD FIX THAT CHANGED THE ANSWER — read this before trusting any overlay test.**
+Every one of these overlays multiplies the forecast by ≤1, i.e. DE-RISKS. A paired t-test
+on raw daily returns therefore marks a genuine risk-adjusted improvement as a loss: the
+COMBINED variant showed SR +1.155 vs base +1.084 and DD **-13.4% vs -19.8%** while its raw
+paired-t read **-2.52**. The correct gate levers each candidate to the base's realised vol
+FIRST, then compares returns — the same matched-risk correction that settled §3y. Under the
+raw gate 0/29 cells passed; under the matched gate 3/29 did. **Use `t@matched-vol` for any
+overlay that changes exposure.**
+
+**Results under the corrected gate** (base SR +1.084, DD -19.8%, cost $0.448):
+
+| idea | cells | best SR | best t@matched | verdict |
+|---|---|---|---|---|
+| 1 range-based vol | 5 | **+1.149** | **+2.25** | passes pooled — see below |
+| 2 ensemble agreement | 3 | +1.075 | -0.63 | FAIL |
+| 3 trend age | 12 | +1.114 | +0.76 | FAIL |
+| 4 parameter cloud | 3 | +1.078 | -0.94 | FAIL |
+| 5 skew / semi-vol | 6 | +1.113 | +0.52 | FAIL |
+
+Idea 1 looked genuinely strong: all four range estimators beat the base at **7/9 years
+each**, ordered exactly by their known statistical efficiency (Parkinson +1.63 → GK +1.75
+→ RS +2.11 → YZ +2.25) — a family effect needing no cell selection, robust across every
+spread ($0.12-$0.60, t +2.25 to +2.27) and every vol halflife (21-126, t +1.96 to +2.64).
+
+**Then the split-sample control killed it.** Yang-Zhang vs base:
+- **first half 2018-2021: SR +0.67 vs +0.68, t -0.25, 2 of 4 years** — no effect, slightly worse.
+- second half 2022-2026: SR +1.53 vs +1.41, t +3.14, 5 of 5 years.
+
+The entire effect is confined to 2022+. This is the same artifact signature that killed
+§3o's BOS (a "2023-26 bull artifact") and §3f's H4/med config ("the entire edge is 2021+").
+Pooled significance plus 7/9 years was NOT enough to catch it; only the split was.
+External validation agrees it is weak: gross on BTC/NDX/SPX gives +0.02 Sharpe, t +0.6-0.7.
+
+**AND IT DOES NOT REACH THE LIVE BOT — the actionable half of the question.** The lift was
+measured in the CONTINUOUS research engine, which divides by close-to-close EWMA vol. The
+DEPLOYED bot (`xau_trend.run_trades`, cent magic 360542 / Maven 360571) never does that: it
+sizes off `wilder_atr`, i.e. TRUE range including |H-prevC|/|L-prevC| — **already
+range-based and already gap-aware.** Testing the swap where it would actually matter, in the
+discrete engine, level-calibrated to ATR's mean so only shape/timing is tested:
+
+| stop/size vol | SR | DD | trades | t@matched vs ATR |
+|---|---|---|---|---|
+| **wilder_atr (DEPLOYED)** | **+1.024** | -11.2% | 443 | — |
+| parkinson | +0.972 | -9.8% | 524 | -0.51 |
+| garman_klass | +0.959 | -11.2% | 528 | -0.62 |
+| rogers_satchell | +0.927 | -11.5% | 529 | -0.92 |
+| yang_zhang | +0.957 | -11.0% | 534 | -0.64 |
+
+**All four lose to Wilder ATR**, each generating ~85 more trades (noisier stop distances →
+more stop-outs). Mechanistically coherent: in the continuous engine vol is a smooth position
+scaler, where estimator efficiency helps; in the discrete engine it sets a STOP DISTANCE,
+where what matters is avoiding noise stop-outs, and true range with gap terms is better
+suited. **Do not change the live bot's ATR.**
+
+**VERDICT: no improvement to the champion from any of the five.** Walk-forward selection
+across all 30 cells actively destroys value (SR +0.883 vs base +1.084, t@matched -2.13,
+PBO 0.603) — a noisy overlay grid is worse than leaving the champion alone.
+
+**Three by-products worth keeping:**
+- **The champion's point parameterisation is NOT overfit in parameter space.** Cloud
+  averaging slightly HURTS (t -0.80 to -0.94), which is the reassuring direction — a
+  fragile point estimate would have been improved by neighbourhood averaging.
+- **The momentum life-cycle curve** (descriptive, full-sample, forward-looking BY DESIGN,
+  so a lead and not a result): forward 6-bar return by trend age — age 1-12 bars
+  **-1.8bp / 52.6% hit**, age 13-30 +11.8bp / 55.1%, age 31-60 **+15.4bp / 56.2%**, age
+  61-120 +3.0bp / 51.2%. The WEAK phase is the first ~12 bars after the signal crosses
+  (whipsaw), not the late phase. The ignition-delay variant built on it reached SR +1.114 /
+  DD -15.4% but only t +0.76 — in-sample-informed and insignificant, so it stays a lead.
+- **The research harness's close-to-close vol is mildly suboptimal**, but only post-2022,
+  and the deployed engine doesn't use it — so this is a note about interpreting continuous-
+  engine numbers, not a fix.
+
+Detail: Claude memory `xau-champion-five-lifts-fail`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
