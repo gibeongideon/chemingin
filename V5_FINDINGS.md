@@ -1211,6 +1211,59 @@ of variations-of-a-good-thing as evidence the variation helps.
 champion at one leg. If more return is wanted, raise `risk_frac` deliberately (and note the
 book is already at its frontier per §3q). Detail: Claude memory `xau-scalein-is-leverage`.
 
+### 3z. risk_frac — the sizing dial, quantified (2026-08-31, `scripts/v5_xau_riskfrac_sweep.py`)
+
+§3y concluded "if you want more return, raise `risk_frac` deliberately." This quantifies
+that, so the choice is a lookup rather than a guess. **Reference table, keep it.**
+
+**Where the dial is**: `src/v5/xau_trend.PARAMS["risk_frac"]` (default 0.01 = 1% of CURRENT
+equity risked over the 3xATR stop), overridden per-bot in config JSON, read at
+`scripts/v5_xau_dual.py:114` as `risk_frac x conf_risk_scale[conf]` (0.5/1.0/1.5) and
+converted to lots via `order_calc_profit`. One-line config edit; the signal and trade
+timing do not change at all — which is precisely why it is clean.
+
+XAUUSD H4 champion, eval 2018+, $100k, CSV-median cost (live-floored $0.448 in brackets
+where it differs materially):
+
+| risk_frac | Sharpe | CAGR | maxDD | worst day $ | peak margin | Maven pass (4%/10%) | -10% in 12mo (static / trailing) |
+|---|---|---|---|---|---|---|---|
+| 0.25% | +0.985 | +2.2% | -2.9% | -824 | 0.7% | 99.5% | 0.0% / 0.0% |
+| **0.50%** (deployed) | +1.015 | +4.4% | -5.8% | -1,656 | 1.4% | **99.8%** | **0.0% / 0.0%** |
+| 0.75% | +1.020 | +6.7% | -8.5% | -2,471 | 2.3% | 99.0% | 0.0% / 0.1% |
+| **1.00%** (cent book) | +1.024 | +9.0% | -11.2% | -3,286 | 3.3% | 97.4% | 0.4% / 1.9% |
+| 1.25% | +1.025 | +11.2% | -13.9% | -4,116 | 4.5% | 94.7% | 1.8% / 7.4% |
+| 1.50% | +1.024 | +13.4% | -16.5% | -4,902 | 5.9% | 91.7% | 4.4% / 17.9% |
+| 2.00% | +1.024 | +17.8% | -21.5% | -6,517 | 10.4% | 86.7% | 11.2% / 45.9% |
+| 3.00% | +1.023 | +26.5% | -30.7% | -9,646 | 27.1% | 78.7% | 25.7% / 87.3% |
+| 4.00% | +1.023 | +34.9% | -39.0% | -12,724 | **61.8%** | 74.5% | 37.1% / 97.5% |
+
+- **Sharpe is INVARIANT (+1.02 across the whole range) and worst trade is -1.0R at every
+  level.** Same signal, same trades, size scales linearly. Return and drawdown move
+  together in exact proportion: this is a risk dial, not an edge lever. (Calmar drifts
+  0.74->0.89 purely from compounding, not skill — don't read it as "leverage improves
+  quality".)
+- **Return scales ~linearly, breach probability scales VIOLENTLY.** 1% -> 2% doubles CAGR
+  (9.0%->17.8%) but takes trailing-DD breach risk from 1.9% to 45.9% — a ~24x increase.
+  The asymmetry is the whole point: there is no free return above ~1%.
+- **Two drawdown conventions, very different answers** — conflating them is how a book
+  gets sized too big. Static (Maven's stated "10% of STARTING balance", and FTMO's
+  overall wall) is far more forgiving than trailing/high-water, because a -11% dip after
+  the account is already +15% up never touches the static floor. Both reported.
+- **Margin only becomes a real constraint past ~2.5%** (17% of equity) and is dangerous at
+  4% (62%). Below 2% it is a non-issue at 1:75.
+- **On Maven's daily rule specifically**: at 0.5% the worst historical single day is
+  -$1,656 (-1.66%), and the 4%-daily sim shows 0.0% daily failures — so IF Maven's daily
+  limit is really their public 4%, then 0.5-1.0% is comfortable. Against a literal 0%
+  daily rule nothing works, at any risk_frac (§3x-adjacent finding, `v5_maven_zero_dd_champion.py`).
+- Conclusion at live-floored $0.448 is unchanged (0.5%: SR +1.006, DD -5.8%; 1%: SR
+  +1.014, DD -11.4%).
+
+**Recommendation: 0.5% for prop accounts under a 10% wall (99.8% sim pass, zero breaches
+in 12 months), 1.0% as the aggressive ceiling. Do not exceed 1.5%** — that is where
+trailing breach risk crosses ~18% for a linear return gain. Matches the existing
+`configs/v5_xau_champ_fundingpips.json` instruction ("risk_frac 0.005 ... do NOT raise it")
+by an independent route. Never raise mid-challenge (`configs/v5_xau_challenge.json`).
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
