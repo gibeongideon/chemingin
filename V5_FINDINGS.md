@@ -1264,6 +1264,93 @@ trailing breach risk crosses ~18% for a linear return gain. Matches the existing
 `configs/v5_xau_champ_fundingpips.json` instruction ("risk_frac 0.005 ... do NOT raise it")
 by an independent route. Never raise mid-challenge (`configs/v5_xau_challenge.json`).
 
+### 3aa. 4-15h LONG/SHORT "trend zigzag" follower with signal-based TP — DISPROVEN at real spread; every gradient points back to the existing champion (2026-08-31, `scripts/v5_xau_fast_ls_screen.py`, `v5_xau_fast_ls_exits.py`)
+
+User ask: a 6-12h-cadence "Trend Zigzag long term follower" that "behaves like our
+champion but both sells and buys", follows 4-15 hour trends, and "takes profit using
+discovered signal". Extensive research requested. Run as two staged phases — cheap signal
+screen first, expensive exit-rule machinery only if the screen survived.
+
+**FIRST, THE MEASURED COST (this reframes everything).** Sampled the LIVE Maven account
+(12 ticks, 2026-08-31): **XAUUSD spread $0.44, rock stable**; `stops_level` 0;
+**swap_long -45.33 / swap_short +25.25 USD per lot per night** — i.e. Maven is an
+FTMO-class spread, NOT raw/ECN, and shorts EARN carry (a tailwind the long-only champion
+structurally cannot use). Prior art being tested against:
+`fast-trend-runner-spread-gated` (fast XAU trend is real but SR 0.50 @ $0.34, needs $0.12)
+and `xau-longonly-champion` ("kill-the-shorts is THE lever").
+
+**PHASE 1 — 10 signals x 3 cost levels, all lookahead-probed (all PASS).** Families:
+`ewmac_fast` (champion math at H1-fast spans), `breakout_fast`, `zigzag_structure` (CAUSAL
+confirmed fractal swings: long on HH+HL, short on LH+LL — the literal "zigzag"),
+`supertrend`.
+
+| signal | turn/yr | GROSS | $0.12 | $0.34 | **$0.44 (real)** |
+|---|---|---|---|---|---|
+| ewmac(12-60h) | 297 | +0.68 | +0.51 | +0.39 | **+0.34** |
+| ewmac(6-48h) | 445 | +0.69 | +0.44 | +0.26 | +0.18 |
+| ewmac(4-32h) | 658 | +0.69 | +0.31 | +0.04 | -0.07 |
+| breakout(12-48h) | 732 | **+0.84** | +0.36 | +0.03 | -0.11 |
+| breakout(6-24h) | 1389 | +0.71 | -0.27 | -0.92 | **-1.22** |
+| zigzag(order5) | 295 | +0.58 | +0.27 | +0.07 | -0.03 |
+| zigzag(order3) | 467 | +0.78 | +0.30 | -0.03 | -0.18 |
+| supertrend(10,3) | 498 | -0.79 | -0.86 | -0.91 | -0.93 |
+
+**Only 2 of 10 signals are net-positive at the real $0.44, best +0.34.** The gross edge is
+genuinely there (+0.58..+0.84) and the spread eats all of it. Turnover is the
+discriminator, monotonically: 297 turns/yr survives, 1389 turns/yr loses -1.22.
+
+**THE SHORT SIDE LOSES ON 10 OF 10 SIGNALS** (at $0.44), and long-only roughly doubles
+every long/short Sharpe:
+
+| signal | both | long-only | short-only |
+|---|---|---|---|
+| ewmac(12-60h) | +0.34 | **+0.86** | -0.58 |
+| ewmac(6-48h) | +0.18 | +0.76 | -0.65 |
+| zigzag(order5) | -0.03 | +0.61 | -0.81 |
+| breakout(6-24h) | -1.22 | -0.19 | -1.48 |
+
+This independently reproduces `xau-longonly-champion`'s "kill-the-shorts" finding at a
+completely different timeframe (H1 vs H4) with different signals — **the answer to "it
+should both sell and buy" is that on XAU the sell side does not pay for itself**, at any
+horizon tested so far. Phase-1 walk-forward long/short: SR +0.367, **DD -39.6%**, DSR 0.119.
+
+**PHASE 2 — can a signal-based take-profit rescue it? 64 cells** (4 signals x 6 exit
+rules x params): `fc_follow` (baseline), `sig_decay` (exit when |forecast| decays to a
+fraction of its entry value — the literal "take profit using discovered signal"),
+`sig_flip`, `time_cap` (6/12/15/24h), `r_target` (1/2/3R), `decay_or_cap`.
+
+- **The mechanism is REAL: corr(turnover, net Sharpe @$0.44) = -0.58.** Lower turnover
+  genuinely does buy net Sharpe, so the instinct behind the request was directionally right.
+- **But the signal-decay TP BACKFIRES**, which is the counterintuitive finding worth
+  keeping: median turnover 202/yr vs the do-nothing baseline's 126/yr, and median net
+  Sharpe +0.03 vs +0.22. Exiting on decay means re-entering when the signal firms up
+  again, so a "smart" exit churns MORE than simply holding the continuous forecast.
+- `sig_flip` is exactly identical to `fc_follow` (turnover 126, net +0.22) — the state
+  machine already closes on a hard forecast flip, so the explicit rule adds nothing.
+- The exits that help are the ones that do LESS: `fc_follow` (+0.22 median) and
+  `r_target` (+0.13). Simplicity wins on a cost-bound problem.
+- **0 of 64 long/short cells clear net Sharpe +0.50.** Best long/short +0.36
+  (ewmac(12-60h)/r_target 1R). Best LONG-ONLY +0.79 (ewmac(6-48h)/time_cap 6h) — 2.2x
+  better, again.
+- Walk-forward long/short over the full grid: **SR +0.421, DD -27.7%, DSR 0.551,
+  PBO 0.591** — fails both gates. Regime split: 2021-22 flat **-0.84** (a fast trend
+  follower bleeds in chop, as it must).
+
+**VERDICT: DISPROVEN as specified.** Every axis of improvement found in 74 configurations
+points the same direction — SLOWER and LONG-ONLY:
+`best long/short fast (+0.36) < best long-only fast (+0.79) < deployed champion (+1.02,
+slower still, long-only, H4)`. The champion already sits at the end of that gradient. A
+4-15h long/short book on a $0.44 spread is not a variant of it, it is a strictly worse
+point on the same curve.
+
+**Loose end, stated rather than hidden**: swap is NOT modelled in these screens. Modelling
+it would help the short leg (+25.25/lot/night) and hurt the long leg (-45.33), narrowing
+the long-vs-short gap. It cannot flip the conclusion: at ~0.2-0.5 lots and 10% target vol,
+short carry is worth at most ~+2.5%/yr of notional, against a short leg running -0.58 to
+-1.48 Sharpe (≈ -6% to -15%/yr). If a long/short fast book is ever revisited it should be
+on a **raw/ECN account ($0.12, where ewmac(12-60h) reaches +0.51)** and with swap modelled
+explicitly — not on Maven's $0.44. Detail: Claude memory `xau-fast-longshort-disproven`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
