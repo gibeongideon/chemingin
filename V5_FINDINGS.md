@@ -1135,6 +1135,82 @@ than a wider structure would. Reported to the user before any live wiring was bu
 no executor, no config, no systemd timer for this exists or should be built from this
 result. Detail: Claude memory `xau-turning-scalp-disproven`.
 
+### 3y. Champion + adverse-excursion SCALE-IN (average down into the pullback) — it is LEVERAGE, not edge (2026-08-31, `src/v5/xau_trend_scalein.py`, `scripts/v5_xau_scalein_champion.py`)
+
+User ask: take the live cent-account champion and have it "open position if the trade
+goes negative enough of what was expected, so that when the trade starts going positive
+it complements the existing" — i.e. add legs on an adverse excursion. Built as a separate
+engine (`xau_trend.py` is live-deployed on magic 360542 and was NOT touched), mirroring
+the base leg-for-leg. **STAGE 0 regression gate: variant with `max_adds=0` reproduces the
+base exactly — 443 trades both, max |equity diff| 0.000000** — so everything below
+measures the idea, not an engine difference.
+
+54 cells: `add_trigger_frac` 0.20/0.35/0.50 (fraction of the trade's own stop distance,
+adverse) x `max_adds` 1/2/3 x `add_size_mult` 0.5/1.0 x `stop_policy`:
+- **original** — stop stays put, so total risk MULTIPLIES with each add (the naive reading).
+- **risk_constant** — stop tightens after each add to hold loss-if-stopped at the original
+  one-leg budget.
+- **preallocated** — same tightening stop, but the FIRST leg is sized DOWN by
+  1/(1+max_adds) so a fully scaled-in stack carries the ORIGINAL risk. This is the only
+  cell type that isolates "better average entry" from "more exposure", i.e. the actual
+  hypothesis.
+
+Adds are filled conservatively: adverse excursion must be confirmed by a BAR CLOSE, then
+filled at the NEXT bar's open + half-spread + slippage (strictly worse than the resting
+buy-limit an optimistic sim would use).
+
+**Results (base: SR +1.024, DD -11.2%, CAGR +8.96%, Calmar 0.797, worst trade -1.0R):**
+
+| cut | median SR | median DD | worst DD | worst trade | median Calmar |
+|---|---|---|---|---|---|
+| base (one leg) | +1.024 | -11.2% | — | -1.0R | 0.797 |
+| risk_constant | +1.026 | -13.2% | -21.1% | -1.1R | 0.768 |
+| original | +1.011 | -13.8% | -17.8% | **-2.5R** | 0.759 |
+| preallocated | +1.004 | -6.3% | -9.5% | -1.0R | **0.730** |
+
+- **24/54 beat base Sharpe (a coin flip), but only 12/54 beat base CALMAR, and the median
+  variant is WORSE on both** (SR +1.014, Calmar 0.757). Drawdown deteriorates almost
+  everywhere.
+- **THE DECISIVE TEST — leverage-matched control.** Highest-CAGR variant: +14.28% CAGR at
+  -17.8% DD (Calmar 0.803, SR +1.012, worst trade -2.4R). The plain base champion with
+  ONE dial turned up (`risk_frac` 1.0% -> 1.5%): **+13.41% CAGR at -16.5% DD, Calmar
+  0.814, SR +1.024, worst trade -1.0R.** At matched return the unmodified champion is
+  better on Sharpe, drawdown, Calmar AND tail — the scale-in's apparent return boost is
+  simply higher average exposure, reachable more simply and with far better control by
+  turning risk_frac up, with no averaging-down machinery to go wrong.
+- **The hypothesis fails on its own terms.** `preallocated` — the risk-neutral form where
+  the only possible source of gain is a better average entry — lands at median SR +1.004
+  vs base +1.024 and Calmar 0.730 vs 0.797. Strip out the leverage and averaging down is
+  slightly WORSE than entering once at full size.
+- **Walk-forward selection over the grid: SR +1.061 vs base +1.024, but DD -14.7% vs
+  -11.2%, paired-t +0.95 (not significant), 4 of 8 years better.** PBO **0.845** — picking
+  a variant is noise-chasing.
+- Regime split: no regime where it clearly helps. Worse in 2021-22 flat (-0.31 vs -0.04) —
+  exactly where averaging down should hurt, since chop produces repeated adverse
+  excursions that never recover — and worse in 2023-26 bull (+1.24 vs +1.48).
+- **`original` stop policy triples tail risk** (worst single trade -2.5R vs the base's
+  -1.0R) for no Sharpe gain. If any version of this were ever deployed it must not be
+  that one.
+- Deep triggers SELF-LIMIT: at trigger 0.35/0.50 the second add would sit at/through the
+  stop, so `max_adds` >= 2 is inert — "add more legs" is only reachable at the shallow
+  0.20 trigger.
+- **Survives the cost control the wrong way**: at live-floored $0.448 the case gets weaker
+  still (17/54 beat base Sharpe, only **7/54** beat base Calmar, preallocated median SR
+  +0.974 vs base +1.014) — unsurprising, since adds mean more fills.
+
+**METHODOLOGICAL LESSON worth more than the result — DSR is near-vacuous for an OVERLAY
+question.** This run scored **DSR 0.998 with PBO 0.845**, which reads like a MANDATORY
+CONTROL #6 pass and is nothing of the kind. All 54 cells are near-copies of an already-good
+base and inherit its real edge, so the cross-trial variance DSR deflates against is tiny;
+DSR is answering "is this series' Sharpe real?" (yes — the champion's) not "does the
+overlay contribute?" For overlays the gate is the **paired test against the base** (+0.95,
+insignificant) and **PBO** (0.845, selection is noise). Do not accept a high DSR on a grid
+of variations-of-a-good-thing as evidence the variation helps.
+
+**Verdict: DISPROVEN as an edge; available only as an obfuscated leverage dial.** Keep the
+champion at one leg. If more return is wanted, raise `risk_frac` deliberately (and note the
+book is already at its frontier per §3q). Detail: Claude memory `xau-scalein-is-leverage`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.

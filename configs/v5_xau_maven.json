@@ -1,0 +1,25 @@
+{
+  "deployed_on": "2026-08-31",
+  "account": "Maven BNPL P1, login 10398574, MavenTrade-Server, $100k USD",
+  "symbol": "XAUUSD",
+  "timeframe": "H4",
+  "exit_mode": "trail",
+  "flip_mode": "confidence",
+  "bots": {
+    "champ": {
+      "run_id": "v5-xau-maven-champ",
+      "magic": 360571,
+      "signal": "champion_signal",
+      "news_filter": {"enabled": false, "close_in_profit": true},
+      "expected_sharpe": 0.968,
+      "expected_maxdd_pct": -10.0,
+      "params": {
+        "sl_atr": 3.0,
+        "trail_atr": 3.0,
+        "conf_risk_scale": {"low": 0.5, "med": 1.0, "high": 1.5},
+        "risk_frac": 0.005
+      }
+    }
+  },
+  "note": "Same champion_signal (long-only conc^1.5 blend) already live on the cent account, byte-identical math — see src/v5/xau_dual_signals.py. risk_frac halved to 0.5% (vs the cent config's implicit 1%) because Maven's rule set includes a 0% daily-loss constraint the standard discrete engine cannot itself guarantee (see V5_FINDINGS ORFcheck / scripts/v5_maven_zero_dd_champion.py) -- user has taken over exit timing manually for compliance, smaller risk per trade is the automated side's contribution to that. once_per_day_guard in v5_maven_champ.py additionally refuses a same-UTC-day re-entry once any deal (open OR close) has posted under this magic, so a manual close is never immediately re-opened by the next hourly reconcile."
+}
