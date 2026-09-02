@@ -1528,6 +1528,65 @@ high-vol taper on the other book sleeves (BTC / NDX / BRENT). A general trend-fo
 property should appear there too; a gold-specific fluke will not. That is a genuinely
 stronger test than anything more on XAU. Detail: memory `xau-volregime-taper-lead`.
 
+### 3ad. High-vol taper CLOSED — it is gold-specific and it HURTS the portfolio (2026-09-03, `scripts/v5_volregime_taper_crossasset.py`)
+
+§3ac left the volatility-regime taper as the one live lead ("real but unproven") and
+pre-registered the test that would settle it: same schedule, other book sleeves, portfolio
+as the primary claim, no per-instrument re-optimisation. **It fails on every pre-registered
+criterion.**
+
+Costs are one-way bp from live-verified spreads (BTC 1.5bp, BRENT 7.58bp verified
+2026-07-24, NDX 0.5bp) + slippage at 50% of half-spread — anchored by reproducing XAU's
+0.75bp. Champion speeds rescaled by 1/6 on D1 sleeves, because `champion_signal` hardcodes
+`D=6` and would otherwise silently become a 96-1536 DAY trend follower on daily bars.
+
+| sleeve | base SR | tapered SR | DD base→taper | t@matched | years |
+|---|---|---|---|---|---|
+| XAU (H4, deployed) | +1.098 | **+1.311** | -19.5% → -12.4% | +1.29 | 5/9 |
+| BTC (D1) | +0.970 | +0.823 | -19.1% → -16.6% | **-1.43** | 3/9 |
+| NDX (D1) | +0.523 | +0.439 | -20.7% → -18.7% | -0.75 | 4/9 |
+| BRENT (D1) | +0.685 | +0.561 | -18.2% → -17.7% | -0.83 | 3/9 |
+
+**1 of 4 sleeves improves. 0 of 4 are significant. 1 of 4 improves in both halves** (only
+XAU: +0.922 vs +0.701 and +1.661 vs +1.418). BTC is worse in both halves, BRENT worse in
+both, NDX better in the first and worse in the second.
+
+**THE PRIMARY CLAIM — the portfolio — is where it fails hardest.** Equal-weight the four
+sleeves and apply the taper to every one:
+
+| portfolio | SR | DD | t@matched | years |
+|---|---|---|---|---|
+| **base (no taper)** | **+1.480** | **-8.0%** | — | — |
+| tapered | +1.310 | -6.9% | **-1.18** | 2/9 |
+
+Worse in both halves (2018-21: +1.584 vs +1.722; 2022-26: +1.041 vs +1.246; raw t -3.21).
+
+**WHY it fails at book level, which is the transferable lesson.** The taper's whole value on
+XAU was cutting exposure in high-vol whipsaw. But (a) the portfolio's base already runs
+DD -8.0% at SR +1.480 — cross-sleeve diversification is ALREADY doing that smoothing, so the
+taper's risk reduction is redundant and only removes return; and (b) high-vol regimes are not
+synchronised across gold/crypto/equity/oil, so tapering each sleeve independently de-risks at
+different times, which subtracts from the book's diversification rather than adding to it.
+**A single-asset risk overlay can be genuinely useful standalone and still be value-destroying
+inside a diversified book.**
+
+**Pre-registration earned its keep here.** Cherry-picking a different schedule per sleeve
+WOULD have manufactured a positive story — BRENT's "cut extreme only" reads +0.746 vs base
++0.685 (t +0.41) and BTC's "as proposed" -0.22 instead of -1.43. Fixing the schedule in
+advance is the only reason that trap was avoided.
+
+**VERDICT: taper CLOSED. Champion stays byte-identical, and do not apply a vol-regime taper
+at book level.** The XAU-only effect (+0.21 Sharpe, both halves, t +1.29) is real enough to
+have been worth testing and is now explained as gold-specific — most likely the same
+crisis-vol behaviour that makes gold's high-vol episodes unusually whipsaw-prone.
+
+**The genuinely useful number from this run**: the 4-sleeve equal-weight book at properly
+per-instrument bp costs scores **SR +1.480 / DD -8.0%**, versus single-XAU's +1.098 / -19.5%.
+That corroborates `sharpe16-drift-portfolio` from an independent cost model, and it is the
+real answer to "how do I beat 1.02" — diversification across drift classes, not overlays on
+one asset. Every overlay tried on the champion in §3u/§3y/§3ab/§3ac/§3ad has failed; the
+book-level result has never needed one.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
