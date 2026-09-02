@@ -1444,6 +1444,90 @@ PBO 0.603) — a noisy overlay grid is worse than leaving the champion alone.
 
 Detail: Claude memory `xau-champion-five-lifts-fail`.
 
+### 3ac. The proposed 6-component stack (vol regime / trend strength / vol sizing / HTF / hours / cost threshold) — 0/29 pass, but ONE survives the split and stays a live lead (2026-09-03, `scripts/v5_xau_stack_proposal.py`)
+
+An external proposal recommended stacking six components onto the champion. Tested
+component-by-component then stacked, gated at matched vol (§3ab), split-sampled.
+**Two of the six turned out to be already implemented, and the proposal's own warning
+against "highly correlated indicators" correctly predicts the failure of its own #2.**
+
+| # | component | status | best t@matched | verdict |
+|---|---|---|---|---|
+| 3 | volatility-scaled sizing | **ALREADY IN PLACE** | — | `pos = fc*(TARGET_VOL/vol)` (v5_xau_turn_prob.py:94); discrete: `lots = risk*eq/(sl_atr*ATR)` |
+| 6 | cost-aware min edge | **ALREADY IN PLACE** | +0.20 | `BUFFER=0.1` no-trade band; sweep confirms 0.1 is optimal |
+| 1 | volatility regime filter | tested | **+1.23** | best of the six — see below |
+| 2 | trend-strength ratio | tested | -0.71 | FAIL, and collinear by construction |
+| 4 | higher-timeframe regime | tested | -0.20 | FAIL, category error (see below) |
+| 5 | time-of-day filter | measured | -1.73 | FAIL, structurally inapplicable |
+
+**#3 and #6 already exist.** Volatility-scaled sizing IS the engine's position line, and the
+discrete deployed bot sizes risk over 3xATR — both are exactly `target_vol/current_vol`.
+The cost-aware rule is the causal no-trade band; sweeping its width confirms the deployed
+0.1 is already right (buffer 0.0 → SR +1.087, **0.1 → +1.084**, 0.2 → +1.073, 0.4 → +1.017;
+all t@matched ≤ +0.20). Explicit min-edge thresholds on the forecast (trade only fc>0.3/
+0.5/0.8) are all NEGATIVE (t -0.31 to -1.10).
+
+**#2 fails for the exact reason the proposal warns about.** `TrendStrength =
+EWMA(r)/EWMA(|r|)` correlates with the champion's own forecast at **+0.48 (hl 12) → +0.67
+(hl 24) → +0.81 (hl 48) → +0.85 (hl 120)** — because the champion's EWMAC forecast is
+*itself* a signal-to-noise ratio, `(fast-slow EMA)/price_vol`. At the horizons that matter
+it is 67-85% the same variable. Every gate variant loses (t -0.71 to -2.65). The
+proposal's "don't add a highly correlated indicator" principle is right, and its own #2
+is the highly correlated indicator.
+
+**#4 is a category error against THIS base.** The proposal assumes an M15-style entry
+signal needing H1/H4 confirmation. The champion's EWMAC speeds are already **16-256 DAYS**
+(96-1536 H4 bars), so a "higher timeframe" D1 ewmac(16,64) sits *inside* the horizon range
+the champion already blends. All six variants lose (t -0.20 to -1.70). §3ab idea 2
+(agreement across the champion's own 6 horizons) failed for the same reason.
+
+**#5 measured, not assumed** (per the proposal's instruction). P&L attribution by H4
+bar-of-day: **every hour is positive** — 20:00 +1.74bp, 00:00 +1.22, 04:00 +1.06, 08:00
++0.93, 12:00 +0.42, 16:00 +0.34 (hit rates 45-49% throughout, normal for a positive-skew
+trend follower). There is no negative session to remove. And structurally there cannot be
+a useful hours filter: the champion changes position ~24x/YEAR and holds for weeks, so
+"hold only during London" forces intraday exit/re-entry against a $0.448 spread. Applied
+anyway: SR collapses +1.084 → **+0.632**, t -1.73.
+
+**#1 IS THE ONE WORTH KEEPING ON THE LIST.** Unlike §3ab's vol-estimator finding, it
+survived the split-sample:
+
+| schedule | pooled SR | DD | t | 2018-21 (base +0.679) | 2022-26 (base +1.411) |
+|---|---|---|---|---|---|
+| as proposed (lo.5/norm1/hi.5/ext0) | +1.266 | -11.9% | +0.85 | +0.785, t+0.34 | +1.627, t+0.74 |
+| cut extreme only | +1.278 | -16.4% | +0.99 | +0.872, t+0.68 | +1.614, t+0.76 |
+| **monotone taper 1.0→0.2** | **+1.287** | **-12.7%** | **+1.23** | **+0.887, t+0.85** | **+1.647, t+1.06** |
+
+Every schedule improves BOTH halves by a similar margin (+0.15 to +0.24 Sharpe), and the
+mechanism is sound: **the redundancy check shows vol-targeting alone does NOT neutralise
+the high-vol regime** — mean position in the highest-vol quintile is only 1.5x smaller
+than in the lowest, and corr(vol percentile, existing position) is just **-0.19**, because
+trends and volatility co-occur so a strong forecast partly offsets the 1/vol scaling. So
+there is real room, and cutting the HIGH tail is what works (cutting the LOW tail is
+clearly negative, t -1.82 — this is not symmetric noise). Practical too: 61% exposure
+retained, only **1.62x** leverage to match base risk.
+
+**But it does NOT clear the bar: t@matched +1.23, 5 of 9 years.** Per §3ab's hard lesson —
+a pooled t of +2.25 with 7/9 years was still an artifact — +1.23 with 5/9 is well short.
+Status: **real but unproven**, the same category as §3t's cross-asset divergence.
+
+**THE STACK is a trap worth naming.** All components multiplied: SR +1.236, DD **-7.3%**
+vs base -19.8%, and 6/9 years — superficially the best result on the page. It is achieved
+by **retaining 17% of mean exposure and sitting fully flat 66% of bars**. t@matched +0.67.
+Stacking six ≤1 multipliers is mostly a decision not to trade; the apparent Sharpe/DD gain
+is de-risking, and at matched risk it is insignificant.
+
+**VERDICT: 0/29 components clear the gate; keep the champion byte-identical.** The
+proposal's closing target — 1.02 → 1.15-1.30 robust rather than a manufactured 2.5 — is
+exactly the right bar, and #1 lands in that range (1.29) while failing significance,
+which is precisely the honest distinction the proposal was arguing for.
+
+**NEXT STEP if #1 is pursued** (recorded so it isn't re-derived): do NOT add more XAU
+schedule variants — that is the multiple-testing trap on a single asset. Test the SAME
+high-vol taper on the other book sleeves (BTC / NDX / BRENT). A general trend-following
+property should appear there too; a gold-specific fluke will not. That is a genuinely
+stronger test than anything more on XAU. Detail: memory `xau-volregime-taper-lead`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
