@@ -1587,6 +1587,82 @@ real answer to "how do I beat 1.02" — diversification across drift classes, no
 one asset. Every overlay tried on the champion in §3u/§3y/§3ab/§3ac/§3ad has failed; the
 book-level result has never needed one.
 
+### 3ae. BOOK SHOOTOUT — FundingPips (XAUmicro+ETH+DJI30) vs FTMO (XAU+BTC+NDX+BRENT): statistically equivalent; the RULE SET and the LEFT TAIL decide, not Sharpe (2026-09-03, `scripts/v5_book_shootout.py`)
+
+Both books had documented numbers from different harnesses, dials and windows, so they were
+not comparable as recorded. Re-run through ONE harness: same champion recipe, same window
+(1,658 common days, 2018-01..2026-06), equal weights, per-instrument one-way bp costs from
+live-verified spreads, champion speeds rescaled 1/6 on D1 sleeves.
+
+**Per-sleeve — the two books are largely SUBSTITUTES, not alternatives:**
+
+| sleeve | cost bp | Sharpe | | sleeve | cost bp | Sharpe |
+|---|---|---|---|---|---|---|
+| XAUmicro | 0.23 | +1.105 | | XAU | 0.75 | +1.098 |
+| ETH | 2.03 | +0.980 | | BTC | 1.13 | +0.970 |
+| DJI30 | 0.15 | +0.572 | | NDX | 0.38 | +0.523 |
+| | | | | BRENT | 5.69 | +0.685 |
+
+ETH≈BTC, DJI30≈NDX, XAUmicro≈XAU (the micro sleeve wins only on cost). The books
+correlate **+0.748** with each other. The only genuinely distinct sleeve is BRENT.
+
+**Book level:**
+
+| book | Sharpe | maxDD | CAGR | vol | Calmar | mean abs corr |
+|---|---|---|---|---|---|---|
+| FundingPips (3) | +1.368 | **-6.3%** | **+8.91%** | 8.3% | **1.419** | 0.114 |
+| FTMO (4) | **+1.480** | -8.0% | +8.49% | 7.2% | 1.057 | **0.081** |
+
+**Matched-vol paired t = -0.40 — statistically indistinguishable.** FTMO edges Sharpe; FP
+edges drawdown, CAGR and Calmar. Both degrade similarly across halves (FP 1.627->1.145,
+FTMO 1.722->1.246).
+
+**Pass rates: the RULE SET dominates the book choice.**
+
+| book | under FundingPips Flex (10/6, 4% daily, 12% static, 7% dial) | under FTMO 2-Step (10/5, 5% daily, 10% static, 9% dial) |
+|---|---|---|
+| FundingPips | 99.6%, 18.0mo | 96.9%, 12.3mo |
+| FTMO | 99.8%, 16.6mo | 96.8%, 11.6mo |
+
+Within a rule set the two books are identical to within noise (0.2pp / 0.1pp). Flex's looser
+limits give ~99.7% either way; FTMO's tighter ones ~96.9% either way, but pass FASTER
+(11.6-12.3mo vs 16.6-18.0mo) because of the higher dial.
+
+**THE REAL FINDING — Sharpe does not predict pass rate; the SCALED LEFT TAIL vs the daily
+limit does.** Normalising a book to a fixed vol dial scales up books with lower realised
+vol, which amplifies their tails into the daily-loss rule:
+
+| book | dial | worst scaled day | x1.5 safety | vs 5% daily | fail_day | pass |
+|---|---|---|---|---|---|---|
+| FTMO 3-sleeve (no BRENT) | 7% | -2.64% | -3.96% | ok | 0.0% | **98.7%** |
+| FTMO 3-sleeve (no BRENT) | **9%** | -3.39% | **-5.09%** | **BREACH** | **13.9%** | 83.3% |
+| FTMO 4-sleeve | 9% | -3.20% | -4.80% | ok | 0.0% | 96.8% |
+| FundingPips 3-sleeve | 9% | -2.87% | -4.30% | ok | 0.0% | 96.9% |
+
+**This independently reconstructs the deployed design decision.** The 98.7% at 7% dial
+reproduces `ftmo-challenge-bot`'s documented ~98.8%, and it explains why BRENT was added
+when the book moved to 9%: without it the 9% dial breaches the daily limit 13.9% of the time.
+**BRENT earns its place on TAIL PROTECTION, not on return** — on returns it is
+insignificant (matched-vol t = +0.47, Sharpe 1.480 vs 1.401), but it takes daily-breach
+failures from 13.9% to 0.0% and pass from 83.3% to 96.8%.
+
+**Do NOT combine the books or add sleeves.** 50/50 FP+FTMO looks best on Sharpe (+1.519)
+but the matched-vol t vs FTMO alone is only **+0.26** (insignificant). All six unique
+sleeves is actively WORSE despite better Sharpe (+1.426) and equal drawdown (-6.3%):
+**pass collapses to 72.5% with 26.4% daily breaches**, because its lower vol (7.1%) forces a
+higher dial multiplier which pushes the scaled tail through the limit. Same "breadth
+dilutes" conclusion as §3-breadth, with the mechanism now identified.
+
+**VERDICT — the question is account-size conditional, not quality conditional.** The books
+are equivalent performers; they are not interchangeable in practice.
+`configs/v5_fp_flex_10k.json` records why: *"The 100K book (XAU+BTC+NDX) CANNOT be sized
+here — on FundingPips specs BTC ($642) and NDX100 ($5,746) min-lots round target lots to
+ZERO."* Verified FP sizing at $10,000: XAUmicro 0.01 lot (1.18x target), ETH 0.13 (0.98x),
+DJI30 0.01 (0.89x), gross 0.92x. So: **run the FP book on small accounts because it is the
+only one that sizes; run the FTMO book on 100K because BRENT buys tail room at the 9% dial.
+Keep both as deployed — there is no upgrade available here.** Detail: memory
+`book-shootout-fp-vs-ftmo`.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
