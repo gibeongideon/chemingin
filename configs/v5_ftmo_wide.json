@@ -1,0 +1,36 @@
+{
+  "created_on": "2026-09-03",
+  "purpose": "FTMO 2-Step at the 9% dial — WIDEN the book from 4 to 8 sleeves to kill daily-limit breaches. FTMO's binding constraint is the 5% DAILY loss, not the 10% overall, and at a 9% dial the deployed 4-sleeve book's worst scaled day is -5.07% (x1.5 floating proxy) which BREACHES. Widening thins that tail back inside the limit. Measured pass over 5 seeds: core 4 = 88.6% with fail_day 9.3%; wide 8 = 91.2% / 4.0%; wide 8 + reversal = 94.1% / 0.0%.",
+  "firm": "FTMO",
+  "model": "ftmo",
+  "vol": 0.09,
+  "_vol_note": "Only worth deploying AT the 9% dial. At 7% the 4-sleeve book already has zero daily breaches and widening merely dilutes return (measured: FundingPips Flex @7% pass 99.7% core vs 99.1% wide). Match the book to the BINDING constraint: daily-limit-binding -> widen; max-loss-binding -> maximise Sharpe with a narrower book (see configs/v5_maven_book.json).",
+  "magic": 360563,
+  "run_id": "v5-ftmo-wide",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo, vol override 0.09)",
+  "reset_tz": "Europe/Prague",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": ["XAUCHAMP"],
+    "metal": ["SILVER"],
+    "crypto": ["BTC", "ETH"],
+    "eq_us": ["NDX"],
+    "eq_eu": ["DAX"],
+    "energy": ["BRENT"],
+    "softs": ["COFFEE"]
+  },
+  "_classes_note": "8 sleeves across 7 classes, equal-class-risk. Book Sharpe +1.357 (vs core 4's +1.428) — deliberately ACCEPTING slightly lower Sharpe to buy a thinner left tail, because at a 9% dial the daily limit is what fails the challenge, not the return. maxDD improves -7.7% -> -6.8%.",
+  "_honesty_note": "This does NOT improve returns. Matched-vol paired t vs the deployed 4-sleeve book is -0.61 (3 of 8 years better), and the 2022-26 half is WORSE (Sharpe 1.04 vs 1.20). The entire justification is daily-breach elimination at the 9% dial. If FTMO is ever run at 7% instead, use configs/v5_ftmo_challenge.json.",
+  "symbols": {
+    "_note": "engine symbol -> FTMO broker name. XAUCHAMP/BTC/NDX/BRENT are VERIFIED live on FTMO-Demo (2026-07-18/24). The four ADDED sleeves are NOT yet symbol-verified on FTMO — resolve real names and min-lots before enabling.",
+    "XAUCHAMP": {"fp_symbol": "XAUUSD", "class": "xau", "tf": "H4", "_broker": "FTMO FULL, contract 100oz, vmin 0.01, spread $0.45"},
+    "BTC": {"fp_symbol": "BTCUSD", "class": "crypto", "tf": "D1", "_broker": "FTMO FULL, contract 1.0/lot, spread ~$1 (1.5bp)"},
+    "NDX": {"fp_symbol": "US100.cash", "class": "eq_us", "tf": "D1", "_broker": "FTMO FULL, spread ~1.5pt (0.5bp)"},
+    "BRENT": {"fp_symbol": "UKOIL.cash", "class": "energy", "tf": "D1", "_broker": "FTMO FULL, contract 100, min-lot ~$95, spread 7.58bp verified live"},
+    "SILVER": {"fp_symbol": "XAGUSD", "class": "metal", "tf": "D1", "_broker": "UNVERIFIED on FTMO — resolve name/min-lot before enabling"},
+    "ETH": {"fp_symbol": "ETHUSD", "class": "crypto", "tf": "D1", "_broker": "UNVERIFIED on FTMO"},
+    "DAX": {"fp_symbol": "GER40.cash", "class": "eq_eu", "tf": "D1", "_broker": "UNVERIFIED on FTMO"},
+    "COFFEE": {"fp_symbol": "COFFEE", "class": "softs", "tf": "D1", "_broker": "UNVERIFIED on FTMO — softs may not be offered"}
+  },
+  "_status": "PROPOSED, not deployed. The FTMO account was stopped 2026-08-28 (positions closed +$3,215, timers disabled) and its terminal has the build-5836 IPC fault, so nothing can run there until that is fixed. Deploy only if FTMO is resumed AT 9%."
+}

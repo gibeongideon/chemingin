@@ -1663,6 +1663,191 @@ only one that sizes; run the FTMO book on 100K because BRENT buys tail room at t
 Keep both as deployed — there is no upgrade available here.** Detail: memory
 `book-shootout-fp-vs-ftmo`.
 
+### 3af. Advanced portfolio construction DISPROVEN; but the BINDING-CONSTRAINT rule is a real, deployable finding (2026-09-03, `scripts/v5_portfolio_construction.py`)
+
+Every prior attempt on this book was a SIGNAL overlay and all 40+ failed. This round
+attacked the only lever that ever worked — diversification — from the two angles never
+tested: HOW sleeves are weighted, and adding §3b's never-deployed fast sleeve. Weights are
+estimated, so all methods are re-fit walk-forward on a trailing 3y window only.
+
+**A. ADVANCED WEIGHTING LOSES TO EQUAL WEIGHT — 0 of 20 configurations passed.**
+
+| method | core-4 Sharpe | t@matched vs equal |
+|---|---|---|
+| **equal weight (incumbent)** | **+1.428** | — |
+| inverse-vol | +1.359 | -1.16 |
+| HRP (Lopez de Prado) | +1.293 | -1.28 |
+| RMT min-var (Marchenko-Pastur cleaned) | +1.235 | -1.66 |
+| min-CVaR 5% | +1.388 | -0.57 |
+
+Same ordering on the wide 8-sleeve universe. This reproduces the classic 1/N result
+(DeMiguel-Garlappi-Uppal): estimation error swamps the optimisation gain. **Hierarchical
+risk parity, random-matrix covariance cleaning and CVaR optimisation are now CLOSED for
+this book — do not re-attempt.** Reproduction caveat: my narrow 3-index rebuild of §3b's
+reversal sleeve scored Sharpe **-0.027**, not the 0.57 recorded there (theirs was a ~26-signal
+ensemble). That is a failed reproduction on my part, NOT a refutation of §3b.
+
+**B. THE REAL FINDING — match the book to the BINDING CONSTRAINT.** Pass rate is decided by
+which rule actually fails you, and the optimal book is *different* for each:
+
+| rule set | binding constraint | best book | measured |
+|---|---|---|---|
+| FTMO 2-Step @9% dial | **5% DAILY** | **widen to 8-9 sleeves** | pass 88.6% -> **94.1%**, fail_day 9.3% -> **0.0%** (5 seeds) |
+| FundingPips Flex @7% | neither binds | core 4 | 99.7% vs 99.1% wide — widening only dilutes |
+| Maven (+4%, 10% static) | **10% MAX LOSS** | **core 4 (highest Sharpe)** | 99.9% / 6.3mo / fail_dd 0.1% vs single-XAU 99.5% / 7.1mo / 0.5% |
+
+Mechanism, measured not assumed: at a 9% dial the core-4 book's worst day scaled x1.5
+(the floating-P&L proxy) is **-5.07%**, which breaches a 5% daily limit; widening to 9
+sleeves thins it to **-4.72%**, inside the limit, and daily failures go to zero. Where no
+daily limit binds, that tail-thinning buys nothing and the return dilution dominates —
+so the narrower, higher-Sharpe book wins instead.
+
+**Stated plainly: this is RISK CONFIGURATION, not alpha.** The wide book does NOT earn more
+(matched-vol t -0.34, 5 of 8 years, and the 2022-26 half is worse: Sharpe 1.04 vs 1.20). No
+new edge was found in this round. What was found is that the same sleeves, re-weighted to
+the rule that actually fails you, move an FTMO pass rate by **+5.5 points** and a Maven
+median time-to-target by **~0.8 months** with no new signal at all.
+
+**Deliverables:** `configs/v5_maven_book.json` (Maven upgraded from single-XAU to the
+4-sleeve book at a 5% dial — same pass, faster, 5x lower fail_dd; blocked only by Maven's
+server-side algo permission) and `configs/v5_ftmo_wide.json` (8-sleeve book, deploy ONLY at
+the 9% dial, 4 of 8 symbols still need FTMO name verification). Maven's tradeable universe
+was verified live: 68 symbols, all of XAUUSD/BTCUSD/ETHUSD/US100/US30/US500/GER30/BRENT/
+WTI/XAGUSD/COFFEE at trade_mode=4, so the wide book is deployable there too if ever needed.
+
+### 3ag. Five untested research directions ALL fail — and then the real win: a SWAP-FREE gold instrument found by measuring Maven's live carry (2026-09-03, `scripts/v5_factor_sleeves.py`, `v5_volume_signals_xau.py`, `v5_book_overlays.py`, `v5_spread_trend_sleeves.py`, `v5_financing_aware_book.py`, `v5_maven_carry_book.py`)
+
+Internet-informed sweep of everything canonical this repo had never implemented, then the
+execution lever §3q named and never pulled. **67 signal/portfolio trials, 0 keepers. One
+execution finding worth more than every signal result in this repo's history.**
+
+**A. THE FIVE NEGATIVE ROUNDS (all pre-registered, all gated at matched vol).**
+
+| round | what was new | trials | result |
+|---|---|---|---|
+| canonical factors | VALUE (5y reversal, TS+XS), BAB/low-vol, cross-sectional SKEW, month SEASONALITY — none had ever been coded (only tsmom/xsmom/ewmac/fx_carry existed) | 7 | 0. TS value **-0.62**, BAB -0.52, skew -0.11, seasonality -0.14. Long-horizon reversal is *negatively* paid on this universe 2018-26 |
+| volume (a NEW DATA TYPE) | volume & dollar bars (Lopez de Prado activity clock), volume-weighted price path, volume-expansion gate, price-volume divergence, Amihud illiquidity | 17 | 0. Best was the VW price path (SR 1.159 vs 1.098) at t@matched +0.55. Activity-clock sampling does **not** de-noise XAU trend: tick bars at a matched horizon score t +0.13 |
+| book-level risk overlays (§3ac's own open question) | Moreira-Muir vol management, covariance-based portfolio vol targeting, drawdown-responsive sizing, crisis-correlation gate | 11 | 0, and every single t is negative (best -0.19). Per-sleeve vol targeting + diversification already control book risk; a second control layer only adds lag |
+| relative-value trend | trend-follow 15 same-session SPREADS (curve, crack, quality, tech-vs-broad) instead of outright prices | 16 | 0. Correlation to the core book came out at +0.03 mean **exactly as the theory predicts** — but there is no edge to diversify into. Only NDX/SPX (+0.55) and NDX/DJI (+0.52) are positive and both halve in 2022-26 |
+| financing-aware weights | re-weight sleeves on NET-of-financing returns with mu = common alpha MINUS the KNOWN drag (no expected return ever estimated — the one place optimisation should beat 1/N) | 13 | 0. The optimiser goes BRENT 0.50 / BTC 0.00 and *loses* (SR 0.90 vs equal 1.04): the diversification given up exceeds the carry saved. Best simple tilt "double BRENT" t +0.62, both halves + — real but under the bar |
+
+Two clean by-products worth keeping. **Does the +swap on shorts flip "kill the shorts"?** No —
+that verdict was reached GROSS, and Maven pays +2.06%/yr to be short gold, so it was a fair
+question. Net of swap, long-only still wins (net SR +0.726 vs symmetric +0.610) and adding
+carry shorts hurts monotonically (k=0.25 -> 0.723, k=1.0 -> 0.677). **And HRP/RMT/CVaR's loss
+in §3af is now doubly confirmed:** even given a deterministic, estimation-error-free input,
+optimisation still loses to equal weight on this book.
+
+**B. THE REAL FINDING — MAVEN CARRIES A SWAP-FREE GOLD INSTRUMENT.** §3q closed with
+"financing is the single largest lever (-0.29 Sharpe) and the only untested way to move it is
+EXECUTION, not signal research." Measuring it, read-only, on the live Maven terminal:
+
+| symbol | swap_mode | spread | long %/yr | short %/yr |
+|---|---|---|---|---|
+| XAUUSD | POINTS | $0.42 (0.94bp) | **-3.70** | +2.06 |
+| **GoldEternal** | **DISABLED (no swap)** | $0.55 (1.23bp) | **0.00** | **0.00** |
+| XAGUSD | DISABLED | 6.88bp | 0.00 | 0.00 |
+| EURUSD | DISABLED | 0.77bp | 0.00 | 0.00 |
+| US100 / US500 / US30 / GER30 | POINTS | 0.30 / 1.68 / 1.86 / 7.19bp | -3.96 / -4.42 / -4.82 / -3.71 | +1.00 / +1.12 / +1.22 / -0.18 |
+| BRENT / WTI | POINTS | 8.49 / 11.12bp | -4.79 / -3.09 | **-5.40** / -3.72 |
+| BTCUSD / ETHUSD | INT_OPEN | 8.99 / 6.38bp | **-30.00** | **-30.00** |
+
+**The free-lunch objection was tested, not waved away.** A perpetual with no swap must charge
+its funding somewhere, so the log basis GoldEternal/XAUUSD was regressed on time: slope
+**+0.17%/yr** (H1, 2,711 bars) and **+0.21%/yr** (D1, 143 bars), inside a ~1% band, daily-return
+correlation **0.998**. Nothing resembling a -3.7%/yr embedded drift. The instrument launched
+~2026-03-13 so there are only 167 calendar days of history — enough to exclude a 3.7%/yr
+drift, NOT enough to exclude a small one. Re-measure monthly
+(`scripts/v5_maven_carry_book.py` docstring carries the probe).
+
+**Impact, same signal, same sizing, only the instrument changes:**
+
+| | net Sharpe | net CAGR | maxDD | Maven pass @5% | blow-up risk |
+|---|---|---|---|---|---|
+| XAU sleeve on XAUUSD | +0.886 | +11.85% | -22.8% | | |
+| XAU sleeve on GoldEternal | **+1.090** | **+15.04%** | -19.7% | | |
+| core-4 book with XAUUSD | +0.866 | | -10.88% | 96.84% | 2.98% |
+| core-4 book with GoldEternal | **+0.951** | | -10.51% | **98.02%** | **1.96%** |
+
+Cost of the switch: **+0.33bp** of extra one-way spread. The t@matched of +49.9 (9/9 years) is
+*not* evidence of edge — it confirms the change is deterministic, which is exactly why it is
+worth more than the 67 signal trials above.
+
+**Carry is broker-specific and a book tuned on one venue is mis-specified on another.**
+BRENT's +9.6%/yr at FTMO — the reason it was FTMO's best net sleeve — becomes -4.79%/yr long
+AND -5.40% short at Maven. Never carry a financing assumption across venues.
+
+**Also corrected here:** `configs/v5_maven_book.json` previously quoted 99.9% pass / 6.3mo at a
+5% dial. Those were GROSS of financing. Net, the same book at the same dial is 98.0% / **16.7
+months** — impractical for a 4% target — so the config now runs a 7% dial (93.8% / 11.1mo /
+6.1% blow-up), with the full dial table in the file.
+
+**Open actions:** (1) confirm with Maven that synthetic instruments are permitted, and verify
+fills with one 0.01-lot order; (2) the same census on FTMO and HFM is BLOCKED — both bridges
+return IPC timeout on the build-5836 terminals — and FTMO's gold carry is worse (-6.6%/yr), so
+a swap-free equivalent there would be worth even more than it is at Maven.
+
+### 3ah. Full 68-symbol carry census; commodity carry NOT backtestable; and a DAY-COUNT ARTIFACT corrected — the gold-tilted book is the best net book (2026-09-04, `scripts/v5_maven_carry_book.py`, `scripts/v5_basket_challenge.py`)
+
+Follow-on to §3ag under a changed objective: the user removed prop-firm limits from scope, so
+the metric is now net Sharpe and CAGR with drawdown reported but not constraining.
+
+**A. ONLY 5 OF 68 MAVEN SYMBOLS ARE SWAP-FREE.** EURUSD (0.86bp), USDINR (1.12bp),
+**GoldEternal (1.23bp)**, XAGUSD (7.05bp), USDNGN (8.01bp). There is **no swap-free index,
+crypto or energy**, so the book's gross Sharpe 1.313 is NOT recoverable at this venue — the
+GoldEternal win applies to the gold sleeve only. XAGUSD is swap-free but its 7bp spread leaves
+a net sleeve Sharpe of +0.073.
+
+**B. POSITIVE-CARRY INSTRUMENTS EXIST BUT ARE NOT BACKTESTABLE HERE.** The census found large
+positive long carry: SUGAR **+21.56%/yr**, COCOA +14.75%, COFFEE +3.10%, and FX at +1..+3%
+(USDCHF +3.05, GBPCHF +3.04, GBPJPY +2.98, USDJPY +2.68). The obvious objection — that the roll
+is already in the price, so adding swap double-counts — was tested on the extreme cases and
+REJECTED: NGAS carries **-165.9%/yr** while its price drifts only **-0.99%/yr** over 14.8 years,
+so Maven's price series are spot-like and swap carries the whole roll, i.e. swap IS additive.
+**But the rates are a single snapshot of a quantity that varies enormously through time.**
+Applying today's +21.5% sugar carry across a 2008-26 backtest would manufacture a ~22%/yr sleeve
+out of one day's term structure. This repo has no historical commodity term structure, so
+**commodity carry is not testable here and no number should be quoted for it.** (FX carry *is*
+testable — `data/rates_3m.csv` has historical 3m rates — and remains open.)
+
+**C. CORRECTION — A DAY-COUNT ARTIFACT INVALIDATED §3ag's BOOK COMPARISON.** BTCUSD quotes
+weekends, so the 4-sleeve book's daily series ran at ~365 days/yr while the gold sleeve ran at
+~259, and both were annualised with sqrt(252). That is not apples-to-apples. Compounding every
+sleeve onto a common BUSINESS-DAY index changes the ranking:
+
+| book, net of Maven's live carry | net Sharpe | maxDD | 2018-21 | 2022-26 |
+|---|---|---|---|---|
+| gold only, XAUUSD (the old config) | +0.862 | -22.8% | +0.42 | +1.22 |
+| gold only, GoldEternal | +1.065 | -19.7% | +0.64 | +1.40 |
+| core-4 equal weight | +1.096 | -10.5% | +1.27 | +0.93 |
+| **core-4, gold 50% / others 16.7%** | **+1.212** | -11.5% | +1.11 | +1.30 |
+| wide-7 equal weight | +0.797 | -9.1% | +0.77 | +0.82 |
+
+So **§3ag's "diversification is net-negative at Maven, gold alone wins" was wrong.** The book
+beats gold alone and a gold-overweight book beats both. Sleeve net Sharpes (aligned):
+GoldEternal +1.065, BTCUSD +0.570, BRENT +0.437, US100 +0.266, US500 +0.221, US30 +0.152,
+XAGUSD +0.073, GER30 -0.003; all pairwise correlations +0.04..+0.14. Widening past four sleeves
+still hurts, exactly as §3ae found — the added sleeves are net-negative after carry.
+
+**Why a tilt is defensible here when §3af's optimisers all lost:** gold's advantage over the
+other sleeves is driven substantially by a CONTRACTUAL zero carry, not by an estimated alpha,
+and the response is a PLATEAU (40% gold +1.200, 50% +1.212, 60% +1.196, 70% +1.167) rather than
+a spike. **Stated honestly, it is still under this repo's own bar:** paired-t at matched vol is
++0.93 vs gold alone (4/9 years) and +0.75 vs equal weight (5/9), against a +1.50 threshold.
+"Real but unproven."
+
+**D. ENGINE CHANGE.** `v5_basket_challenge.py` hard-coded equal class risk (`/Nc`), so no tilt
+was expressible in config. Added an optional module-level `CLASS_W` plus a `class_weights`
+argument to `target_leverage()`, wired through `v5_basket_challenge_exec.py` from
+`cfg["class_weights"]`. Weights are normalised inside `build()`; `CLASS_W=None` reproduces the
+equal-risk path, verified by a byte-identical before/after diff of `--backtest --model ftmo`.
+Configs: `v5_gold_max_sharpe.json` (DD-unconstrained, 20% dial -> CAGR +24.9% / maxDD -26.1%;
+40% -> +49.8% / -46.1%) and `v5_maven_book.json` (same tilt at its 7% dial).
+
+**The honest bottom line on "massive improvement":** removing the prop-firm constraint buys
+CAGR through leverage (11% -> 25-50%), not Sharpe. Sharpe moved +1.096 -> +1.212 from the tilt,
+and +0.862 -> +1.065 on the gold sleeve from the swap-free instrument. Those are the real gains.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
@@ -1748,4 +1933,4 @@ blind spots, so a reader doesn't mistake "extensively researched" for "fully und
   7 originally screened** — SPX/NDX was the best of a small, ad hoc set, not a systematic
   search of the full correlated-pair universe this repo's data could support.
 
-_Last updated 2026-08-20._
+_Last updated 2026-09-03._

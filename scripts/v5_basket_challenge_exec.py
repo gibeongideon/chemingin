@@ -353,7 +353,9 @@ def main() -> None:
 
         # ---- normal reconcile: move each symbol toward its target ----
         # cfg["classes"] lets one engine serve several books (100K vs 10K).
-        targets = target_leverage(model, cfg.get("classes"))
+        # cfg["class_weights"] optionally tilts them away from equal class risk;
+        # absent, the engine keeps its historical equal-risk behaviour.
+        targets = target_leverage(model, cfg.get("classes"), cfg.get("class_weights"))
         plans, n_mapped, blocked = [], 0, []
         print(f"  {'symbol':9s} {'tgt lev':>8s} {'held lot':>9s} {'tgt lot':>9s}  action")
         for esym, lev in sorted(targets.items()):

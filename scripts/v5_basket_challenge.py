@@ -52,6 +52,11 @@ CLASSES = {
     "crypto": ["BTC"],
     "eq_us": ["NDX"],
 }
+# Optional relative class weights, e.g. {"xau": 0.5, "crypto": 1/6, "eq_us": 1/6,
+# "energy": 1/6}. Normalised to sum to 1 inside build(). None == equal class risk,
+# which is the historical behaviour and the default for every existing config.
+CLASS_W: dict | None = None
+
 BASKET_FULL = {               # prior 6-class book (kept for easy revert)
     "eq_us": ["SPX", "NDX", "DJI"],
     "eq_eu": ["DAX", "FTSE", "STOXX"],
@@ -169,7 +174,11 @@ def _load_asset(sym):
 
 
 def build(start="2016-01-01", dial=K_DIAL):
-    """Return (weights dict W_i, account_book daily series, per-asset live pos)."""
+    """Return (weights dict W_i, account_book daily series, per-asset live pos).
+
+    Classes are equal-risk unless CLASS_W supplies relative weights, in which case
+    they are normalised to sum to 1 (CLASS_W=None reproduces the equal-risk path
+    exactly, since w_cls then equals 1/Nclass everywhere it is used)."""
     live, nets = {}, {}
     for members in CLASSES.values():
         for sym in members:
@@ -189,20 +198,29 @@ def build(start="2016-01-01", dial=K_DIAL):
         b_cls[cls] = TARGET_VOL / (comp.std() * np.sqrt(252))
         cls_stream[cls] = b_cls[cls] * comp
     cl = pd.DataFrame(cls_stream).dropna()
-    port = sum(cl[c] for c in cl.columns) / len(cl.columns)
+    if CLASS_W:
+        raw = {c: float(CLASS_W.get(c, 0.0)) for c in cl.columns}
+        tot = sum(raw.values())
+        if tot <= 0:
+            raise ValueError(f"class_weights sum to {tot} over classes {list(cl.columns)}")
+        w_cls = {c: v / tot for c, v in raw.items()}
+    else:
+        w_cls = {c: 1.0 / len(cl.columns) for c in cl.columns}
+    port = sum(cl[c] * w_cls[c] for c in cl.columns)
     g = TARGET_VOL / (port.std() * np.sqrt(252))
     book = dial * g * port
 
     W = {}
-    Nc = len(CLASSES)
     for cls, members in CLASSES.items():
+        if cls not in w_cls:
+            continue
         members = [m for m in members if m in al.columns]
         for sym in members:
-            W[sym] = dial * g / Nc * b_cls[cls] / len(members) * a[sym]
+            W[sym] = dial * g * w_cls[cls] * b_cls[cls] / len(members) * a[sym]
     return W, book, live
 
 
-def target_leverage(model=DEFAULT_MODEL, classes=None):
+def target_leverage(model=DEFAULT_MODEL, classes=None, class_weights=None):
     """Public API for the executor: {symbol: target account-leverage} at the
     latest bar, sized for the given model's vol dial. Long-only (>=0).
     Applies the causal portfolio vol-target x drawdown scalar (VOL_TARGET).
@@ -211,9 +229,11 @@ def target_leverage(model=DEFAULT_MODEL, classes=None):
     books (e.g. the 100K XAU+BTC+NDX book and the 10K SPX+ASX+ETH book), each
     declared in its own config.
     """
-    global CLASSES
+    global CLASSES, CLASS_W
     if classes:
         CLASSES = {k: list(v) for k, v in classes.items()}
+    if class_weights is not None:
+        CLASS_W = dict(class_weights)
     dial = MODELS[model]["vol"] / TARGET_VOL
     W, book, live = build(dial=dial)
     scalar = risk_scalar(book, MODELS[model]["vol"])

@@ -1,0 +1,86 @@
+{
+  "created_on": "2026-09-03",
+  "revised_on": "2026-09-04",
+  "purpose": "Maven $100K \u2014 the core-4 book, with gold routed to the SWAP-FREE instrument. Two changes from the single-XAU fallback: (1) 4 sleeves instead of 1, and (2) gold traded as GoldEternal (swap_mode=DISABLED, zero overnight financing) instead of XAUUSD (-3.70%/yr long). The second is the larger effect and is a contractual cost saving, not a signal claim.",
+  "firm": "Maven",
+  "model": "ftmo",
+  "vol": 0.07,
+  "_vol_note": "7% dial. Maven's ONLY binding rule is the 10% static max loss (its stated 0% daily rule is infeasible for any strategy \u2014 V5_FINDINGS \u2014 so exits are managed manually). Measured NET OF MEASURED CARRY, +4% target / 10% max loss / no daily limit, 5 seeds x 1500 sims: 5% dial 98.0% pass / 16.7mo median / 2.0% blow-up; 6% 96.2% / 13.6mo / 3.7%; **7% 93.8% / 11.1mo / 6.1%**; 8% 91.5% / 9.2mo / 8.5%; 9% 89.1% / 7.8mo / 10.9%; 11% 84.0% / 5.7mo / 16.0%. 7% is the balance point: a 4% target at a 5% dial takes ~17 months, which is impractical, and every step up buys ~2 months for ~2.5 points of blow-up risk. Lower it to 5-6% to prioritise survival, raise it to 9% to prioritise speed.",
+  "magic": 360571,
+  "run_id": "v5-maven-book",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo, vol override 0.07)",
+  "reset_tz": "UTC",
+  "_reset_note": "Maven's daily window resets 00:00 UTC on the higher of equity/balance at that instant (maventrading.com FAQ, 2026-08-28).",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": [
+      "XAUCHAMP"
+    ],
+    "crypto": [
+      "BTC"
+    ],
+    "eq_us": [
+      "NDX"
+    ],
+    "energy": [
+      "BRENT"
+    ]
+  },
+  "_classes_note": "Equal-class-risk BY DEFAULT, tilted by class_weights above. Sleeve correlations all +0.04..+0.14. Net of Maven's measured carry, business-day aligned: GoldEternal +1.065, BTCUSD +0.570, BRENT +0.437, US100 +0.266; equal-weight book +1.096, gold-tilted +1.212, gold alone +1.065.",
+  "_carry_map_measured_2026_09_03": {
+    "_source": "live symbol_info on account 10398574, MavenTrade-Server; %/yr computed from swap_mode + contract size + live price, not assumed",
+    "GoldEternal": "swap_mode=DISABLED -> 0.00%/yr, spread $0.55 (1.23bp)",
+    "XAUUSD": "-3.70%/yr long, +2.06%/yr short, spread $0.42 (0.94bp)",
+    "XAGUSD": "swap_mode=DISABLED -> 0.00%/yr, but spread 6.88bp kills it (net sleeve SR +0.09)",
+    "EURUSD": "swap_mode=DISABLED -> 0.00%/yr, spread 0.77bp (no usable FX trend edge \u2014 DSR 0.43)",
+    "US100": "-3.96%/yr long, +1.00%/yr short, 0.30bp",
+    "US500": "-4.42%/yr, 1.68bp",
+    "US30": "-4.82%/yr, 1.86bp",
+    "GER30": "-3.71%/yr, 7.19bp",
+    "BRENT": "-4.79%/yr long AND -5.40%/yr short, 8.49bp",
+    "WTI": "-3.09%/yr long, -3.72%/yr short, 11.12bp",
+    "BTCUSD/ETHUSD": "swap_mode=INT_OPEN -> -30.00%/yr on BOTH sides, 8.99/6.38bp",
+    "_warning": "BRENT's +9.6%/yr carry at FTMO DOES NOT EXIST at Maven. Carry is broker-specific; never carry a financing assumption across venues."
+  },
+  "symbols": {
+    "_note": "engine symbol -> Maven broker name, VERIFIED LIVE on account 10398574 (2026-09-03): all return trade_mode=4 (FULL). Maven carries 68 symbols incl. ETHUSD, US500, US30, GER30, WTI, XAGUSD, COFFEE.",
+    "XAUCHAMP": {
+      "fp_symbol": "GoldEternal",
+      "class": "xau",
+      "tf": "H4",
+      "_broker": "Maven FULL, contract 100oz, vmin 0.01, spread $0.55 (1.23bp) measured live, swap_mode=DISABLED (NO overnight financing)",
+      "_why": "Same signal, same sizing, zero carry: XAU sleeve net Sharpe +0.886 -> +1.090 and CAGR +11.85% -> +15.04%, for +0.33bp of extra one-way spread. Book pass rate 96.8% -> 98.0% at a 5% dial with blow-up risk 3.0% -> 2.0%.",
+      "_basis_check": "The obvious objection \u2014 a perpetual must charge its funding somewhere \u2014 was tested: over the 167 calendar days of history the instrument has (launched ~2026-03-13), the log basis GoldEternal/XAUUSD drifts +0.17%/yr (H1, 2,711 bars) and +0.21%/yr (D1, 143 bars) inside a ~1% band, with 0.998 daily-return correlation. No -3.7%/yr embedded drift. Six months cannot rule out a SMALL drift \u2014 re-measure monthly with the probe in V5_FINDINGS \u00a73ag.",
+      "_gates": "BEFORE TRADING: (a) confirm with Maven that synthetic/'Eternal' instruments are permitted under the challenge rules \u2014 some firms exclude them; (b) verify fill quality with one 0.01-lot live order, since a synthetic's quoted spread can hide slippage; (c) if either fails, fall back to fp_symbol XAUUSD and drop `vol` to 0.06 to hold the same blow-up risk.",
+      "_fallback": "XAUUSD"
+    },
+    "BTC": {
+      "fp_symbol": "BTCUSD",
+      "class": "crypto",
+      "tf": "D1",
+      "_broker": "Maven FULL, spread 8.99bp, swap -30.00%/yr on BOTH sides (INT_OPEN). Net sleeve SR +0.486 (gross +0.932) \u2014 still the second-best net sleeve despite the worst carry in the book, so it stays. Verify contract_size and min-lot at execute time."
+    },
+    "NDX": {
+      "fp_symbol": "US100",
+      "class": "eq_us",
+      "tf": "D1",
+      "_broker": "Maven FULL, spread 0.30bp, -3.96%/yr. Maven names it US100, not NAS100/NDX."
+    },
+    "BRENT": {
+      "fp_symbol": "BRENT",
+      "class": "energy",
+      "tf": "D1",
+      "_broker": "Maven FULL, spread 8.49bp, -4.79%/yr long. NOTE: at FTMO this sleeve EARNED +9.6%/yr; at Maven it pays. It survives on net Sharpe +0.528 anyway (the widest-spread sleeve that still clears), but it is no longer the carry winner it was at FTMO."
+    }
+  },
+  "_blocker": "NOT DEPLOYABLE YET: Maven rejects orders with retcode 10026 (TRADE_RETCODE_SERVER_DISABLES_AT = autotrading disabled by server). Algorithmic trading must be enabled for account 10398574 in Maven's dashboard. Everything else is built and dry-run verified.",
+  "_supersedes": "configs/v5_xau_maven.json (single-XAU, risk_frac 0.5%, discrete engine via scripts/v5_maven_champ.py). Keep that file as the fallback: it needs no multi-symbol sizing and its once-per-day guard protects manual profit-takes. If it is used, still switch its symbol to GoldEternal \u2014 the carry saving applies to the single-XAU version identically.",
+  "_correction": "An earlier revision of this file quoted 99.9% pass / 6.3mo at a 5% dial. Those figures were GROSS of financing. Net of Maven's measured carry the same book at the same dial is 98.0% / 16.7mo. The gross numbers were wrong to quote; the table in _vol_note is the correct one. ALSO (2026-09-04): sleeve and book Sharpes quoted in the 2026-09-03 revision (+0.951 book, +1.090 gold) were computed on unaligned day counts \u2014 BTCUSD quotes weekends, so the book ran on ~365 days/yr and gold on ~259 while both were annualised with sqrt(252). Business-day aligned the correct figures are +1.096 equal-weight and +1.065 gold alone, and the diversified book BEATS gold alone rather than losing to it.",
+  "class_weights": {
+    "xau": 0.5,
+    "crypto": 0.1667,
+    "eq_us": 0.1667,
+    "energy": 0.1667
+  },
+  "_weights_note": "Gold 50% / others 16.7% each, same tilt as configs/v5_gold_max_sharpe.json and for the same reason: gold's net-Sharpe edge is contractual (zero carry) not estimated. Net Sharpe +1.212 vs +1.096 equal weight, on a plateau (40%->+1.200, 60%->+1.196). Needs the class_weights support added to v5_basket_challenge.py 2026-09-04."
+}

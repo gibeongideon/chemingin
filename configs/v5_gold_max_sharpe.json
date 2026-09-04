@@ -1,0 +1,52 @@
+{
+  "created_on": "2026-09-04",
+  "revised_on": "2026-09-04",
+  "purpose": "MAX NET SHARPE, drawdown unconstrained (instruction 2026-09-04: stop designing around prop-firm limits). Gold-overweight core-4 book on the swap-free instrument: net Sharpe +1.212 vs +1.096 equal weight and +1.065 gold alone, all measured net of Maven's live carry.",
+  "firm": "Maven",
+  "model": "ftmo",
+  "vol": 0.20,
+  "_vol_note": "The dial is the only knob — Sharpe is leverage-invariant (xau-riskfrac-sizing-table), so it scales CAGR and DD together. Measured on this book: 20% dial -> CAGR +24.9% / maxDD -26.1%; 40% -> +49.8% / -46.1%. 20% is a placeholder, not a finding. Set it to the loss you are actually willing to take.",
+  "_dd_warning": "THESE DRAWDOWNS BREACH A 10% MAX-LOSS ACCOUNT BY CONSTRUCTION, and backtest DD is close-to-close so real intraday excursions are worse. This config needs an account with no such wall — own capital, the HFM cent account, or a funded account with looser terms. On the Maven challenge use configs/v5_maven_book.json instead.",
+  "magic": 360572,
+  "run_id": "v5-gold-max",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo, vol override, class_weights)",
+  "reset_tz": "UTC",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": ["XAUCHAMP"],
+    "crypto": ["BTC"],
+    "eq_us": ["NDX"],
+    "energy": ["BRENT"]
+  },
+  "class_weights": {"xau": 0.50, "crypto": 0.1667, "eq_us": 0.1667, "energy": 0.1667},
+  "_weights_note": "Gold 50%, the other three 16.7% each. Justified because gold's net-Sharpe advantage comes largely from a CONTRACTUAL fact (zero carry on GoldEternal vs -3.96% to -30%/yr on the others), not from an estimated alpha. It is a PLATEAU, not a knife edge — 40% gold gives +1.200, 50% +1.212, 60% +1.196, 70% +1.167 — so the exact number does not matter much; anywhere in 40-60% is the same answer. Requires the `class_weights` support added to v5_basket_challenge.py on 2026-09-04 (default path regression-checked byte-identical).",
+  "_measured_net_of_maven_carry": {
+    "_basis": "business-day aligned (see _correction), champion signal, Maven's live spreads x1.5 and live swap rates",
+    "sleeve net Sharpes": "GoldEternal +1.065, BTCUSD +0.570, BRENT +0.437, US100 +0.266, US500 +0.221, US30 +0.152, XAGUSD +0.073, GER30 -0.003",
+    "sleeve correlations": "all pairs between +0.04 and +0.14 — the diversification is real",
+    "gold only (XAUUSD)": "+0.862 / maxDD -22.8%",
+    "gold only (GoldEternal)": "+1.065 / -19.7%",
+    "core-4 equal weight": "+1.096 / -10.5%",
+    "THIS BOOK (gold 50%)": "+1.212 / -11.5%, halves +1.11 / +1.30",
+    "wide-7 equal weight": "+0.797 — widening HURTS; US30/GER30/XAGUSD are net-negative to near-zero after carry"
+  },
+  "_statistical_honesty": "The tilt's paired-t at matched vol is +0.93 vs gold alone (4/9 years) and +0.75 vs equal weight (5/9). Both are BELOW the +1.50 bar used everywhere else in this repo, so this is 'real but unproven', not established. What supports it beyond the t-stat is that the driver is deterministic carry and the response is a flat plateau rather than a spike.",
+  "symbols": {
+    "XAUCHAMP": {
+      "fp_symbol": "GoldEternal",
+      "class": "xau",
+      "tf": "H4",
+      "_broker": "Maven FULL, contract 100oz, vmin 0.01, spread $0.55 (1.23bp), swap_mode=DISABLED (no overnight financing)",
+      "_gates": "BEFORE TRADING: confirm Maven permits synthetic 'Eternal' instruments; verify fills with one 0.01-lot order; re-measure the GoldEternal/XAUUSD basis monthly (V5_FINDINGS §3ag).",
+      "_fallback": "XAUUSD (costs -3.70%/yr, drops the sleeve to +0.862)"
+    },
+    "BTC": {"fp_symbol": "BTCUSD", "class": "crypto", "tf": "D1",
+            "_broker": "Maven FULL, 9.04bp, -30.00%/yr BOTH sides. Still the 2nd-best net sleeve (+0.570)."},
+    "NDX": {"fp_symbol": "US100", "class": "eq_us", "tf": "D1",
+            "_broker": "Maven FULL, 0.31bp, -3.94%/yr. Weakest keeper at +0.266."},
+    "BRENT": {"fp_symbol": "BRENT", "class": "energy", "tf": "D1",
+              "_broker": "Maven FULL, 7.46bp, -4.81%/yr long and -5.42% short. Net +0.437."}
+  },
+  "_correction": "An earlier version of this file (2026-09-04, same day) claimed gold ALONE beat the diversified book at Maven's cost structure. That was wrong — an artifact of comparing a 259-day/yr gold series against a 365-day/yr book series (BTCUSD quotes weekends) while annualising both with sqrt(252). Aligned to business days the book beats gold alone, and the gold-overweight book beats both.",
+  "_blocker": "Maven still rejects orders with retcode 10026 (autotrading disabled by server). Must be enabled for account 10398574 in Maven's dashboard."
+}
