@@ -1724,7 +1724,7 @@ WTI/XAGUSD/COFFEE at trade_mode=4, so the wide book is deployable there too if e
 ### 3ag. Five untested research directions ALL fail — and then the real win: a SWAP-FREE gold instrument found by measuring Maven's live carry (2026-09-03, `scripts/v5_factor_sleeves.py`, `v5_volume_signals_xau.py`, `v5_book_overlays.py`, `v5_spread_trend_sleeves.py`, `v5_financing_aware_book.py`, `v5_maven_carry_book.py`)
 
 Internet-informed sweep of everything canonical this repo had never implemented, then the
-execution lever §3q named and never pulled. **67 signal/portfolio trials, 0 keepers. One
+execution lever §3q named and never pulled. **64 signal/portfolio trials, 0 keepers. One
 execution finding worth more than every signal result in this repo's history.**
 
 **A. THE FIVE NEGATIVE ROUNDS (all pre-registered, all gated at matched vol).**
@@ -1777,7 +1777,7 @@ drift, NOT enough to exclude a small one. Re-measure monthly
 
 Cost of the switch: **+0.33bp** of extra one-way spread. The t@matched of +49.9 (9/9 years) is
 *not* evidence of edge — it confirms the change is deterministic, which is exactly why it is
-worth more than the 67 signal trials above.
+worth more than the 64 signal trials above.
 
 **Carry is broker-specific and a book tuned on one venue is mis-specified on another.**
 BRENT's +9.6%/yr at FTMO — the reason it was FTMO's best net sleeve — becomes -4.79%/yr long
