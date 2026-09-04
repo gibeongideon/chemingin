@@ -1,0 +1,191 @@
+<!--
+  MEDIUM-READY blog post. Open in a browser, select all, copy, paste into the Medium editor.
+
+  Why it is written this way:
+    * Medium strips ALL CSS. The <style> block below exists only so the file is readable
+      when you open it locally; none of it survives the paste.
+    * Medium has NO TABLE SUPPORT. Both data tables are therefore <pre> blocks, which paste
+      into Medium as code blocks and keep their column alignment. Do not convert them to
+      <table> — the columns will be flattened into a single run of text.
+    * Structure that DOES survive: h1, h2, p, ul/li, blockquote, pre, strong, em, a.
+    * On paste, Medium maps the first h1 to the story title and an immediately following h2
+      to the subtitle. Check both after pasting.
+    * Alternative to pasting: Medium's "Import a story" accepts a URL.
+-->
+<style>
+  body {
+    max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem;
+    font: 17px/1.65 Georgia, "Times New Roman", serif;
+    color: #16191c; background: #fff;
+  }
+  h1 { font-size: 2.3rem; line-height: 1.15; margin: 0 0 .4rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.3rem; line-height: 1.25; margin: 2.4rem 0 .6rem; }
+  h1 + h2 { font-size: 1.35rem; font-weight: 400; color: #5a6169; margin-top: 0; }
+  p, li { margin: 0 0 1.1rem; }
+  ul { padding-left: 1.2rem; }
+  pre {
+    font: 13px/1.6 "SF Mono", Menlo, Consolas, monospace;
+    background: #f4f5f6; padding: 1rem; overflow-x: auto;
+    border-left: 3px solid #8a6a22; margin: 1.4rem 0;
+  }
+  blockquote {
+    margin: 1.6rem 0; padding-left: 1.1rem; border-left: 3px solid #8a6a22;
+    font-size: 1.25rem; line-height: 1.4; color: #16191c;
+  }
+  code { font: 14px/1 "SF Mono", Menlo, Consolas, monospace; background: #f4f5f6; padding: .1em .3em; }
+  hr { border: none; border-top: 1px solid #dcdfe3; margin: 2.6rem 0; }
+  .footnote { font-size: .9rem; color: #5a6169; }
+</style>
+
+<h1>Zero Carry</h1>
+
+<h2>Sixty-four pre-registered trials looking for a better signal returned nothing at all. The
+improvement, when it came, was one line in a broker's symbol table.</h2>
+
+<p>The book is a long-only trend follower on gold, run alongside a few uncorrelated sleeves —
+bitcoin, the Nasdaq, Brent. It has been at its frontier for about a year. Every attempt to
+improve the <em>signal</em> has failed, and this round was no different, so it is worth being
+precise about what failed before describing what worked.</p>
+
+<p>Here is the line that mattered, read live from the terminal:</p>
+
+<pre>Symbol        swap_mode            spread   long %/yr
+XAUUSD        POINTS         $0.42 (0.94bp)      -3.70
+GoldEternal   DISABLED       $0.55 (1.23bp)       0.00</pre>
+
+<p>The same gold exposure, financed at nothing.</p>
+
+<h2>Five directions, all of them dead</h2>
+
+<p>Each round was pre-registered — parameters, assets and pass criterion fixed in writing before
+anything ran — and gated at matched volatility, because an overlay that only ever reduces
+exposure will beat a naive paired t-test by de-risking rather than by predicting.</p>
+
+<ul>
+  <li><strong>Canonical factors — 0 of 7.</strong> Value as five-year reversal,
+    betting-against-beta, cross-sectional skew, calendar seasonality. Never coded here
+    before.</li>
+  <li><strong>Volume — 0 of 17.</strong> Volume and dollar bars on an activity clock,
+    volume-weighted price path, expansion gates, Amihud illiquidity.</li>
+  <li><strong>Book-level risk overlays — 0 of 11.</strong> Volatility management,
+    covariance-based targeting, drawdown sizing, a crisis-correlation gate.</li>
+  <li><strong>Relative-value trend — 0 of 16.</strong> Fifteen same-session spreads: curve,
+    crack, quality, tech-versus-broad.</li>
+  <li><strong>Financing-aware weights — 0 of 13.</strong> Expected return set common across
+    sleeves so only the known carry differed — no estimation error at all.</li>
+</ul>
+
+<p>Two of those deserve a footnote. Long-horizon value came out at <strong>−0.62</strong> Sharpe:
+on this universe, multi-year momentum persists rather than reverting. And the spread sleeves
+landed at a mean correlation of <strong>+0.03</strong> to the book — exactly what the theory
+predicts, since the market factor cancels between the legs. The structure was right. There was
+simply no edge inside it to diversify into.</p>
+
+<h2>The largest number was never a signal</h2>
+
+<p>A year ago the book's financing cost was measured properly for the first time: −3.79% a year
+across the four sleeves, worth about <strong>−0.29 Sharpe</strong>. That made overnight funding
+the single biggest measured drag in the whole system — larger than spread, larger than slippage,
+and far larger than any signal effect ever found. The note written at the time said the only
+untested way to move it was execution, not research.</p>
+
+<p>Then it was treated as a footnote for twelve months, subtracted at the end of each backtest
+and otherwise ignored. Nobody went and read the swap table.</p>
+
+<blockquote>Reading the swap table took an afternoon and beat a year of signal research.</blockquote>
+
+<h2>What the census found</h2>
+
+<p>Querying every symbol on the venue for <code>swap_mode</code>, contract size and live spread
+turns up five instruments that charge no overnight financing at all. One of them is gold.</p>
+
+<pre>Symbol         swap_mode      Spread     Long %/yr   Short %/yr
+GoldEternal    DISABLED      1.23 bp          0.00         0.00
+XAUUSD         POINTS        0.94 bp         -3.70        +2.06
+US100          POINTS        0.31 bp         -3.94        +1.00
+BRENT          POINTS        7.46 bp         -4.81        -5.42
+BTCUSD         INT_OPEN      9.04 bp        -30.00       -30.00
+NGAS           POINTS      107.90 bp       -165.91       -25.84</pre>
+
+<p class="footnote">Six of sixty-eight. There is no swap-free index, crypto or energy instrument
+on the venue — which is precisely why the gain below is confined to the gold sleeve.</p>
+
+<h2>The objection, and the test</h2>
+
+<p>A perpetual instrument that charges no swap has to earn its funding somewhere, and the obvious
+place is the price. So the log basis of GoldEternal against XAUUSD was regressed on time: the
+drift is <strong>+0.17% a year</strong> across 2,711 hourly bars, inside a band about 1% wide, at
+a daily-return correlation of <strong>0.998</strong>. Nothing resembling the −3.70% it avoids.
+The instrument has only 167 days of history, which excludes a large embedded drift but not a
+small one — so it gets re-measured monthly rather than believed.</p>
+
+<p>The same question applied in reverse to the positive-carry instruments, and natural gas
+settled it. NGAS charges <strong>−165.9% a year</strong> while its price has drifted
+<strong>−0.99% a year</strong> over fifteen years. Prices on this venue are spot-like and swap
+carries the entire roll. The swaps are additive, not double-counted.</p>
+
+<p>Which raises a tempting number: sugar pays <strong>+21.6% a year</strong> to hold long, cocoa
++14.8%. A long-only trend follower on sugar would collect that on top of any trend edge. But
+those are one snapshot of a rate that moves enormously through time, and there is no historical
+commodity term structure to test them against. Applying today's sugar carry across an
+eighteen-year backtest would manufacture a 22%-a-year sleeve out of a single afternoon's term
+structure. So there is no number for commodity carry here. It stays open.</p>
+
+<h2>What actually changed</h2>
+
+<p>All figures net of real broker carry and spread, compounded onto a common business-day index.
+That last detail matters more than it sounds: bitcoin quotes at weekends, so the book's series
+ran at roughly 365 days a year while the gold sleeve ran at 259, and annualising both with the
+same √252 inverted the ranking. The first version of this comparison was wrong for exactly that
+reason.</p>
+
+<pre>Configuration                              Net Sharpe   Max DD   CAGR @20% vol
+Single-sleeve gold, XAUUSD                     +0.862    -22.8%           19.6%
+Four sleeves, equal weight, XAUUSD             +0.996    -10.9%           19.6%
+Four sleeves, equal weight, GoldEternal        +1.096    -10.5%           22.0%
+Four sleeves, gold at 50%, GoldEternal         +1.212    -11.5%           24.9%</pre>
+
+<p class="footnote">Champion signal unchanged throughout. Only the instrument and the sleeve
+weights differ between the first row and the last.</p>
+
+<p>Net Sharpe improves by <strong>22%</strong>, and it splits cleanly in two:
+<strong>+0.100</strong> from moving gold onto the swap-free instrument, and
+<strong>+0.116</strong> from overweighting gold now that its net edge is visibly larger than the
+others'.</p>
+
+<h2>Three things this is not</h2>
+
+<p><strong>The tilt is not established.</strong> Its paired t-statistic at matched volatility is
++0.75 against equal weight, on five of nine positive years, against a threshold of +1.50 used
+everywhere else in this work. What supports it is that the driver is contractual rather than
+estimated, and that the response is a plateau — 40% gold gives +1.200, 50% gives +1.212, 60%
+gives +1.196 — rather than a spike. That is suggestive. It is not proof, and calling it proof
+would be the easiest mistake available.</p>
+
+<p><strong>Leverage is not edge.</strong> Removing an external drawdown limit takes this book from
+about 8.5% a year to roughly 50%, at a −46% maximum drawdown. Sharpe does not move an inch,
+because Sharpe is invariant to leverage. That is a decision about tolerance dressed up as a
+discovery, and the distinction is worth defending.</p>
+
+<p><strong>The signal did not improve.</strong> Not once, across sixty-four honest attempts.
+Everything above came from what the position costs to hold, not from knowing where gold is
+going.</p>
+
+<h2>Measure what you pay before optimising what you predict</h2>
+
+<p>Costs are contractual. They are published, they are deterministic, and they need no
+out-of-sample validation — a saving of 3.70% a year is 3.70% a year whether the strategy works or
+not. Signals are estimated, noisy, and mostly imaginary. A research programme that spends every
+hour on the second category while carrying the first as a footnote is optimising the harder half
+of the problem.</p>
+
+<p>Carry is also venue-specific, which is its own warning. Brent earns +9.6% a year at one broker
+and pays −4.81% long at another. A book tuned on one venue's financing is mis-specified the
+moment it moves.</p>
+
+<hr>
+
+<p class="footnote">Backtests run 2018–2026 on H4 gold and daily sleeves, costs in basis points
+from live spreads widened 1.5×, drawdowns close-to-close and therefore optimistic against real
+intraday excursions. The swap-free instrument is unverified for fill quality and its eligibility
+under the venue's own rules; neither is assumed here.</p>
