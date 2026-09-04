@@ -1,5 +1,11 @@
 # V5 FINDINGS — settled experiments (do not repeat)
 
+> **Read `RESEARCH-REGIMES.md` first.** It partitions everything below into prop-firm-constrained
+> findings (regime P), unconstrained findings (regime U, current since 2026-09-04) and
+> invariant findings — plus an explicit resume point for each regime. Several conclusions here
+> are only correct under a given rule set and flip when the rules come off.
+
+
 Running ledger of XAUUSD research that has been **run, measured, and closed**. Each
 entry: what was tried, the honest result, and the verdict. If an idea here is
 marked DISPROVEN / DEAD, do not re-run it without a materially new angle.

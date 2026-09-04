@@ -1,5 +1,10 @@
 # MT5 V5 — XAU-centric prop-firm trend books
 
+> **Two research regimes.** Since 2026-09-04 this project optimises net Sharpe with drawdown
+> unconstrained (regime U), not prop-firm pass rate (regime P). Which findings belong to which
+> regime — and where to pick up if we go back to a prop firm — is in **`RESEARCH-REGIMES.md`**.
+
+
 Systematic **trend-following books built to pass (and hold) prop-firm challenges** —
 FTMO, FundingPips, Maven — trading gold plus a few uncorrelated diversifiers via MT5 on a
 headless Linux/Wine VPS. The question that drives everything: *what book passes a 2-step
