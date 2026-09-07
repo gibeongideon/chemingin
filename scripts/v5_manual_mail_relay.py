@@ -100,6 +100,13 @@ def main() -> None:
              f"Last known state:\n\n{t['body']}")
         sys.exit(f"ticket {age:.0f}h stale — health warning mailed")
 
+    if t.get("delivered") is True and not args.always:
+        # The VPS delivered it itself (a channel is configured there), so sending again
+        # from here would duplicate every alert. The hosts coordinate through the ticket
+        # rather than through a flag someone has to remember to flip.
+        print(f"already delivered by the VPS — not duplicating (action {t.get('action')})")
+        return
+
     if not t.get("due") and not args.always:
         print(f"no action due (forecast {t['forecast']:.3f}, ticket {age:.1f}h old) "
               f"— nothing sent")

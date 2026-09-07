@@ -27,3 +27,4 @@ data/*.csv
 # Screenshots
 screenshots/
 .env.mail
+.env.notify

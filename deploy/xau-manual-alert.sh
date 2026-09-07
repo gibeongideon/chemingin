@@ -7,7 +7,6 @@ cd /home/trader/MT5 || exit 1
 mkdir -p data/v5_runs
 /home/trader/miniconda3/envs/envmt5/bin/python scripts/v5_manual_alert.py \
   --port 18812 \
-  --dial 0.10 \
-  --dry \
+  --dial 0.05 \
   --json-out data/v5_runs/manual_alert.json \
   >> data/v5_runs/xau-manual-alert.log 2>&1

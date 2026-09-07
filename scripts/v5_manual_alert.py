@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.v5.xau_dual_signals import champion_signal  # noqa: E402  (canonical, do not vendor)
+from scripts.v5_notify import notify, channel, env as notify_env  # noqa: E402
 
 TF_H4 = 16388
 TARGET_VOL, MAX_LEV = 0.10, 8.0
@@ -72,32 +73,16 @@ def fetch(mt5, symbol: str, n: int = 6000) -> pd.DataFrame:
     raise SystemExit(f"could not fetch {symbol} H4: {mt5.last_error()}")
 
 
-def send(subj: str, body: str) -> None:
-    e, mf = {}, ROOT / ".env.mail"
-    if mf.exists():
-        for ln in mf.read_text().splitlines():
-            if "=" in ln and not ln.strip().startswith("#"):
-                k, v = ln.split("=", 1)
-                e[k.strip()] = v.strip()
-    host, user, pw = e.get("SMTP_HOST"), e.get("SMTP_USER"), e.get("SMTP_PASS")
-    to, port = e.get("REPORT_TO", user), int(e.get("SMTP_PORT", "587"))
-    if not (host and user and pw):
-        print("NO MAIL CREDS (.env.mail) — would have sent:\n\n" + subj + "\n\n" + body)
-        return
-    m = MIMEText(body)
-    m["Subject"], m["From"], m["To"] = subj, user, to
-    try:
-        with smtplib.SMTP(host, port, timeout=30) as srv:
-            srv.starttls(context=ssl.create_default_context())
-            srv.login(user, pw)
-            srv.send_message(m)
-        print(f"emailed {to}: {subj}")
-    except OSError as exc:
-        # The VPS cannot reach smtp.gmail.com on ANY port (25/465/587/2525 all blocked,
-        # verified 2026-09-07); the existing report timers had been failing this way
-        # silently since ~2026-08-05. Never let this fail the timer — the JSON written by
-        # --json-out is the delivery path, relayed and mailed from a host with working SMTP.
-        print(f"SMTP FAILED ({exc}) — rely on --json-out + the relay mailer")
+def send(subj: str, body: str) -> bool:
+    """Delegates to the multi-channel notifier, which picks a transport that actually works
+    from this host (the VPS has outbound SMTP blocked on every usual port — see
+    scripts/v5_notify.py). Failure is reported, never raised: a notifier that crashes takes
+    its own timer down with it."""
+    if notify(subj, body):
+        return True
+    print(f"[alert] delivery failed via channel '{channel(notify_env())}' — the ticket JSON "
+          f"records delivered=false, so the laptop watchdog will send it instead.")
+    return False
 
 
 def main() -> None:
@@ -180,6 +165,12 @@ def main() -> None:
     body = "\n".join(L)
     print(body)
 
+    delivered = None
+    if not args.dry and (due or args.always):
+        subj = (f"[XAU manual] {verb} {abs(delta):.2f} lots {TRADE_SYMBOL}" if due
+                else f"[XAU manual] no action (fc {f_now:.2f})")
+        delivered = send(subj, body)
+
     if args.json_out:
         import json
         Path(args.json_out).write_text(json.dumps(dict(
@@ -191,17 +182,17 @@ def main() -> None:
             ann_vol=round(v_now, 4), dial=args.dial, target_lev=round(lev, 4),
             band=round(band, 4), held_lots=held, target_lots=tgt_lots,
             delta_lots=delta, action=("BUY" if delta > 0 else "SELL") if due else "NONE",
-            due=bool(due), body=body), indent=2))
+            due=bool(due), delivered=delivered, body=body), indent=2))
         print(f"\nwrote {args.json_out}")
 
     if args.dry:
         return
-    if due or args.always:
-        subj = (f"[XAU manual] {verb} {abs(delta):.2f} lots {TRADE_SYMBOL}" if due
-                else f"[XAU manual] no action (fc {f_now:.2f})")
-        send(subj, body)
+    if delivered is True:
+        print("\ndelivered from this host")
+    elif delivered is False:
+        print("\nNOT delivered from this host — laptop watchdog will relay it")
     else:
-        print("\n(no action due -> no email sent; use --always to mail anyway)")
+        print("\n(no action due -> nothing sent)")
 
 
 if __name__ == "__main__":
