@@ -1,0 +1,12 @@
+# Emails a manual trade instruction when the XAU champion needs a position change.
+# Read-only: no order-sending code path exists in the script it runs.
+[Unit]
+Description=XAU champion manual-execution alert (email when a hand-trade is due)
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-manual-alert.sh
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xau-manual-alert

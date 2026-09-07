@@ -26,3 +26,4 @@ data/*.csv
 
 # Screenshots
 screenshots/
+.env.mail

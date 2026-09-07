@@ -1,0 +1,14 @@
+# Desktop side of the manual-execution alert: fetch the VPS ticket and EMAIL it.
+# Split exists because the VPS cannot reach any SMTP port (verified 2026-09-07) while this
+# host can. Read-only end to end; no order-sending code path.
+[Unit]
+Description=XAU manual-execution alert mailer (relays the VPS ticket over SSH)
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=/home/rock/Desktop/2026_Projects/Trader36/MT5
+ExecStart=/home/rock/anaconda3/bin/python /home/rock/Desktop/2026_Projects/Trader36/MT5/scripts/v5_manual_mail_relay.py
+TimeoutStartSec=180
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xau-manual-mailer

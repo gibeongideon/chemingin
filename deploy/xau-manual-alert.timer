@@ -1,0 +1,13 @@
+# 12:10 UTC = 15:10 Nairobi. The 08:00 H4 bar closed at 12:00, so this is the first
+# moment that bar is final. Check-hour choice is not load-bearing: net Sharpe across the
+# six possible hours spans 0.964-1.084 (V5_FINDINGS §3ai), so this hour was picked for
+# convenience and liquid London/pre-NY execution, not for its backtest score.
+[Unit]
+Description=Timer for XAU manual-execution alert (12:10 UTC / 15:10 Nairobi)
+[Timer]
+OnCalendar=*-*-* 12:10:00
+OnBootSec=300sec
+Persistent=true
+Unit=xau-manual-alert.service
+[Install]
+WantedBy=timers.target

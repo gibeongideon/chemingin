@@ -1854,6 +1854,77 @@ Configs: `v5_gold_max_sharpe.json` (DD-unconstrained, 20% dial -> CAGR +24.9% / 
 CAGR through leverage (11% -> 25-50%), not Sharpe. Sharpe moved +1.096 -> +1.212 from the tilt,
 and +0.862 -> +1.065 on the gold sleeve from the swap-free instrument. Those are the real gains.
 
+### 3ai. Manual-execution variant for EA-prohibited accounts — one check/day costs ~5% of the Sharpe (2026-09-07, `scripts/v5_manual_ticket.py`)
+
+Some accounts prohibit automated execution. The compliant answer is not to disguise the bot but
+to run the strategy at a cadence a person can execute, so the question is what that cadence
+costs. Measured on the XAU champion at GoldEternal's costs (1.38bp one-way, zero carry), $100k,
+counting only position changes of at least the 0.01 minimum lot:
+
+| variant | net Sharpe | maxDD | actions/yr | actions/week |
+|---|---|---|---|---|
+| every H4 bar, buffer 0.10 (the automated form) | +1.090 | -19.7% | 136.5 | 2.63 |
+| every H4 bar, buffer 0.60 | +0.943 | -23.5% | 36.4 | 0.70 |
+| **once/day 20:00 UTC, buffer 0.20** | **+1.038** | -21.4% | **64.2** | **1.23** |
+| once/day 20:00 UTC, buffer 0.30 | +1.006 | -22.7% | 50.3 | 0.97 |
+| once/day 20:00 UTC, buffer 0.60 | +0.902 | -24.5% | 24.5 | 0.47 |
+
+**One check per day with the no-trade band widened 0.10 -> 0.20 costs 0.052 Sharpe (4.8%
+relative) and roughly one trade per week.** Widening the band alone is cheaper per action saved
+than cutting the cadence, but the two compose: the once/day + 0.20 cell is the sweet spot, and
+past 0.30 the cost accelerates. Note the drawdown worsens monotonically as execution coarsens
+(-19.7% -> -24.5%) — the buffer is doing risk work, not just cost work.
+
+`scripts/v5_manual_ticket.py` prints the day's instruction ("BUY 0.12 lots, 0.15 -> 0.27") for a
+human to place. It has **no order-sending code path at all**, warns when the H4 CSV is stale
+(the first run tripped this correctly at 1,275h), and reads the currently-held size either from
+`--held` typed by hand or read-only from a bridge. Reading positions is not trading, but `--held`
+exists so a manual-only account need have no bridge attached.
+
+**Not done, and refused:** randomised delays, jittered lot sizes or synthetic human-like input to
+defeat a broker's EA detection. That is evading detection to breach the account terms, and on a
+funded account it puts every past payout at risk of retroactive voiding. Two legitimate routes
+remain open if the once-daily cadence is still too much: get written clarification of what the
+venue actually prohibits (the rule often targets HFT, latency arbitrage or copy trading rather
+than a daily rebalance), or route the automated book to a venue that permits it and use the
+manual account for something else.
+
+**ALERTING, and a silent failure it uncovered (2026-09-07).** The user wanted an email only
+when a hand-trade is actually due. Building it found that **the VPS cannot reach smtp.gmail.com
+on ANY port** — 25, 465, 587 and 2525 all blocked, and even 443 to that host, while
+`api.telegram.org:443` is open (so it is a destination block, not general egress). The repo's
+existing daily report timers had therefore **been failing silently since ~2026-08-05**: 49
+successful `emailed` lines in the report logs, then 14 consecutive `OSError: [Errno 101] Network
+is unreachable`. **Every FTMO / FundingPips daily report since early August went nowhere.** Those
+accounts are stopped so nothing was lost, but the same relay fix below is required before either
+report is trusted again.
+
+Architecture, split by which host can do what: the **VPS computes** (it owns the MT5 bridge) and
+writes `data/v5_runs/manual_alert.json` on `xau-manual-alert.timer` at 12:10 UTC; **the desktop
+mails** (it reaches 587/465 fine) via `scripts/v5_manual_mail_relay.py` on
+`xau-manual-mailer.timer` at 12:15 UTC = 15:15 Nairobi. Both `Persistent=true` with `Linger=yes`,
+so a missed window mails the CURRENT ticket on next boot rather than a backlog. Delivery was
+verified end-to-end, not assumed — a notifier whose send path has never been exercised is worse
+than none. SMTP failure on the VPS side is now caught and non-fatal so it cannot fail the timer.
+
+Two correctness fixes made while wiring it up, both of which would have quietly degraded the
+signal: (1) `copy_rates_from_pos(..., 0, n)` returns the bar **currently in progress** at
+position 0, so the first live run was evaluating the champion on an unfinished H4 bar — anything
+whose 4h window has not elapsed is now dropped. (2) Live reconciliation compares the raw target
+to the **actually held** position rather than replaying a simulated buffered path, which is
+path-independent (history length cannot change today's answer) and self-corrects after a skipped
+day or a partial fill.
+
+**Check-hour sensitivity, since 20:00 UTC was an arbitrary first pick:** net Sharpe across the
+six possible H4 check hours spans **0.964 to 1.084** (buffer 0.20), with 20:00 at 1.038 sitting
+on the average. No hour is broken and the spread is noise across six draws, so **the hour should
+be chosen for convenience, not for its backtest score** — the deployed 12:10 UTC run uses the
+08:00 bar because 15:15 Nairobi is a workable time in liquid London/pre-NY hours.
+
+**Useful closed form:** from flat, the vol and dial terms cancel in `|target| > band`, so an
+entry fires exactly when **forecast > BUFFER** (0.20) regardless of dial or volatility. On
+2026-09-07 the forecast was 0.197 against a structural floor of 0.15 — no position warranted.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.

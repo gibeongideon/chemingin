@@ -1,0 +1,13 @@
+# 12:15 UTC, five minutes after the VPS writes the ticket at 12:10 UTC.
+# 12:15 UTC = 15:15 Nairobi (EAT, UTC+3). Persistent=true so that if this machine is off
+# at the time, the next boot mails the CURRENT ticket — not a backlog. Safe because the
+# champion is a multi-week trend follower and the VPS reconciles against real holdings.
+[Unit]
+Description=Timer for the XAU manual-execution alert mailer (12:15 UTC / 15:15 Nairobi)
+[Timer]
+OnCalendar=*-*-* 12:15:00 UTC
+OnBootSec=180sec
+Persistent=true
+Unit=xau-manual-mailer.service
+[Install]
+WantedBy=timers.target
