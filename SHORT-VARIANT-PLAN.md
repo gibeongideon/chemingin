@@ -1,6 +1,11 @@
 # XAUUSD conditional-short variant — measurability-first plan
 
-**Status:** approved 2026-09-09, Phase D complete, Phase 0 next.
+**Status: STOPPED 2026-09-09 at the Phase 0b gate.** Phase D complete, Phase 0b run and
+FAILED — all 15 causal regime switches give a negative short Sharpe (best -0.106 vs a +0.465
+requirement); best book contribution **+0.046** against a perfect-switch ceiling of +0.225.
+Phases 1, 1b, 1c, 2, 4 do NOT run. Full result in `V5_FINDINGS.md` §3an. The one salvageable
+item is Phase 1's CEILING arm, which answers "is representation the bottleneck" independently
+of the short thesis.
 **Scoping evidence:** `V5_FINDINGS.md` §3am. **Pre-registration:**
 `data/v5_runs/short_variant/PREREGISTRATION.md`.
 

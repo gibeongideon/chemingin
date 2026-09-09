@@ -2231,6 +2231,82 @@ hyperparameters chosen on the full sample, and label leakage without purge.
 2011-2015, now re-specified to measure **false-positive rate** rather than recall. Total ~4 days
 to a decision.
 
+### 3an. Phase 0b — the conditional-short GATE FAILS; programme STOPPED per pre-registration (2026-09-09, `data/v5_runs/short_variant/PREREGISTRATION.md`)
+
+Ran the pre-registered gate from `SHORT-VARIANT-PLAN.md` Phase 0b. **It fails, and the
+programme stops.** Recorded in full because the failure is informative, not merely negative.
+
+**FEED DIAGNOSIS FIRST (0b.1) — the $177 hazard is benign and now explained.** The mean
+`XAUUSD_H4`-vs-`GOLD_D1` difference is only **+$1.01 (0.05% of price)**, so there is no
+systematic basis. Lag 0 is optimal (return corr 0.887); every other lag collapses to ~0, so
+there is no timestamp shift. The real finding: **`GOLD_D1`'s daily close corresponds to the
+16:00 UTC H4 bar**, not the day's last bar — cutting at 16:00 gives return corr **0.935** and
+difference std **$6.01**, versus 0.887 / $9.87 for `resample("D").last()`. The $177 outlier is
+concentrated in **2026** (that year's std is $35.76 against $3-15 for every earlier year), so
+`GOLD_D1`'s tail is the unreliable part. **Use the 16:00 cut for any future cross-feed work.**
+Phase 0b itself needed no splice — the test lives entirely inside `GOLD_D1`.
+
+**THE GATE (0b.2) — 15 causal switches, all strictly-past, disclosed search.** Target regime is
+the pre-registered 2011-09-30..2015-12-31 bear (23.1% of `GOLD_D1` 2008-2026, unconditional
+short in it = **+0.475**).
+
+| causal switch | recall | FP | gated short SR (full sample) |
+|---|---|---|---|
+| below SMA100 / 150 / 200 / 250 | 69-73% | **18-24%** | -0.213 / -0.160 / -0.261 / -0.180 |
+| mom126d / mom189d / mom252d < 0 | 70-72% | 18-20% | -0.117 / -0.331 / -0.241 |
+| DD>8% from 252d high | 84.7% | 24.6% | -0.209 |
+| DD>12% from 252d high | 57.1% | 9.5% | -0.360 |
+| DD>15% from 252d high | 35.5% | **4.0%** | -0.260 |
+| SMA200 & mom252 | 60.6% | 10.5% | -0.209 |
+| SMA200 & DD>12% | 52.1% | 8.2% | -0.335 |
+| SMA200 & mom252, 20d confirm | 42.5% | 5.2% | **-0.106 (best)** |
+
+**Not one of the fifteen produces a positive short Sharpe**, in a sample containing a 4.3-year
+bear market where an unconditional short earns +0.475. The best is **-0.106** against a
+**+0.465** requirement — short of the bar by **0.57 Sharpe**. Minimum FP at recall >= 50% is
+**8.2%**, never the 5% the gate required.
+
+**BOOK CONTRIBUTION (0b.3), the decision-relevant number.** Against buy-and-hold gold (SR
++0.579) with the two-asset optimum:
+
+| switch | short SR | corr to long | **book dSharpe** |
+|---|---|---|---|
+| mom126d < 0 | -0.124 | -0.553 | **+0.046** |
+| SMA200 & mom252, 20d confirm | -0.112 | -0.424 | +0.018 |
+| SMA200 & DD>12% | -0.355 | -0.482 | +0.007 |
+| DD>15% from 252d high | -0.275 | -0.417 | +0.001 |
+| *perfect hindsight switch* | *+0.228* | — | ***+0.225*** |
+
+**The best causal switch delivers +0.046 — 20% of the perfect-switch ceiling and 23% of the
++0.20 target.** Note that `mom126d` wins on book contribution despite the *worst* FP rate
+(17.7%), because its correlation to the long book is the most negative (-0.553); the
+diversification partly offsets a bad standalone Sharpe. That is a real effect and still an order
+of magnitude short of deployable.
+
+**WHAT WORKS, STATED FAIRLY.** Conditioning is not useless: unconditional short **-0.579** ->
+best gated **-0.106**, a gain of **+0.47 Sharpe**. It is simply about **half** of the ~+1.04
+total swing needed to reach +0.465. This is the third independent measurement of the same ratio
+(§3am recorded the trend filter buying +0.5 against a requirement of roughly double), so it is
+a stable property of the problem, not an artifact of one switch family.
+
+**A DEFECT IN MY OWN PRE-REGISTERED GATE, recorded.** The rule was "FP <= 5% at recall >= 50%
+-> PASS; FP > ~10% -> STOP". The achieved 8.2% landed **in the gap between the two branches**,
+so the classification axis could not resolve its own test. The economic axis resolved it
+unambiguously (all fifteen negative, best 0.57 short of the bar). **Lesson: pre-register the
+gate on the ECONOMIC axis primarily, with classification metrics as diagnostics** — a gate with
+an unresolvable band is a gate that will be argued with.
+
+**VERDICT: STOPPED.** Per `PREREGISTRATION.md` §5 stopping condition 1. Phases 1, 1b, 1c, 2 and
+4 do not run. Honest scope of the claim: this tests the SMA/momentum/drawdown switch family on
+`GOLD_D1` daily. It does not prove no switch exists — it shows that the obvious causal ones fire
+in bull-market corrections often enough (FP 18-25% for the simple forms) that shorting those
+corrections costs more than shorting the actual bear earns.
+
+**THE ONE THING WORTH SALVAGING** is not the short thesis but the user's other question: *is
+data representation the bottleneck?* Phase 1's CEILING arm answers that for XAU direction
+generally, independent of the short idea, and costs 2-3 days. It is the only phase whose value
+survives this stop.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
