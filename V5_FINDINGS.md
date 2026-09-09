@@ -2382,6 +2382,48 @@ within 5 days" at precision 0.60, which is a **TRIM signal for the deployed long
 M15 down-signal as a champion overlay through the existing overlay harness, at the measured
 precision/recall rather than at an assumed one.
 
+### 3ap. M15 intrabar-path down-signal as a champion TRIM — real information, but a 2022+ artifact: 0/16 (2026-09-09, `scripts/v5_m15_trim_overlay.py`)
+
+The one lead surviving §3ao. §3am measured trimming the champion to flat in known down-windows
+at oracle dSharpe **+2.869**, so if the M15 signal's measured precision (0.600 at recall 0.20,
+base rate 0.427) converts anywhere, it converts here. Overlay is
+`champion_fc * (1 - b*trim)` — exposure can only be REDUCED, never boosted or inverted.
+Disclosed grid: 2 horizons x (3 expanding-quantile thresholds + 1 continuous) x 2 trim
+strengths = **16 cells**, all printed, all counted.
+
+| cell | SR | DD | t@matched | yrs | dSR 2018-21 | dSR 2022-26 |
+|---|---|---|---|---|---|---|
+| K12 q80 b=0.5 | +1.242 | -20.3% | **+2.39** | 7/9 | **-0.082** | +0.344 |
+| K12 cont b=0.5 | +1.151 | -19.4% | +2.20 | 7/9 | **-0.026** | +0.120 |
+| K12 q80 b=1.0 | **+1.379** | -21.9% | +2.14 | 7/9 | **-0.188** | +0.707 |
+| K12 q70 b=1.0 | +1.362 | -23.7% | +1.52 | 4/9 | **-0.322** | +0.794 |
+| K30 q70 b=1.0 | +1.333 | -23.7% | +1.51 | 6/9 | **-0.397** | +0.840 |
+| champion baseline | +1.098 | -19.5% | — | — | — | — |
+
+**TWELVE of sixteen cells clear t@matched >= +1.50, one reaches +2.39, and the best raw Sharpe
+is +1.379 against the champion's +1.098 — and it is still DISPROVEN.** Every single cell has a
+**negative 2018-21 delta and a positive 2022-26 delta**, monotone in trim strength (heavier trim
+-> worse first half, better second). That is not noise across 16 cells; it is a regime artifact,
+the identical failure mode to §3ad's range-based vol estimator (pooled t +2.25, killed as a
+2022+ artifact). **PBO 0.6865** against the <0.30 bar confirms it; **DSR 0.9999 is vacuous
+here** exactly as §3ab recorded for overlays, since every candidate inherits the champion's own
+edge. 0 of 16 cells clear the pre-registered gate (t >= +1.50 AND both half-deltas positive).
+
+**THE STANDING LESSON, NOW SEVEN TIMES OVER.** §3ao proved the M15 intrabar path carries
+genuine incremental information — dI +0.0142 bits/event, above its alignment null's p99, 7/9
+years, precision 0.600 vs a 0.427 base rate. **It still does not monetise.** That is the
+seventh independent demonstration in this repo that detection accuracy and tradeable edge are
+different quantities (§3r counted five, §3x added the turning-point scalp, this is the seventh)
+— and the first time it has been shown for an input that *passed* a properly-constructed
+information test rather than merely a classification test. **Information is necessary and not
+sufficient; the conversion step is where this asset kills things.**
+
+**PROGRAMME COMPLETE.** Phase 0b stopped the conditional short (§3an); Phase 1 closed the entire
+representation list (§3ao); Phase 1b's single surviving lead has real information and no
+regime-robust P&L. Nothing in `SHORT-VARIANT-PLAN.md` remains to run. Do not re-attempt the M15
+overlay with a different threshold, trim strength or horizon — that grid is the 16 cells above,
+and the failure is in the half-split, not the parameterisation.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.

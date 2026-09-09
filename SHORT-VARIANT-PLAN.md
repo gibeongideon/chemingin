@@ -3,9 +3,11 @@
 **Status: STOPPED 2026-09-09 at the Phase 0b gate.** Phase D complete, Phase 0b run and
 FAILED — all 15 causal regime switches give a negative short Sharpe (best -0.106 vs a +0.465
 requirement); best book contribution **+0.046** against a perfect-switch ceiling of +0.225.
-Phases 1, 1b, 1c, 2, 4 do NOT run. Full result in `V5_FINDINGS.md` §3an. The one salvageable
-item is Phase 1's CEILING arm, which answers "is representation the bottleneck" independently
-of the short thesis.
+Phase 1 then RAN and closed the entire representation list (§3ao: raw-window CEILING dI -0.0099,
+inside its null). Its one positive — the M15 intrabar path (dI +0.0142, above the alignment
+null's p99) — was tested as a champion trim overlay and **DISPROVEN 0/16** (§3ap: 12 of 16 cells
+clear t@matched +1.50 but every cell is negative in 2018-21 and positive in 2022-26; PBO 0.687).
+**PROGRAMME COMPLETE — nothing here remains to run.**
 **Scoping evidence:** `V5_FINDINGS.md` §3am. **Pre-registration:**
 `data/v5_runs/short_variant/PREREGISTRATION.md`.
 
