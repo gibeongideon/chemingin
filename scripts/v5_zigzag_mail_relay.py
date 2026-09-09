@@ -104,7 +104,8 @@ def main() -> None:
             L.append("")
         L.append("The demo bot has already placed this. Mirror it by hand if you want to.")
     else:
-        L = [f"No trade.   P(bottom) {s['prob']:.2f}  vs  0.60 threshold."]
+        L = [f"{s['symbol']}   no trade.   P(bottom) {s['prob']:.2f}  vs  "
+             f"{s['threshold']:.2f} threshold."]
         if s["open_positions"]:
             L.append(f"Holding {s['open_positions']} open position(s); TP/SL are on the broker.")
 
@@ -124,11 +125,12 @@ def main() -> None:
         if s["actions"]:
             a = s["actions"][0]
             # subject carries the order itself, so it is actionable from a phone lock screen
-            subj = (f"[zigzag] {a['kind']} {a['vol']} lots {s['symbol']} @ {a['entry']}"
+            subj = (f"[zigzag] BUY {a['vol']} lots {s['symbol']} @ {a['entry']}"
                     if a["kind"] == "BUY"
                     else f"[zigzag] CLOSE {a['vol']} lots {s['symbol']}")
         else:
-            subj = f"[zigzag] no trade (P {s['prob']:.2f})"
+            subj = (f"[zigzag] {s['symbol']} no trade "
+                    f"(P {s['prob']:.2f}/{s['threshold']:.2f})")
         mail(subj, body)
     else:
         print(f"\n(no fire -> nothing sent; --always to mail anyway)")

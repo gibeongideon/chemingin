@@ -104,6 +104,21 @@ def main() -> None:
     print(f"P(bottom) {st.prob:.4f}  threshold {thr:.2f}  -> "
           f"{'FIRES' if st.fires else 'no fire'}")
 
+    # PROSPECTIVE order — computed every run, fired or not, so the alert can always show
+    # the pair and the exact levels you would place if the threshold were met.
+    risk_usd_p = ai.equity * risk_frac
+    lots_p = risk_usd_p / (sl_pct * ask * contract)
+    step_p = info.volume_step or 0.01
+    lots_p = max(info.volume_min, round(lots_p / step_p) * step_p)
+    prospective = dict(symbol=symbol, price=round(float(ask), info.digits),
+                       entry=round(float(ask), info.digits),
+                       sl=round(ask * (1 - sl_pct), info.digits),
+                       tp=round(ask * (1 + tp_pct), info.digits),
+                       lots=round(lots_p, 2),
+                       sl_pct=sl_pct, tp_pct=tp_pct, max_hold=max_hold)
+    print(f"prospective: BUY {prospective['lots']} {symbol} @ {prospective['entry']}  "
+          f"SL {prospective['sl']}  TP {prospective['tp']}")
+
     held = [p for p in (mt5.positions_get(symbol=symbol) or []) if p.magic == magic]
     print(f"open under magic {magic}: {len(held)}")
     actions = []
@@ -126,12 +141,8 @@ def main() -> None:
         if st.stale_hours > 3:
             print(f"  SKIP entry: feed is {st.stale_hours:.1f}h stale")
         else:
-            risk_usd = ai.equity * risk_frac
-            lots = risk_usd / (sl_pct * ask * contract)
-            step = info.volume_step or 0.01
-            lots = max(info.volume_min, round(lots / step) * step)
-            sl = round(ask * (1 - sl_pct), info.digits)
-            tp = round(ask * (1 + tp_pct), info.digits)
+            lots = prospective["lots"]
+            sl, tp = prospective["sl"], prospective["tp"]
             close_by = (datetime.now(timezone.utc)
                         + pd.Timedelta(hours=max_hold)).strftime("%Y-%m-%d %H:%M UTC")
             actions.append(("BUY", None, round(lots, 2),
@@ -182,7 +193,7 @@ def main() -> None:
         computed_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         login=ai.login, server=ai.server, equity=float(ai.equity), symbol=symbol,
         bars=len(df), last_bar=st.asof, stale_hours=st.stale_hours,
-        prob=st.prob, threshold=thr, fires=st.fires,
+        prob=st.prob, threshold=thr, fires=st.fires, prospective=prospective,
         open_positions=len(held), actions=[dict(kind=k, vol=v, why=w, **px)
                                            for k, _, v, w, px in actions],
         sent=sent, executed=bool(args.live and args.execute and is_demo),
