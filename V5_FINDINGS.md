@@ -2424,6 +2424,49 @@ regime-robust P&L. Nothing in `SHORT-VARIANT-PLAN.md` remains to run. Do not re-
 overlay with a different threshold, trim strength or horizon — that grid is the 16 cells above,
 and the failure is in the half-split, not the parameterisation.
 
+### 3aq. M15 trim at BOOK level — 0/32, and the two variants fail in OPPOSITE ways (2026-09-09, `scripts/v5_m15_trim_book.py`)
+
+The one combination §3ap left untested, run because "argued from precedent" is weaker than
+"measured". §3ac's recorded lesson predicted dilution; §3ag went 0/11 on book-level RISK
+overlays but this one is DIRECTIONAL. Two readings of "book level", both run, 32 disclosed cells
+(2 horizons x 4 thresholds x 2 strengths x 2 variants). Baseline: the gold-tilted core-4 book on
+Maven carry, SR +1.213, halves +1.11/+1.30.
+
+| variant | best t@matched | best SR | half-split pattern |
+|---|---|---|---|
+| **B — trim the XAU sleeve, rebuild the book** | **+1.91** | +1.387 | **every cell** −0.017..−0.339 in 2018-21, +0.075..+0.602 in 2022-26 |
+| **A — whole-book exposure scalar** | **+1.03** | +1.259 | mostly **POSITIVE** 2018-21 (+0.009..+0.177), ~zero 2022-26 |
+
+**0 of 32 pass.** But the failure modes are **complementary, not identical**, and that is the
+finding:
+- **Variant B is strong and regime-dependent.** It reproduces §3ap's sleeve-level result exactly
+  — best t +1.91, best SR +1.387 against the book's +1.213, and *every single cell* negative in
+  the first half and positive in the second.
+- **Variant A is regime-robust and weak.** It is the only place in either test where cells clear
+  the both-halves requirement — **4 of 32 do** (all variant A, K30) — but the best of them
+  reaches only **t +1.03**, never the +1.50 bar.
+
+**§3ac's dilution lesson is now quantified rather than asserted:** moving the same signal from
+sleeve level to book level cuts the best t-statistic from **+1.91 to +1.03** while buying
+regime robustness. Diversification really does perform the smoothing a per-sleeve overlay is
+reaching for — you cannot collect both.
+
+**And the half-split direction FLIPS between the two variants**, which is the sharpest available
+evidence about what B's apparent strength really was. If the M15 down-signal carried general
+value, applying it more broadly would preserve the sign. Instead B's entire gain sits in
+2022-26 on the gold sleeve while A's small gain sits in 2018-21 across the book. **B was reading
+something about gold's 2022-26 behaviour, not about downside generally.**
+
+**PBO 0.7897** over the 32 cells — worse than the sleeve test's 0.687, as expected from a larger
+grid. DSR 0.9999 remains vacuous for overlays (§3ab).
+
+**THE COMBINATION QUESTION IS NOW CLOSED BY MEASUREMENT.** With §3w (ICT confluence 0/4), §3ag
+(6-component stack 0/29), §3r (`regime2` stacking adds nothing over plain regime), the basket
+combination that HURT (1.41 -> 1.26), and now this, there are **five independent refutations of
+"combine the components"** in this repo. The specific reason it cannot work here was already
+visible in §3ap and is confirmed: the M15 overlay's failure is in the **half-split**, and
+combination raises **precision**, which was never the failing variable.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.

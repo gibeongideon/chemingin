@@ -160,6 +160,14 @@ against a <0.30 bar. 0 of 16 pass.
 first for an input that passed an *information* test rather than merely a classification test.
 That makes it the strongest version of the project's central lesson, not the weakest.
 
+**Closed at book level too (§3aq).** The one remaining combination — the same signal applied to
+the whole book rather than the gold sleeve — went **0/32**, and the two variants failed in
+opposite ways: trimming the sleeve is strong but regime-dependent (best t +1.91, every cell
+negative in 2018-21), while scaling the whole book is regime-robust but weak (best t +1.03, the
+only cells anywhere to clear both halves). That quantifies §3ac's dilution lesson, and the
+half-split *flipping* between variants shows the sleeve version was reading gold's 2022-26
+behaviour rather than downside generally.
+
 The same experiment also closed the entire representation question at a single multiple-testing
 penalty: since every candidate representation is a function of the same trailing window, and the
 raw window carries no information over the incumbent block, **fracdiff, directional
@@ -200,6 +208,12 @@ contractual and deterministic; they need no out-of-sample validation.
 precision, a +2.12pp accuracy edge with a bootstrap CI clear of zero, and incremental
 information above a p99 null — and between them, roughly 130 pre-registered trade structures
 that all failed.
+
+One more thing worth stating: **combination is not the missing ingredient.** Five independent
+refutations now exist — ICT confluence 0/4, the 6-component stack 0/29, feature-block stacking
+adding nothing over a single block, combining two books *hurting* (1.41 → 1.26), and the
+book-level M15 trim 0/32. Stacking raises precision; on this asset precision has never been the
+failing variable.
 
 The lesson, stated once: **information is necessary and not sufficient.** On this instrument the
 conversion step — from a correct forecast to a net-of-cost position that survives a regime split
