@@ -2060,6 +2060,53 @@ triggers" is a strictly losing move**, which closes the avenue rather than leavi
 search over many rules — strictly stronger than DSR/PBO for that job, since it accounts for the
 correlation between candidates and for overlapping horizons at the same time.
 
+### 3al. Choosing between three 5%ers plans — the binding constraint again, and the FUNDED wall decides income (2026-09-09, `scripts/v5_account_chooser.py`)
+
+The 5%ers checkout offers a 1-Step Growth ($249), 2-Step High Stakes ($491) and 3-Step Bootcamp
+($225 + $350 payable only on passing). Simulated against the deployed manual gold champion
+(net Sharpe +1.084, realised vol 13.9%, maxDD -19.8%), 5 seeds x 1,200 sims, `day_safety=1.5`.
+`fp_sim` could not represent a 1-step, a 3-step with STEPPING balances, or a consistency rule,
+so a general multi-phase simulator was written.
+
+| plan | binding constraint | at a 5% dial | funded wall | max safe funded dial | $/yr funded |
+|---|---|---|---|---|---|
+| 1-Step Growth | **3% DAILY** | 61.5% pass, fail_day **36.3%** | 6% | 4.21% | $4,107, **hard-capped at $2,000** |
+| 2-Step High Stakes | 5% daily | **98.9%** pass, fail_dd 0.8%, 28.8mo | 10% | **7.02%** | $6,845 |
+| 3-Step Bootcamp | **5% max loss/step**, no daily | 80.8% pass, fail_dd 19.2%, 32.5mo | **4%** | 2.81% | **$7,606** |
+
+**Bootcamp has NO daily limit — fail_day is 0.0% at every dial tested**, so the failure mode that
+destroys the other two at any dial that earns anything simply does not exist there. Its risk is
+entirely drawdown: fail_dd 3.5% / 10.6% / 19.2% / 28.7% / 38.0% at 3/4/5/6/7% dials, while
+months-per-pass improves monotonically (64.1 -> 48.5 -> 40.3 -> 34.9 -> 31.5).
+
+**TWO CORRECTIONS TO MY OWN FIRST PASS, both material.**
+1. I priced income at the EVALUATION dial. What caps long-run income is the **FUNDED** max loss,
+   and Bootcamp's 4% on 250K is the TIGHTEST of the three — a strategy whose maxDD is 19.8% at
+   13.9% vol can only run a **2.81%** dial there. Correctly computed, the funded ranking is
+   $7,606 / $6,845 / $4,107, far closer than the evaluation-phase table implied.
+2. I asserted the 50% consistency rule "would flatter the 1-step plan considerably". **Measured,
+   it does not bind at all** — pass rates are identical with and without it (99.2 / 61.5 / 47.0
+   at 3/5/7% dials either way), because at these dials no single day approaches half of a 10%
+   profit. What kills Growth is the 3% daily limit alone: removing only that takes the 5% dial
+   from **61.5% to 96.2%**.
+
+**THE FINDING THAT APPLIES TO ALL THREE, and outranks the choice between them:** at a survivable
+dial this strategy earns 3-8%/yr while the targets are 6-15% cumulative, so **time-to-funded is
+2-3 years on every plan**. A 6% step at a 5% dial takes ~13 months. No plan choice fixes that;
+only a higher Sharpe or a higher dial would, and the dial is what the walls constrain.
+
+**Verdict: Bootcamp at a 5-6% evaluation dial.** Downside is $225 rather than $491 (the $350 is
+contingent on passing), the dominant failure mode is absent, and 250K at a 100% split gives the
+highest funded income despite the tightest funded wall. High Stakes at a 5% dial (98.9% pass) is
+the risk-averse alternative at 2.2x the price for ~10% less income. Growth is ruled out twice
+over — by the daily limit and by the $2,000 withdrawal cap.
+
+**MUST VERIFY BEFORE BUYING**, none of it visible on the checkout: whether max loss is STATIC or
+TRAILING (`xau-riskfrac-sizing-table` measured 4.4% vs 17.9% breach probability for the same
+strategy under the two conventions — this single fact could invert the verdict); the profit split
+for Growth and High Stakes (assumed 90%); and that Bootcamp's blank daily-loss row really means
+no daily limit rather than an unstated one.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
