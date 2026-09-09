@@ -32,8 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VPS = "trader@68.183.91.240"
 REMOTE_JSON = "/home/trader/MT5/data/v5_runs/zigzag_ftmo_state.json"
 STALE_ALERT_H = 6
-DISCLAIMER = ("NEGATIVE EXPECTANCY — walk-forward SR -0.76, 0/8 years better than buy&hold, "
-              "DSR 0.000 (V5_FINDINGS 3x). Observation harness, not a recommendation.")
+DISCLAIMER = "Demo test only — this strategy is expected to lose money (walk-forward -0.76)."
 
 
 def creds() -> dict:
@@ -83,31 +82,34 @@ def main() -> None:
     age = (datetime.now(timezone.utc)
            - datetime.fromisoformat(s["computed_utc"])).total_seconds() / 3600
 
-    lines = [
-        f"account   {s['login']} @ {s['server']}   equity ${s['equity']:,.2f}",
-        f"symbol    {s['symbol']}   feed {s['bars']:,} closed H1 bars",
-        f"last bar  {s['last_bar']}   ({s['stale_hours']:.1f}h ago)",
-        "",
-        f"P(bottom) {s['prob']:.4f}   threshold {s['threshold']:.2f}   "
-        f"-> {'FIRES' if s['fires'] else 'no fire'}",
-        f"open      {s['open_positions']} position(s) under the harness magic",
-        "",
-    ]
+    # --- SIMPLE, ACTIONABLE BODY. The order details first; everything else is one line. ---
     if s["actions"]:
-        for a in s["actions"]:
-            lines.append(f"ACTION    {a['kind']} {a['vol']} lots   ({a['why']})")
-        lines.append("")
-        lines.append("The demo bot has already sent these. To mirror it by hand elsewhere:")
+        L = []
         for a in s["actions"]:
             if a["kind"] == "BUY":
-                lines.append(f"  BUY {a['vol']} lots XAUUSD, then attach TP +0.60% and SL -0.50%")
-                lines.append(f"  close it after 48 hours if neither has been hit")
+                L += [
+                    f"BUY {s['symbol']}   {a['vol']} lots",
+                    "",
+                    f"  Entry   {a['entry']}      (market)",
+                    f"  SL      {a['sl']}      (-0.50%)",
+                    f"  TP      {a['tp']}      (+0.60%)",
+                    f"  Close   {a['close_by']} if neither is hit",
+                ]
             else:
-                lines.append(f"  CLOSE {a['vol']} lots XAUUSD ({a['why']})")
+                L += [
+                    f"CLOSE {s['symbol']}   {a['vol']} lots",
+                    "",
+                    f"  Opened at {a['entry']}, held {a.get('age_h')}h — 48h limit reached.",
+                ]
+            L.append("")
+        L.append("The demo bot has already placed this. Mirror it by hand if you want to.")
     else:
-        lines.append("ACTION    none")
-    lines += ["", f"ticket computed {s['computed_utc']} ({age:.1f}h ago)", "", DISCLAIMER]
-    body = "\n".join(lines)
+        L = [f"No trade.   P(bottom) {s['prob']:.2f}  vs  0.60 threshold."]
+        if s["open_positions"]:
+            L.append(f"Holding {s['open_positions']} open position(s); TP/SL are on the broker.")
+
+    L += ["", f"{DISCLAIMER}"]
+    body = "\n".join(L)
     print(body)
 
     if age > STALE_ALERT_H:
@@ -119,9 +121,14 @@ def main() -> None:
         sys.exit(f"state {age:.0f}h stale — warning mailed")
 
     if s["actions"] or args.always:
-        act = s["actions"][0]["kind"] if s["actions"] else "no action"
-        subj = (f"[zigzag] {act} {s['symbol']} — P(bottom) {s['prob']:.2f}" if s["actions"]
-                else f"[zigzag] no action (P {s['prob']:.2f})")
+        if s["actions"]:
+            a = s["actions"][0]
+            # subject carries the order itself, so it is actionable from a phone lock screen
+            subj = (f"[zigzag] {a['kind']} {a['vol']} lots {s['symbol']} @ {a['entry']}"
+                    if a["kind"] == "BUY"
+                    else f"[zigzag] CLOSE {a['vol']} lots {s['symbol']}")
+        else:
+            subj = f"[zigzag] no trade (P {s['prob']:.2f})"
         mail(subj, body)
     else:
         print(f"\n(no fire -> nothing sent; --always to mail anyway)")

@@ -114,7 +114,9 @@ def main() -> None:
         age_h = (now - p.time) / 3600.0
         if age_h >= max_hold:
             actions.append(("CLOSE", p.ticket, p.volume,
-                            f"max-hold {age_h:.0f}h >= {max_hold}h"))
+                            f"max-hold {age_h:.0f}h >= {max_hold}h",
+                            dict(entry=float(p.price_open), sl=None, tp=None,
+                                 close_by=None, age_h=round(age_h, 1))))
         else:
             print(f"  ticket {p.ticket}: {p.volume} lots, age {age_h:.1f}h "
                   f"(closes at {max_hold}h; TP/SL are server-side)")
@@ -130,15 +132,21 @@ def main() -> None:
             lots = max(info.volume_min, round(lots / step) * step)
             sl = round(ask * (1 - sl_pct), info.digits)
             tp = round(ask * (1 + tp_pct), info.digits)
+            close_by = (datetime.now(timezone.utc)
+                        + pd.Timedelta(hours=max_hold)).strftime("%Y-%m-%d %H:%M UTC")
             actions.append(("BUY", None, round(lots, 2),
-                            f"prob {st.prob:.3f} >= {thr}; SL {sl} TP {tp}"))
+                            f"prob {st.prob:.3f} >= {thr}",
+                            dict(entry=round(float(ask), info.digits), sl=sl, tp=tp,
+                                 close_by=close_by, age_h=None)))
     elif st.fires and held:
         print("  fires, but already in a position — no pyramiding")
 
     if not actions:
         print("  ACTION: none")
-    for kind, ticket, vol, why in actions:
-        print(f"  ACTION: {kind} {vol} lots  ({why})")
+    for kind, ticket, vol, why, px in actions:
+        extra = (f" @ {px['entry']}  SL {px['sl']}  TP {px['tp']}"
+                 if kind == "BUY" else "")
+        print(f"  ACTION: {kind} {vol} lots{extra}  ({why})")
 
     sent = []
     if args.live and args.execute and actions:
@@ -146,7 +154,7 @@ def main() -> None:
             print("  ** REFUSING: account is not flagged demo. "
                   "This harness is demo-only by design. **")
         else:
-            for kind, ticket, vol, why in actions:
+            for kind, ticket, vol, why, px in actions:
                 if kind == "CLOSE":
                     pos = next((p for p in held if p.ticket == ticket), None)
                     req = dict(action=mt5.TRADE_ACTION_DEAL, symbol=symbol, volume=vol,
@@ -175,8 +183,8 @@ def main() -> None:
         login=ai.login, server=ai.server, equity=float(ai.equity), symbol=symbol,
         bars=len(df), last_bar=st.asof, stale_hours=st.stale_hours,
         prob=st.prob, threshold=thr, fires=st.fires,
-        open_positions=len(held), actions=[dict(kind=k, vol=v, why=w)
-                                           for k, _, v, w in actions],
+        open_positions=len(held), actions=[dict(kind=k, vol=v, why=w, **px)
+                                           for k, _, v, w, px in actions],
         sent=sent, executed=bool(args.live and args.execute and is_demo),
         warning="NEGATIVE EXPECTANCY — walk-forward SR -0.76, 0/8 years, DSR 0.000 (V5_FINDINGS 3x)"
     ), indent=2))
