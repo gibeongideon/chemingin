@@ -1,0 +1,12 @@
+# Computes the five-finding digest from FTMO's own feed and writes signals_digest.json.
+# The desktop relay mails it, because this host cannot reach any SMTP port.
+[Unit]
+Description=Five-finding signal digest (computes, does not trade)
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/signals-digest.sh
+TimeoutStartSec=900
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=signals-digest

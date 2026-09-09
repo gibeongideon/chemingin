@@ -1,0 +1,11 @@
+# 20:10 UTC daily — after the US session, and the champion/book sleeves are multi-week
+# signals so daily is the right cadence. The hourly zigzag alerts are separate.
+[Unit]
+Description=Timer for the five-finding signal digest (20:10 UTC daily)
+[Timer]
+OnCalendar=*-*-* 20:10:00 UTC
+OnBootSec=300sec
+Persistent=true
+Unit=signals-digest.service
+[Install]
+WantedBy=timers.target
