@@ -1,0 +1,343 @@
+<!--
+  MEDIUM-READY blog post #3. Open in a browser, select all, copy, paste into the Medium editor.
+
+  Same constraints as BlogPOST-ZeroCarry.html and BlogPOST-SMC.html:
+    * Medium strips ALL CSS. The <style> block exists only so the file reads well locally.
+    * Medium has NO TABLE SUPPORT — every data table here is a <pre> block, which pastes as a
+      code block and keeps its column alignment. Do NOT convert them to <table>.
+    * Paste-safe structure only: h1, h2, p, ul/li, blockquote, pre, strong, em, a.
+    * Medium maps the first h1 to the story title and the following h2 to the subtitle.
+
+  Every figure is from V5_FINDINGS.md / BEST_FINDINGS.MD and uses the VERIFIED values (where a
+  subagent's reimplemented engine disagreed, the engine_bp-verified number is used).
+
+  NOTE on the closing CTA: unlike BlogPOST-SMC.html, this one quotes the LEDGER number
+  (net Sharpe 1.212) rather than the author's private 1.96 Sharpe / 36% CAGR figures. If you
+  want those here instead, paste them in — they are your figures for private work and are not
+  in the repo.
+-->
+<style>
+  body {
+    max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem;
+    font: 17px/1.65 Georgia, "Times New Roman", serif;
+    color: #17191f; background: #fff;
+  }
+  h1 { font-size: 2.3rem; line-height: 1.15; margin: 0 0 .4rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.3rem; line-height: 1.25; margin: 2.4rem 0 .6rem; }
+  h1 + h2 { font-size: 1.35rem; font-weight: 400; color: #575d6b; margin-top: 0; }
+  h3 { font-size: 1.05rem; margin: 1.8rem 0 .4rem; }
+  p, li { margin: 0 0 1.1rem; }
+  ul { padding-left: 1.2rem; }
+  pre {
+    font: 12.5px/1.6 "SF Mono", Menlo, Consolas, monospace;
+    background: #f4f5f7; padding: 1rem; overflow-x: auto;
+    border-left: 3px solid #2f5d50; margin: 1.4rem 0;
+  }
+  blockquote {
+    margin: 1.6rem 0; padding-left: 1.1rem; border-left: 3px solid #2f5d50;
+    font-size: 1.25rem; line-height: 1.4; color: #17191f;
+  }
+  code { font: 14px/1 "SF Mono", Menlo, Consolas, monospace; background: #f4f5f7; padding: .1em .3em; }
+  hr { border: none; border-top: 1px solid #dcdee4; margin: 2.6rem 0; }
+  .footnote { font-size: .9rem; color: #575d6b; }
+</style>
+
+<h1>How I Kill My Own Findings</h1>
+
+<h2>Four years of gold research produced five results worth keeping. Two of them make money.
+Three are statistically solid and worthless. This is the machinery that told them apart.</h2>
+
+<p>Most published trading research shows you what survived. The interesting part is what killed
+everything else, because that is the only transferable skill. I keep a ledger of every experiment
+on this project — roughly a hundred and thirty pre-registered trade structures across gold,
+crypto, indices and energy — and the ledger's most valuable pages are the ones recording how a
+promising number turned out to be nothing.</p>
+
+<p>Here is the scoreboard, ranked by strength of evidence rather than by profitability, because
+that distinction is the whole point.</p>
+
+<pre>Finding                                      Evidence type    Tradable?
+Swap-free gold instrument                    contractual      YES
+Diversification + binding-constraint rule    measured         YES
+"Zigzag" bottom detector, 80% precision      strong           no
+Regime accuracy edge, +2.12pp vs baseline    strong           no
+Intrabar-path information, above a p99 null  strong           no</pre>
+
+<p>Three of five are real, carefully measured, and produce no money. If you take one thing from
+this piece, take that ratio.</p>
+
+<h2>The controls, and what each one killed</h2>
+
+<p>These accumulated one at a time, each after something silently manufactured a result that
+evaporated when the control was added. They are run before any new backtest is believed.</p>
+
+<h3>1. Floor every cost at the live broker quote</h3>
+
+<p>Historical spread columns understate reality, and not by a little. Measured against live
+quotes:</p>
+
+<pre>Asset       CSV models    live      error
+NATGAS         4.0 bp    199.4 bp     50x
+HEATOIL        4.0 bp     80.1 bp     20x
+PALLADIUM      5.0 bp     56.4 bp     11x
+BRENT/WTI      ~3.0 bp    8-9 bp      ~3x
+gold H4        $0.30      $0.448      1.5x</pre>
+
+<p>A first pass of one study crowned a three-asset book the best in the sweep on a 20x cost
+subsidy. At honest cost the third sleeve collapsed from <strong>+0.47 to +0.09 Sharpe</strong>
+and the entire agricultural complex went negative. Costs in <em>basis points</em>, never dollars:
+ten cents of slippage is 0.002bp on bitcoin and 12bp on Brent, and on EUR/USD a dollar-based cost
+model once produced a Sharpe of −7.7 out of a units error alone.</p>
+
+<h3>2. Benchmark against buy-and-hold over the same window</h3>
+
+<p>A long-only trend follower in a bull market posts a fine Sharpe with zero timing skill.</p>
+
+<pre>Window            buy &amp; hold gold    the trend follower
+2008+ (18.4y)              +0.57               +0.64
+2022+ (4.4y)               +1.15               +1.11</pre>
+
+<p>It never beats owning the metal — its Sharpe just tracks gold's own Sharpe in whichever window
+you pick. What it actually sells is drawdown control (−10.0% against −23.1% post-2022), not
+alpha. A later test made this sharper still: a degenerate "always hold maximum volatility-targeted
+long" policy scores <strong>+1.075</strong> against the strategy's <strong>+1.090</strong>,
+statistically indistinguishable at matched volatility.</p>
+
+<h3>3. Walk-forward the universe, not just the parameters</h3>
+
+<p>Choosing <em>which assets to trade</em> using the full sample roughly doubles apparent Sharpe.
+Same signal, three levels of honesty:</p>
+
+<pre>always-in, full-sample asset choice        +1.03
+weekend-flat                              +0.61
+walk-forward top-8, re-picked each Jan    +0.26</pre>
+
+<h3>4. Quote a standard error</h3>
+
+<p>At 4.4 years, the standard error on a Sharpe ratio is about <strong>0.6</strong>. So a
+post-2022 "+1.07" has a 95% interval of roughly [−0.11, +2.25] — not distinguishable from the
+full-sample +0.44, nor from zero. Short windows cannot resolve a Sharpe, and most of the
+disagreements in this field are people quoting point estimates at each other inside overlapping
+confidence intervals.</p>
+
+<h3>5. Trade the label with perfect hindsight <em>before</em> building a detector</h3>
+
+<p>This is the control I would give away first, because it costs five minutes and it retroactively
+explained five failed studies.</p>
+
+<p>Before building a model to detect something, trade that something with perfect foresight and
+see what it is worth. Five separate studies here tried to detect gold's bottoms. The oracle says:</p>
+
+<pre>Perfect knowledge of...              value as an overlay
+geometric BOTTOMS                          +0.017
+geometric BOTTOMS, standalone long         -0.675
+geometric TOPS                             +0.259
+forward 12-bar DOWN window                 +4.001</pre>
+
+<p>Perfect bottom-detection is worth <strong>+0.017</strong> — and <strong>−0.675</strong> traded
+standalone. The reason is embarrassing once you see it: the strategy is long-only and
+near-always-in, so <em>it is already long at bottoms</em>. All the value was on the other side,
+in trimming before bad windows. Five studies optimised the worthless half of the problem. No
+amount of model quality can lift a ceiling.</p>
+
+<h3>6. Deflated Sharpe AND probability of backtest overfitting AND walk-forward re-selection</h3>
+
+<p>All three, together, never a raw Sharpe. The instructive case: a cross-asset divergence signal
+whose best full-sample configuration scored <strong>+0.547</strong>. Re-selecting the
+configuration each year on past data only collapsed it to <strong>+0.238</strong>. The catch came
+not from testing the winner's robustness but from walk-forwarding the <em>selection process
+itself</em>.</p>
+
+<p>And the two statistics are not redundant. One bracket search returned a deflated Sharpe of
+0.0000 while its overfitting probability looked reassuringly low, because that grid's variation
+was a monotonic cost gradient rather than a genuine edge gradient.</p>
+
+<h3>7. Check whether the question is answerable before answering it</h3>
+
+<p>The newest control, and the one that saved the most wasted work. Before building a detector,
+count the <em>independent</em> events, invert the economics to the accuracy you would need, and
+put the standard error next to it.</p>
+
+<pre>required AUC for a worthwhile edge          0.617
+best AUC ever achieved here                 0.593
+gap                                        +0.024
+standard error of AUC at 247 events        0.0367
+expected best-of-8 lift from PURE NOISE    +0.053</pre>
+
+<p>I had designed an eight-way comparison of feature representations to detect a
+<strong>+0.024</strong> effect, in a design whose pure-noise floor was <strong>+0.053</strong>.
+The experiment was strictly incapable of answering its own question. Count decided,
+non-overlapping events — not bars, and not windows: at a five-day horizon, 46% of windows never
+touch either barrier and must be dropped, which overstated my sample by 1.9x when I counted
+windows.</p>
+
+<h2>Three controls I had to add this year</h2>
+
+<p><strong>Gate de-risking overlays at matched volatility.</strong> Anything that only ever
+<em>reduces</em> exposure will look bad on a naive paired test, because it gives up return along
+with risk. Levering the candidate back to the baseline's volatility first changed one round's
+verdict from 0 of 29 passing to 3 of 29.</p>
+
+<p><strong>Compare your best rule to the best rule a no-edge dataset would give you.</strong> I
+searched 21,300 conditional triggers and the winner scored a z-statistic of 11.5, which sounds
+decisive. Then I block-bootstrapped the null distribution of the <em>maximum</em> across the whole
+search: its median is <strong>9.34</strong>. A z of 9 is unremarkable in a search that size. This
+also proves that searching harder is a losing move — the bar rises faster than the statistic.</p>
+
+<p><strong>Run the whole pipeline on synthetic noise.</strong> This one caught me directly. On
+pure Gaussian returns, one arm of my representation test beat the baseline by
+<strong>+0.032 bits per event with 7 of 9 years positive</strong> — which would have
+<em>passed</em> my own pre-registered bar. The statistic turned out to be biased toward the
+higher-capacity arm, and a single synthetic draw cannot establish a null. Without that control I
+would have published a representation "edge" made of nothing.</p>
+
+<blockquote>Every one of these exists because it caught me. None of them is theoretical.</blockquote>
+
+<h2>What is tradable</h2>
+
+<h3>1. A swap-free gold instrument</h3>
+
+<p>One broker carries a gold instrument with <code>swap_mode = DISABLED</code> — literally no
+overnight financing — that tracks spot gold at <strong>0.998</strong> daily-return correlation.</p>
+
+<pre>                     standard gold    swap-free version
+overnight financing       -3.70%/yr           0.00%/yr
+spread                 $0.42 (0.94bp)     $0.55 (1.23bp)
+sleeve net Sharpe           +0.862             +1.065</pre>
+
+<p><strong>+0.203 Sharpe for 0.33bp of extra spread.</strong> The obvious objection — a perpetual
+instrument must charge its funding somewhere, presumably in the price — was tested rather than
+assumed: the log basis against spot drifts <strong>+0.17%/yr</strong> across 2,711 hourly bars,
+inside a 1% band. Nothing resembling the 3.70% it avoids.</p>
+
+<p>This ranks first because the gain is <em>contractual</em>. A saving of 3.70% a year is 3.70% a
+year whether the strategy works or not; it needs no out-of-sample validation. Set against it:
+every signal-side improvement ever attempted on this book has been worth exactly zero.</p>
+
+<p>Caveats, since they matter: the instrument has six months of history, so re-measure the basis
+monthly; and only 5 of that venue's 68 symbols are swap-free, none of them an index, crypto or
+energy — so the win is confined to gold.</p>
+
+<h3>2. Diversification, and matching the book to the binding constraint</h3>
+
+<pre>Book                                  net Sharpe    maxDD
+single-sleeve gold (standard)             +0.862    -22.8%
+single-sleeve gold (swap-free)            +1.065    -19.7%
+four sleeves, equal weight                +1.096    -10.5%
+four sleeves, gold at 50%                 +1.212    -11.5%</pre>
+
+<p>Sleeve correlations sit between +0.04 and +0.14 — the diversification is real, not a
+curve-fit. The second half is a rule about risk limits: <em>the best book depends on which rule
+actually fails you.</em> On a prop account killed by a daily loss limit, widening from four
+sleeves to nine takes pass rate from <strong>88.6% to 94.1%</strong> and daily breaches from
+9.3% to zero, by thinning the left tail. Where no daily limit binds, the narrower higher-Sharpe
+book wins instead.</p>
+
+<p>What lost, and this surprised me: hierarchical risk parity, random-matrix covariance cleaning,
+minimum-CVaR and inverse-volatility weighting — <strong>0 of 20 configurations beat equal
+weight</strong>. The classic 1/N result. Estimation error swamps the optimisation gain.</p>
+
+<h2>What is not tradable — and these are the careful ones</h2>
+
+<h3>3. The bottom detector: 80% precision, worth nothing</h3>
+
+<pre>operating point    precision    random base    lift
+recall 22%              71%          33.5%      2.1x
+recall 10%              75%          33.5%      2.2x
+recall  5%              80%          33.5%      2.4x</pre>
+
+<p>Precision-recall AUC 0.60. Hand-written rules cap out near 62%, so the model genuinely adds
+something. Traded as "enter on the flag, exit at the first reasonable profit", <strong>all 48
+grid cells are negative</strong> and the honest walk-forward number is <strong>−0.76</strong>
+against buy-and-hold's +0.79, with zero of eight years better. And per control 5, the target was
+worthless before the detector existed.</p>
+
+<p>Read the lift, not the headline: widening the tolerance window inflates absolute precision by
+raising the random base rate. The 2.1–2.4x lift is the honest statistic.</p>
+
+<h3>4. The regime accuracy edge: statistically solid, five ways to trade it, none worked</h3>
+
+<pre>accuracy predicting next-day direction        51.97%
+persistence baseline (NOT 50%)                49.85%
+edge                                          +2.12pp
+block-bootstrap 90% interval          [+0.51, +3.69pp]
+probability the edge is <= 0                     1.5%
+years positive                              8 out of 9</pre>
+
+<p>Beating <em>persistence</em> rather than a coin flip is the part most published work skips.
+Then: standalone (Sharpe −0.44), as an overlay, as a confidence gate at every threshold, across
+five forecast horizons, and an 80-cell stop/target grid in which <strong>79 of 80 cells were
+Sharpe-negative</strong>. Also tested and adding nothing over this: multi-scale Hurst exponents, a
+causal hidden Markov model, wavelet energy decomposition, and a twelve-symbol intermarket panel.</p>
+
+<h3>5. Intrabar path: real information that will not convert</h3>
+
+<p>The newest result. Slice each four-hour bar into its sixteen fifteen-minute constituents and
+describe the <em>path</em> price took inside it — realised volatility, how much distance was
+travelled, how many times direction changed, and crucially <em>when</em> the high and low
+occurred. Open-high-low-close tells you the extremes but never which came first.</p>
+
+<p>That block carries genuine incremental information: <strong>+0.0142 bits per independent
+event, above its shuffled-alignment null's 99th percentile, 7 of 9 years positive</strong>, with
+precision of 0.600 against a 0.427 base rate. It is the first input in four years to beat a
+properly-constructed information null.</p>
+
+<p>It does not trade. As a position-trimming overlay, <strong>12 of 16 configurations clear a
+matched-volatility t-statistic of +1.50</strong>, one reaches +2.39, and the best raw Sharpe is
++1.379 against the strategy's +1.098. Still dead: <em>every</em> configuration is negative in
+2018-21 and positive in 2022-26. That is a regime artifact across sixteen cells, not noise, and
+the overfitting probability is 0.687 against a 0.30 bar. Applied at book level instead it went 0
+of 32.</p>
+
+<p>The activity pattern explains why it is fragile. The signal fires <strong>0.7 to 2.1 times a
+week</strong>, and <strong>51% of firings last a single four-hour bar</strong>. Bolting a
+one-bar flicker onto a multi-week trend follower multiplies turnover from 18.5 trades a year to
+106. And no individual feature clears its own standard error — the strongest is 0.530 against an
+SE of 0.0367 — so the block beat its null while the mechanism remains a plausible story rather
+than an established one.</p>
+
+<h2>The pattern</h2>
+
+<p>Two of five made money, and neither came from predicting the market. Both came from measuring
+what a position <em>costs</em> — a swap table and a correlation matrix. Costs are published,
+contractual, deterministic, and need no out-of-sample validation. Signals are estimated, noisy,
+and mostly imaginary.</p>
+
+<p>Three of five are genuine, statistically careful positives that produce no profit: 80%
+precision, an accuracy edge with a bootstrap interval clear of zero, and incremental information
+above a p99 null — and between them, roughly a hundred and thirty failed trade structures.</p>
+
+<blockquote>Information is necessary and not sufficient. The conversion step is where the money
+goes.</blockquote>
+
+<p>One more thing, because it is the most common suggestion I get: <strong>combining the
+components does not help.</strong> Five independent refutations here — confluence stacking of
+twelve chart-pattern concepts, a six-component published stack, feature-block stacking, combining
+two independent books (which made things <em>worse</em>, 1.41 to 1.26), and the intrabar overlay
+at book level. Stacking raises precision. On this asset precision has never been the failing
+variable.</p>
+
+<p>If you are starting out: measure what you pay before optimising what you predict, and build
+the machinery that kills your findings before you build the findings.</p>
+
+<h2>If this is your kind of problem</h2>
+
+<p>The book runs at <strong>net Sharpe 1.212 after real broker carry</strong> — the figure above,
+not a gross backtest — on a financing treatment that goes beyond what is published here. Access
+is paid.</p>
+
+<p>If you run a book where financing is still a footnote, or you want this cost census run
+against your own venue, let us talk. Email
+<a href="mailto:kipngenol@gmail.com">kipngenol@gmail.com</a> or message me on WhatsApp at
+<a href="https://wa.me/254752516673">+254 752 516 673</a>.</p>
+
+<hr>
+
+<p class="footnote">Gold at four-hour bars 2015–2026 evaluated 2018 onward, plus daily series for
+the non-gold sleeves and an eighteen-year daily gold history for regime work. Costs in basis
+points from live-measured spreads, widened 1.5x, with overnight financing charged per bar on
+actual notional. Sharpe figures are net and walk-forward with annual re-selection unless labelled
+otherwise; drawdowns are close-to-close and therefore optimistic against real intraday
+excursions. Two hazards worth naming for anyone doing similar work: two of my own data files turn
+out to be different feeds from the same instrument, differing by $405 and $177 at the extremes,
+and neither should be spliced into a P&amp;L series without diagnosing the offset first.</p>
