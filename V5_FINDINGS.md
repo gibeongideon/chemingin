@@ -1925,6 +1925,141 @@ be chosen for convenience, not for its backtest score** — the deployed 12:10 U
 entry fires exactly when **forecast > BUFFER** (0.20) regardless of dial or volatility. On
 2026-09-07 the forecast was 0.197 against a structural floor of 0.15 — no position warranted.
 
+### 3aj. Deep RL trader (q-trader rebuilt properly) — DISPROVEN; indistinguishable from random actions AND from shuffled data (2026-09-09, `scripts/v5_rl_trader.py`)
+
+The user pointed at an old project of theirs, `Stock_Prediction-with-AI-master` (edwardhdlu's
+`q-trader`, 2019: Keras DQN over n-day close windows, actions {sit, buy, sell}, scored on total
+dollar profit) and asked for "something similar but 100 times better". Rebuilt with its defects
+fixed and this repo's actual gates applied.
+
+**TEN DEFECTS IN THE ORIGINAL**, worst first. (1) **The reward clips losses to zero** —
+`reward = max(data[t] - bought_price, 0)` while `total_profit` accumulates the true signed
+number, so the agent is never punished for selling at a loss; its own README reports a $351.59
+LOSS on BABA 2015 as a "result". (2) **State saturation**: `sigmoid(price[t+1] - price[t])` on
+raw price differences puts **64.6% of state values at 0 or 1** (measured on their own
+^GSPC.csv) — the same dollars-vs-basis-points units error as §3ab. (3) No costs at all.
+(4) Replay is not random: `range(l - batch_size + 1, l)` walks the last 32 transitions in order,
+defeating replay's purpose, and is off by one. (5) No target network. (6) Unbounded inventory,
+no sizing. (7) Single seed, single run. (8) No benchmark, no risk adjustment. (9) No
+walk-forward. (10) Won't run on current Keras. **To its credit, one thing I suspected was
+wrong is not**: 0 of 252 test dates appear in the training file — the chronological split is
+clean.
+
+**THE REBUILD** fixes each: symmetric net-log-return reward with cost charged on the position
+change; scale-free vol-normalised state (**0.05% saturation**, 12 features); 1.38bp costs;
+uniform sampling from a 50k buffer; target network + Double DQN + Huber + grad clipping;
+bounded vol-targeted exposure with the held position inside the MDP; walk-forward refit every
+January on a trailing 3y window; 4 seeds; matched-vol paired-t vs both benchmarks.
+
+| policy | SR mean | SR across seeds | maxDD | halves | t vs champ |
+|---|---|---|---|---|---|
+| DQN (walk-forward, 4 seeds) | **-0.187** | -0.415 .. +0.068 | -25.8% | -0.43/+0.56 | -3.29 [1/9] |
+| CONTROL random actions | -0.236 | -0.432 .. -0.002 | -27.7% | -0.24/+0.21 | -3.57 [0/9] |
+| CONTROL shuffled returns | -0.226 | — | -31.1% | -0.26/-0.20 | -2.80 [1/9] |
+| **CONTROL always-max-long** | **+1.075** | — | -16.8% | +0.65/+1.45 | -0.07 [5/9] |
+| champion (benchmark) | +1.090 | — | -19.7% | — | — |
+
+**THREE READINGS, and the controls carry the verdict.**
+1. **The DQN is indistinguishable from random actions.** Mean -0.187 vs -0.236, and the seed
+   ranges (-0.415..+0.068 vs -0.432..-0.002) almost entirely overlap. Twelve episodes of
+   Double-DQN on properly-normalised features bought essentially nothing over coin-flipping.
+2. **It performs the same on SHUFFLED data as on real data** (-0.226 vs -0.187, inside the seed
+   spread). This is the decisive control: on a block-bootstrapped path with the serial
+   predictability destroyed, the agent scores the same. Its behaviour is explained by exposure
+   and cost, not by anything learned.
+3. **The degenerate policy wins by a mile.** "Always hold max vol-targeted long" scores +1.075,
+   **1.26 Sharpe above the trained agent** — and is statistically indistinguishable from the
+   champion (t -0.07, 5/9 years), consistent with the champion's known 0.96 correlation to
+   buy-and-hold. Any RL result on this problem that does not beat always-max-long has learned
+   nothing worth having.
+
+**METHOD NOTE — SEED VARIANCE IS THE TRAP.** The best seed scored **+0.068** and the worst
+-0.415. Reporting the best seed as "the result" is the single most common way RL trading claims
+are oversold, and it is why the table above leads with the mean and prints the range.
+
+**Verdict: RL is CLOSED for this problem, now with a real implementation rather than a
+one-line assertion.** This is the sixth independent proof of the ML/RL family failing here
+(§3r, §3p, §3o, `claude-llm-h4-trader-no-edge`, `xau-per-trade-prob-sizing-disproven`). Two
+transferable QA checks came out of it and are worth applying to any borrowed model:
+**(a) does the reward function actually equal the objective** (clipped losses is a silent
+catastrophe), and **(b) is the state representation scale-free** (print the saturation
+fraction). Both were found by reading the code, not by a bad backtest.
+
+**Build note:** an earlier run lost four completed seeds (792s of training) to a `NameError` in
+the reporting code downstream of training. Per-seed policy output is now cached to
+`data/v5_runs/rl_mult_*.csv`, so re-runs are instant and a downstream bug cannot destroy
+upstream work.
+
+### 3ak. Exhaustive conditional TRIGGER search with a maximum-statistic null — nothing survives, and searching harder provably makes it worse (2026-09-09, `scripts/v5_trigger_search.py`)
+
+The user asked for a different attack: not a continuous forecast (§3aj's RL agent, the champion)
+and not hand-named course patterns (§3v-3w's twelve ICT concepts), but **"when you see a
+particular market structure, act a specific way"** — discovered systematically rather than
+borrowed.
+
+**THE SPACE.** Eleven causal, scale-free state variables — EWMAC trend, 24-bar momentum,
+Donchian position, MA distance in vol units, realised-vol percentile, range expansion,
+direction streak, overnight gap, tick-volume percentile, session, day-of-week — each ranked
+against its own trailing 2-year history (expanding percentile, no full-sample thresholds) and
+cut into terciles. All conjunctions to depth 3 with at least 150 fires: **4,260 conditions x 5
+horizons (4h to 4 days) = 21,300 tests.** Discovery on 2016-2020; 2021-2026 never seen by the
+search.
+
+**THE TEST THAT MATTERS.** Searching 21,300 correlated conditions guarantees the best one looks
+excellent, so the question is not "is my best trigger significant" but *"is it better than the
+best trigger a no-edge dataset would hand me"* — White's Reality Check / Hansen SPA, implemented
+as a **stationary block bootstrap over the maximum standardised statistic**. Blocks must exceed
+the horizon because forward returns OVERLAP: an analytic t on 24-bar returns sampled every bar
+overstates significance by roughly sqrt(24), and the bootstrap reproduces that dependence
+instead of assuming it away.
+
+| | |
+|---|---|
+| observed max abs(z) over all 21,300 tests | **11.52** |
+| null distribution of the maximum | p50 **9.34**, p95 **12.94**, p99 14.46, max 16.51 |
+| **Reality-Check p** | **0.110 — does not survive** |
+
+The null's median of 9.34 is the entire lesson: **a z of 9 is unremarkable in a search this
+size.** Any paper reporting a t of 6 on a mined trading rule without this correction has
+reported noise.
+
+**THE BEST CANDIDATE, priced honestly.** `trend=1 & mom24=0 & vol=2` — middle trend tercile, LOW
+24-bar momentum, HIGH volatility, go LONG, hold 24 bars. Economically sensible: buy the dip in
+an uptrend when volatility is elevated.
+
+| window | fires | excess bp | net bp | naive t | non-overlapping n | non-overlapping t |
+|---|---|---|---|---|---|---|
+| discovery | 225 | +131.8 | +129.0 | 6.07 | **19** | **1.43** |
+| HOLDOUT | 203 | +64.0 | +61.2 | 1.91 | **24** | **0.70** |
+
+The naive t of 6.07 becomes **1.43 on 19 independent fires** once overlapping windows are
+de-duplicated. The holdout keeps the same sign at half the magnitude and t 0.70. Direction is
+consistent, which is mildly interesting; the evidence is not there.
+
+**THE POWER CALCULATION IS THE REAL VERDICT.** At the holdout's effect size and variance,
+reaching t = 2.0 needs about **196 independent fires** against the ~24 that 5.5 years produced —
+roughly **45 years of XAU H4 data.** Even if this trigger is real, it is not measurable with
+anything obtainable.
+
+**AND SEARCHING HARDER CANNOT HELP — this is analytic, not a hunch.** The null distribution of
+the maximum RISES with the size of the search. Going to depth 4, or finer bins, raises the bar
+the observed statistic must clear by more than it raises the statistic. **"Just test more
+triggers" is a strictly losing move**, which closes the avenue rather than leaving it open.
+
+**TWO BUGS CAUGHT IN MY OWN CODE MID-RUN**, both of which would have produced a false positive:
+1. The first version searched RAW forward returns, so with gold rising in both windows any
+   long-biased trigger scored well against zero — §3o's bull-beta artifact exactly. Fixed by
+   demeaning to EXCESS return over the unconditional mean; the honest question is whether a
+   condition beats simply being in the market.
+2. The single-trigger p-value used `rng.permutation(samp).mean()`, and permuting an array cannot
+   change its mean — it was comparing a bootstrap resample against its own expectation and
+   returning ~0.5 regardless of the data. Rewritten as a proper block-bootstrap null with the
+   firing mask held fixed, plus a non-overlapping t as an assumption-free cross-check.
+
+**METHOD KEPT.** The maximum-statistic block bootstrap is now this repo's correct tool for any
+search over many rules — strictly stronger than DSR/PBO for that job, since it accounts for the
+correlation between candidates and for overlapping horizons at the same time.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
