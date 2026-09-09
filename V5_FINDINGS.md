@@ -16,10 +16,10 @@ spread column understates by 10× — use `--fixed-spread-usd 0.34`, not the raw
 
 ---
 
-## MANDATORY CONTROLS (2026-07-24, #5 added 2026-07-29) — five ways this project has fooled itself
+## MANDATORY CONTROLS (2026-07-24; #5 added 2026-07-29, #6 2026-08-19, #7 2026-09-09) — SEVEN ways this project has fooled itself
 
 Each of these silently manufactured a "result" that evaporated when the control
-was added. Run all five before believing any new backtest.
+was added. Run all seven before believing any new backtest.
 
 **1. Floor every cost at the LIVE broker quote.** The 10× gold understatement in
 the Conventions above is not special — it is universal, and far worse on illiquid
@@ -93,7 +93,29 @@ kept re-learning the same lesson on its own leads within a single session:
   lead" (cross-asset divergence's residual correlation/DD effect) or "noise" (the bracket
   search) — never quietly rounded up to "found an edge."
 
-**Guiding principle behind all six controls — evidence may only DOWNGRADE, never let a
+**7. MEASURE WHETHER THE QUESTION IS ANSWERABLE BEFORE ANSWERING IT — count independent
+events, invert to a required AUC, and put SE(AUC) and the best-of-K noise floor beside it**
+(added 2026-09-09, §3am). Control #5 asks "is the prize real"; #7 asks "is it *measurable*",
+and #7 is the more restrictive of the two. The short-variant scoping was gated on #5, passed it
+by an order of magnitude (oracle dSharpe +3.694, t 16.00), and was still un-runnable:
+- **Count DECIDED, non-overlapping events, not bars and not windows.** At a 30-bar first-touch
+  horizon, XAU H4 2018+ has 13,660 bars, 455 non-overlapping windows, and only **247 decided
+  events** — 46% never touch either barrier. Counting windows overstated the sample 1.9x.
+- **Invert the economics to a required AUC, then compare it to SE(AUC).** Required lift +0.024;
+  Hanley-McNeil SE at 104/143 positives/negatives = **0.0367**. The question was 0.65 sigma.
+- **Price the search.** Expected AUC lift from the best of K pure-noise candidates: +0.029 at
+  K=3, **+0.053 at K=8**. A K-way sweep whose noise floor exceeds its target effect cannot
+  answer its own question, however well-controlled each arm is. This is §3ak's proven result
+  ("searching harder raises the bar faster than the statistic") restated on the AUC axis.
+- **For any conditional/regime signal, gate on SPECIFICITY, not recall.** §3am measured a
+  perfect regime short at book dSharpe +0.225; dropping recall 100%->50% costs 0.015, while a
+  **10% false-positive rate costs 0.166 — three quarters of the prize.** Admissibility is a
+  false-positive bound, not a coverage floor. Any label/operating point failing the event count
+  or the FP bound is **inadmissible** — which permanently retires the high-precision/low-recall
+  top-detector family (this repo's historical best point, 70% precision @ 9% recall, is ~2
+  trades/yr and unmeasurable at any horizon).
+
+**Guiding principle behind all seven controls — evidence may only DOWNGRADE, never let a
 good story UPGRADE.** A verified failure (dead cost-adjusted Sharpe, a walk-forward
 collapse, a lookahead-probe fail) always overrides an exciting-looking number; an
 exciting-looking number never overrides a verified failure, no matter how good the
@@ -2106,6 +2128,108 @@ TRAILING (`xau-riskfrac-sizing-table` measured 4.4% vs 17.9% breach probability 
 strategy under the two conventions — this single fact could invert the verdict); the profit split
 for Growth and High Stakes (assumed 90%); and that Bootcamp's blank daily-loss row really means
 no daily limit rather than an unstated one.
+
+### 3am. Short-variant SCOPING — verified measurements, four corrections to my own design, and the false-positive wall (2026-09-09, verification with `engine_bp`; design review by subagent)
+
+Scoping for a conditional-short XAUUSD variant (user request: a second variant that can SELL,
+horizon 4h-1week, "check whether representation is the bottleneck first"). Three code audits
+plus an adversarial design review that executed the proposed Phase 0 while critiquing it.
+**Every number below was re-verified with this repo's own `engine_bp` before being recorded**;
+where my verification disagrees with the review's reimplemented engine, BOTH are shown and mine
+is authoritative.
+
+**A. THE FALSE-POSITIVE WALL — the finding that should drive everything.** Neither my design nor
+the review computed this. A short sleeve that is flat outside bear regimes is **structurally
+Sharpe-diluted by sqrt(f)**, and that dilution is NOT recoverable by leverage. Measured on
+`GOLD_D1_long.csv` 2008-2026 (bear segment 2011-09..2015-12 = 23.1% of the sample, unconditional
+short in it = +0.475): a **perfect-hindsight** regime short scores standalone **+0.228** full
+sample, exactly `sqrt(0.231) x 0.475 = 0.228`. Feeding that into the two-asset optimum against
+buy-and-hold gold (SR +0.574, corr -0.462):
+
+| switch quality | standalone SR | book dSharpe |
+|---|---|---|
+| perfect (recall 100%, FP 0%) | +0.228 | **+0.225** |
+| recall 50%, FP 0% | +0.328 | +0.210 |
+| recall 100%, **FP 10%** | -0.087 | **+0.059** |
+| recall 75%, FP 10% | -0.108 | +0.030 |
+| recall 50%, FP 10% | -0.118 | +0.016 |
+| recall 100%, FP 20% | -0.121 | +0.068 |
+
+**Cutting recall from 100% to 50% costs 0.015. A 10% false-positive rate costs 0.166 — three
+quarters of the entire prize.** The binding requirement is **specificity, not recall**: the
+switch must be right about NOT shorting during bull markets. This inverts the standard detector
+framing and it invalidated my own pre-registered admissibility rule (which gated on recall
+>= 0.15). It also independently reproduces the undocumented `NEXT-STEPS.md` note that
+"expectancy is invariant to recall — selectivity matters, coverage does not".
+*Caveat: buy-and-hold gold 2008-2026 is the book proxy because the champion's H4 data starts
+2015 and the bear segment predates it. The FP-sensitivity is a property of shorting into a
+drift and will hold directionally; the magnitudes are proxy-based.*
+
+**B. VERIFIED MEASUREMENTS (mine; review's figure in brackets where it differs).**
+
+| measurement | verified | review |
+|---|---|---|
+| short-only H4 (`ls_signal` negative leg), GROSS | **-0.211** | [-0.372] |
+| same, at 0.75bp | -0.216 | — |
+| same, at $0.448 (= 1.94bp one-way on median gold $1,733) | **-0.225** | [-0.389] |
+| **cost's share of the gap to zero** | **6.6%** | [4%] |
+| corr(champion, short leg) | **-0.1952** | [-0.203] |
+| any-value hurdle `s > rho*c` | **-0.2143** | -0.211 |
+| short leg's miss vs that hurdle | **+0.002 (essentially AT it)** | [misses by 0.175] |
+| GOLD_D1 2011-09..2015-12 CAGR / long SR | **-9.4% / -0.48** | [-12.3% / -0.63] |
+| required standalone short SR for book dSharpe +0.20 | **+0.465** | +0.45 |
+| K=30 non-overlapping **decided** first-touch events | **247** (104 down/143 up) | [467 windows / 200 down] |
+| SE(AUC) at those counts (Hanley-McNeil) | **0.0367** | [0.026] |
+| best-of-8 pure-noise AUC lift | **+0.0526** | [+0.037] |
+| breakeven precision, 2%/2% first-touch | 0.5097 | 0.511 |
+| GOLD_D1 vs XAUUSD_H4 feed offset | $177.07 max, return corr 0.8873 | confirmed exactly |
+
+Two of these disagreements matter. **The short leg sits essentially ON the diversification
+hurdle** (-0.216 vs -0.2143), not 0.175 below it — the short side is far closer to viable than
+the review implied. But **the bear-regime ceiling is +0.48 against a +0.465 requirement, a margin
+of +0.015** — so even in the only environment where shorting gold works, an unconditional short
+only just clears the bar. And the event count is **1.9x lower than the review assumed** because
+**46% of K=30 windows never touch either barrier and must be dropped** — the review counted
+windows, not decided events.
+
+**C. FOUR CORRECTIONS TO MY OWN FIRST DESIGN, each stated rather than quietly fixed.**
+1. **My oracle-ceiling gate had no teeth.** Standalone-short oracle: K=12 dSharpe +3.694
+   (t 16.00), K=30 +2.239 (t 9.51), all 10/10 years, against a gate of +0.20 / t 2.5. A gate
+   that cannot fail is not a gate. It measures gold's volatility, not the idea. Demoted to
+   documentation.
+2. **My 8-way representation sweep was self-defeating, and worse than the review said.**
+   Required AUC lift +0.024; SE(AUC) **0.0367**; best-of-8 pure-noise lift **+0.0526**. The
+   noise floor is more than double the effect. §3ak's lesson on the AUC axis.
+3. **Six of my eight "never tried" representations are repeats.** Directional-change /
+   intrinsic-time IS the causal zigzag-state block (already failed); range/Renko ARE the failed
+   volume/dollar bars; fracdiff is a slow EWMAC the champion carries at 1536-bar spans;
+   permutation/sample entropy and Lempel-Ziv are the Hurst + Choppiness family (already the one
+   positive); path signatures are a basis gradient boosting spans; SAX is a lossy discretisation
+   of the same window. Only **matrix profile** is novel in mechanism, and it has the worst
+   leakage profile. The honestly-new input was not on my list: **M15/M30 intrabar path**.
+4. **COT was mis-sized as a phase.** Weekly Tuesday snapshot published Friday 15:30 ET, 3-10 day
+   staleness, ~50 obs/yr against ~9-22 independent events/yr, one value shared across 42 H4
+   bars. It cannot carry timing at this horizon; it can carry a slow regime tilt.
+
+**D. ALSO ESTABLISHED.** Over-trim saturates at b~1.5 (b=1.0 dSR +2.869 -> b=1.5 +4.044 ->
+b=2.0 +4.058), so **trimming to flat captures ~71% of the oracle prize and going short adds the
+other 29%**. Downside-specific features (semivariance, semivar/var, vol-of-vol, drawdown
+velocity, gap-in-ATR, 72-bar skew, down-bar fraction) are worth **+0.007 AUC** (0.521 -> 0.528),
+a quarter of one standard error — that Phase is answered before it started. An unconditional
+short is -0.887, so the trend filter already buys **+0.5 Sharpe of conditioning**; the
+requirement is roughly double that.
+
+**E. HAZARDS.** `GOLD_D1_long.csv` is a different feed from `XAUUSD_H4_long.csv` — **$177.07 max
+close difference on 2,879 overlapping days, daily-return correlation only 0.8873**. A second
+splice hazard beside `XAUUSD_M15_spliced.csv` ($405). Fine for an information test; never splice
+into a P&L series undiagnosed. And `probe_lookahead` cannot catch three leak classes: state
+fitted OUTSIDE the feature function (exactly the `latent_encoder` failure mode — an
+offline-fitted encoder is perfectly truncation-invariant and completely leaked), scalar
+hyperparameters chosen on the full sample, and label leakage without purge.
+
+**PLAN: `SHORT-VARIANT-PLAN.md`** (repo root). Phase 0's gate is the bear-regime holdout on
+2011-2015, now re-specified to measure **false-positive rate** rather than recall. Total ~4 days
+to a decision.
 
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.

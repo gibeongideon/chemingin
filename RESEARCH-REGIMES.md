@@ -226,6 +226,9 @@ Backtest DD is close-to-close; real intraday excursions are worse.
   account, or a funded account with looser terms.
 
 ### 3.5 RESUME POINT for regime U
+0. **ACTIVE (approved 2026-09-09):** the XAUUSD **conditional-short variant** —
+   `SHORT-VARIANT-PLAN.md`, scoping evidence in `V5_FINDINGS.md` §3am. Gate is a bear-regime
+   specificity test; a 10% false-positive rate destroys 74% of the prize.
 1. **Open:** FX carry using historical 3m rates (`data/rates_3m.csv`) — the one carry family
    that IS backtestable. Never tested with real broker swap numbers.
 2. **Open:** the carry census on FTMO and HFM. Blocked on the build-5836 terminal fix
