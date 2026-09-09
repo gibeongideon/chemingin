@@ -1,0 +1,12 @@
+# Desktop side of the five-finding digest: fetch the VPS state and EMAIL it.
+[Unit]
+Description=Five-finding signal digest mail relay
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=/home/rock/Desktop/2026_Projects/Trader36/MT5
+ExecStart=/home/rock/anaconda3/bin/python /home/rock/Desktop/2026_Projects/Trader36/MT5/scripts/v5_digest_mail_relay.py
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=digest-mailer

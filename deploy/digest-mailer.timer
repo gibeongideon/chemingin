@@ -1,0 +1,11 @@
+# 20:14 UTC daily — four minutes after the VPS writes the digest at 20:10.
+# Persistent so a missed window mails the CURRENT digest on next boot, not a backlog.
+[Unit]
+Description=Timer for the five-finding digest mail relay (20:14 UTC daily)
+[Timer]
+OnCalendar=*-*-* 20:14:00 UTC
+OnBootSec=240sec
+Persistent=true
+Unit=digest-mailer.service
+[Install]
+WantedBy=timers.target
