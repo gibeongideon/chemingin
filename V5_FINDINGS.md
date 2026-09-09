@@ -2307,6 +2307,81 @@ data representation the bottleneck?* Phase 1's CEILING arm answers that for XAU 
 generally, independent of the short idea, and costs 2-3 days. It is the only phase whose value
 survives this stop.
 
+### 3ao. Phase 1 — REPRESENTATION IS NOT THE BOTTLENECK (closed at K=1); but M15 INTRABAR PATH beats its null — the first positive of this session (2026-09-09, `scripts/v5_repr_ceiling.py`)
+
+The user asked to check whether feature/data **representation** was the bottleneck before
+building anything. Answered, decisively, and the answer produced a genuine positive as a
+by-product.
+
+**THE ARGUMENT THAT AVOIDS AN 8-WAY SWEEP.** Every candidate representation (fracdiff,
+directional change, entropy/complexity, path signatures, matrix profile, SAX, Renko) is a
+measurable function R of the same trailing OHLCV window W, so `I(Y;R(W)) <= I(Y;W)`. Rather
+than test eight ladders against a best-of-8 noise floor of +0.053 AUC (CONTROL #7), **estimate
+the ceiling once.** Statistic: incremental information in **bits per independent event** =
+OOS log-loss reduction vs BASE, evaluated only on non-overlapping events. Training uses all
+purged decided events (~9,900 at K=30) because 128 features cannot be fitted on 251;
+correlated training samples cost efficiency, not validity.
+
+**RESULT (K=30, the pre-registered secondary horizon; K=12 is directionally identical).**
+
+| arm | features | events | logloss | dI vs BASE | yrs better | AUC |
+|---|---|---|---|---|---|---|
+| BASE (§3r REGIME+PRICE) | 21 | 251 | 0.6754 | — | — | 0.592 |
+| **CEILING (raw 64-bar window)** | 128 | 251 | 0.6823 | **-0.0099** | 3/9 | 0.557 |
+| **SOURCE (BASE + M15 intrabar path)** | 29 | 246 | 0.6649 | **+0.0142** | **7/9** | 0.603 |
+
+**1. CEILING FAILS — and that closes the entire representation list.** Real dI **-0.0099**
+against a synthetic-noise null of mean +0.0090, sd 0.0122, **p95 +0.0281** -> comfortably
+**INSIDE the null**. The raw trailing window carries no usable information over the incumbent
+block, so no function of it can. **fracdiff, directional-change/intrinsic time, entropy and
+complexity measures, recurrence/visibility graphs, matrix profile, path signatures, SAX and
+range/Renko bars are all CLOSED at a single multiple-testing penalty**, without testing one of
+them individually. Honest scope: this is an *empirical* ceiling at ~9,900 training / 251
+evaluation events and two model classes, not an information-theoretic proof. Phase 1c (a
+51-instrument panel, ~47,000 windows) would tighten it; the direction will not change, since
+the observed value sits below the null's median, not just below its p95.
+
+**2. SOURCE PASSES ITS NULL — the first positive result of this session.** dI **+0.0142**
+against an **alignment null** (block-shuffling only the 8 M15 columns, block=60, holding the
+feature count fixed) of mean -0.0059, sd 0.0100, p95 +0.0079, **p99 +0.0112** -> **above p99**,
+with **7/9 years** better. Implied precision beats both the 0.427 base rate and the 0.5097
+breakeven at every operating point:
+
+| recall | BASE precision | **SOURCE precision** |
+|---|---|---|
+| 0.10 | 0.524 | **0.579** |
+| 0.15 | 0.500 | **0.593** |
+| 0.20 | 0.449 | **0.600** |
+| 0.30 | 0.478 | 0.542 |
+
+It **misses the pre-registered 0.607 bar by 0.007** at its best point, so by this repo's own
+language it is **"real but just under the bar"** — not rounded up. The features are the H4
+bar's interior computed from completed M15 bars only: realised vol inside the bar, max adverse
+and favourable excursion, path efficiency (|net| / path length), direction changes, and where in
+the bar the extreme occurred. **This directly vindicates §3r's own closing statement that "only
+a materially different data type changes the answer"** — the intrabar path is outside the H4
+OHLCV window that `ARCHITECTURE.MD`'s Saturation Principle covers.
+
+**3. A METHOD FINDING THAT WOULD HAVE PRODUCED A FALSE POSITIVE.** The pre-registered synthetic
+control fired on the first run: on pure i.i.d. Gaussian returns, CEILING beat BASE by
+**+0.0319 bits/event with 7/9 years** — which would have **PASSED** the pre-registered bar. The
+cause was visible in the diagnostics (BASE scored AUC 0.447 on that draw, worse than random),
+and the fix was to replace one draw with a distribution: **dI is a difference of two noisy
+quantities and is positively BIASED toward the higher-capacity arm** (synthetic null mean
++0.0090), partly because taking "best of two model classes" per arm is itself a small search.
+**Use the SYNTHETIC null when the arms differ in capacity, and the ALIGNMENT null when they do
+not** — the two are not interchangeable, and using the wrong one here would have manufactured a
+representation "edge" out of nothing. The single-draw control did its job by failing.
+
+**WHERE THIS LEAVES THE PROGRAMME.** Phase 0b already stopped the conditional-short thesis
+(§3an). Phase 1 closes the representation question. What survives is one live lead — the M15
+intrabar path — and its natural application is **not** a short. It predicts "-2% before +2%
+within 5 days" at precision 0.60, which is a **TRIM signal for the deployed long champion**, and
+§3am measured trimming to flat as **71% of the entire oracle prize** (oracle trim dSharpe
++2.87 at b=1.0, +4.04 at b=1.5) versus 29% for going short. Next step is therefore to test the
+M15 down-signal as a champion overlay through the existing overlay harness, at the measured
+precision/recall rather than at an assumed one.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
