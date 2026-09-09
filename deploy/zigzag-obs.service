@@ -1,0 +1,12 @@
+# ZigZag detector observation harness on the FTMO DEMO account.
+# Refuses to send on any account not flagged demo. See configs/v5_zigzag_ftmo.json.
+[Unit]
+Description=ZigZag bottom-detector observation harness (FTMO demo, hourly)
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/zigzag-obs.sh
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zigzag-obs

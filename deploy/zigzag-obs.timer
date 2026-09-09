@@ -1,0 +1,10 @@
+# Hourly, 4 minutes past — the H1 bar has closed and the broker has printed it.
+[Unit]
+Description=Timer for the ZigZag observation harness (hourly at :04)
+[Timer]
+OnCalendar=*-*-* *:04:00
+OnBootSec=180sec
+Persistent=true
+Unit=zigzag-obs.service
+[Install]
+WantedBy=timers.target

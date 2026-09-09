@@ -2467,6 +2467,56 @@ combination that HURT (1.41 -> 1.26), and now this, there are **five independent
 visible in §3ap and is confirmed: the M15 overlay's failure is in the **half-split**, and
 combination raises **precision**, which was never the failing variable.
 
+### 3ar. ZigZag bottom detector DEPLOYED as an observation harness on FTMO demo (2026-09-09, `scripts/v5_zigzag_ftmo.py`)
+
+Not a research result — a deployment note, recorded because a **disproven** strategy is now
+sending live orders and that must not be discoverable only by reading code.
+
+**WHAT IS RUNNING AND WHY.** The §3x scalp: the detector whose classification numbers are this
+project's best (71% precision @ 22% recall, 80% @ 5%, PR-AUC 0.60, 2.1-2.4x lift) and whose
+traded form is **DISPROVEN** — 48/48 cells negative full-sample, walk-forward **SR -0.76** vs
+buy-and-hold **+0.79**, paired t **-3.72**, **0/8 years**, DSR **0.000**. It has NEGATIVE
+EXPECTANCY. Deployed at the user's explicit request to watch a documented detector operate live
+("I just want to see it in action, no profit needed"), on a **$100k DEMO** account at 0.25% risk
+per trade. The executor **refuses to send on any account not flagged demo**.
+
+**Parameters are the WALK-FORWARD-SELECTED cell, not the full-sample best.** Re-running §3x's
+selection gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48) — so
+threshold 0.60 / TP +0.60% / SL -0.50% is stable across four consecutive years and only the hold
+flips. The full-sample best (0.5, ...) scored -0.441 and is deliberately unused. Expect **60-100
+trades/yr** (backtest: 84-176 active days/yr).
+
+**TWO LONG-STANDING BLOCKERS CLEARED.**
+1. **The build-5836 IPC fault is fixed.** `.mt5c` ran the May-14 `terminal64.exe`
+   (118,840,976 bytes) and returned IPC timeout on every bridge call — the reason the FTMO and
+   HFM censuses were blocked for weeks. Only that one file differed from the working `.mt5`
+   prefix. Backed up as `terminal64.exe.b5836.bak`, replaced with **build 6140**, restarted with
+   a `WINEPREFIX`-verified kill so the other two terminals were untouched. **The same fix is
+   still owed to `.mt5b` (HFM cent, 18813).**
+2. **FTMO login.** Account 1514579005 @ FTMO-Demo, $100k demo, Algo Trading enabled — so no
+   `retcode 10026` wall as on Maven. XAUUSD `trade_mode=4`, live spread **$0.45**, which
+   validates the $0.448 the backtest charged.
+
+**TWO OPERATIONAL LESSONS WORTH THE ENTRY.**
+- **No window manager is installed on any Xvfb display**, so MT5 modal dialogs cannot be focused
+  by clicking over VNC. That is why manual login is awkward, and it is an environment gap rather
+  than user error.
+- **Automated login into a Wine combo box corrupted the field twice** — `1514222431514579` — because
+  Wine silently ignores BOTH `ctrl+a` and triple-click select-all, so typed text is INSERTED
+  rather than replacing. Identical to the Maven repair. **If it must be automated, clear with
+  ~30x BackSpace + ~30x Delete and never a select-all.** The user logged in over a tunnel instead.
+  Worth noting the diagnosis that ended the guesswork: the terminal log showed
+  `'1514579005': authorization on FTMO-Demo failed (Invalid account)` from an ini-driven attempt
+  with no clicking involved, which proved the input path worked and the credentials/server were
+  the issue — before the account was later accepted.
+
+**ARCHITECTURE.** TP and SL are attached **server-side**, so the two profitable exits do not need
+the bot alive; the bot owns only the 48h max-hold exit, which is why the timer is hourly. Rates
+come from **FTMO's own terminal** (29,996 closed H1 bars), never the CSVs — the H1 CSV is 2,063h
+stale and is a different feed. Email uses the VPS-computes / desktop-mails relay, because the VPS
+cannot reach any SMTP port; delivery was verified with a real send, and the relay warns on a
+broken or stale pipeline so silence is never ambiguous.
+
 ### 4. Earlier disproven overlays (see memory for detail)
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.

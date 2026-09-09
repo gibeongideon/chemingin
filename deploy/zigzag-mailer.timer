@@ -1,0 +1,11 @@
+# Hourly at :06 UTC — two minutes after the VPS executor writes its state at :04.
+# Persistent so a missed window mails the CURRENT state on next boot, not a backlog.
+[Unit]
+Description=Timer for the ZigZag harness mail relay (hourly at :06 UTC)
+[Timer]
+OnCalendar=*-*-* *:06:00 UTC
+OnBootSec=180sec
+Persistent=true
+Unit=zigzag-mailer.service
+[Install]
+WantedBy=timers.target

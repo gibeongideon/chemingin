@@ -1,0 +1,52 @@
+{
+  "created_on": "2026-09-09",
+  "_WARNING": "NEGATIVE EXPECTANCY. This is an OBSERVATION HARNESS, not a strategy. V5_FINDINGS \u00a73x: all 48 grid cells negative full-sample (best SR -0.44, DD -41.2%); walk-forward SR -0.76 / DD -35.7% against buy-and-hold's +0.79; paired t -3.72; 0 of 8 years better; DSR 0.000; PBO 0.024. Deployed on a DEMO account at the user's explicit request to watch the documented detector operate live. DO NOT point this at a funded account.",
+  "purpose": "Live observation of the ZigZag bottom detector whose CLASSIFICATION numbers are this project's best (71% precision @ 22% recall, 75% @ 10%, 80% @ 5%, PR-AUC 0.60, 2.1-2.4x lift over a 33.5% random base) but whose TRADED form is disproven. The gap between those two facts is the project's central finding.",
+  "firm": "FTMO",
+  "account_type": "DEMO ONLY \u2014 the executor refuses to send on an account not flagged demo",
+  "port": 18814,
+  "symbol": "XAUUSD",
+  "_symbol_note": "Resolve the exact FTMO name at first run \u2014 FTMO has used both XAUUSD and suffixed variants. The executor prints symbol_info at startup.",
+  "magic": 360581,
+  "run_id": "v5-zigzag-obs",
+  "timeframe": "H1",
+  "threshold": 0.6,
+  "tp_pct": 0.006,
+  "sl_pct": 0.005,
+  "max_hold_bars": 48,
+  "_params_note": "The WALK-FORWARD-SELECTED cell, not the full-sample best. Re-running \u00a73x's selection (trailing 3y, re-picked each January) gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48). Threshold 0.6 / TP 0.6% / SL 0.5% is stable across four consecutive years; only max-hold flips. The full-sample best (0.5, 0.6%, 0.5%, 48) scored SR -0.441 and is deliberately NOT used.",
+  "risk_frac": 0.0025,
+  "_risk_note": "0.25% of equity per trade. Deliberately small: the strategy is expected to lose, so this is sized to make the losses observable rather than material. With SL at 0.5% of price, one trade risks ~$250 on 100K. Backtest activity was 84-176 active days/year, so expect roughly 60-100 trades/year.",
+  "expected_behaviour": {
+    "trades_per_year": "60-100 (backtest showed 84-176 active days/yr)",
+    "win_rate": "the detector is 71% precise at flagging bottoms, but the TRADE win rate is far lower \u2014 TP is +0.6% and SL is -0.5%, so precision at flagging a pivot does not translate into a favourable payoff",
+    "expected_pnl": "NEGATIVE. Per-year walk-forward Sharpe was -0.91/-1.03/-1.81/-1.87/-0.38/+1.19/+0.34/-3.83 for 2019-2026. Two of eight years were positive.",
+    "what_to_watch": "whether the live fill quality, spread and slippage match the $0.448 round-trip the backtest charged. That is the one thing a live run can teach that the backtest cannot."
+  },
+  "exits": {
+    "tp": "server-side, attached to the order \u2014 does not need the bot alive",
+    "sl": "server-side, attached to the order \u2014 does not need the bot alive",
+    "max_hold": "requires the bot; hourly timer closes anything older than 48h"
+  },
+  "safety": [
+    "double lock: both --live and --execute required to send",
+    "refuses to send on any account not flagged demo",
+    "skips entry if the broker feed is more than 3h stale",
+    "no pyramiding: will not add to an existing position under this magic",
+    "reads the BROKER's own H1 feed, never the CSVs (which are 2,063h stale and are a different feed)"
+  ],
+  "_blockers": [
+    "RESOLVED 2026-09-09 \u2014 both cleared. (1) The .mt5c prefix ran the May-14 build-5836 terminal64.exe and returned IPC timeout on every bridge call; backed up and replaced with build 6140 from the working .mt5 prefix, restarted with a WINEPREFIX-verified kill so the other two terminals were untouched. (2) FTMO login: account 1514579005 on FTMO-Demo, logged in manually by the user over a VNC tunnel on :101 after two automated attempts corrupted the Login field (Wine's combo box silently ignores both ctrl+a and triple-click select-all, so typed text is INSERTED rather than replacing \u2014 same failure as the Maven repair)."
+  ],
+  "_deployed": {
+    "date": "2026-09-09",
+    "account": "1514579005 @ FTMO-Demo, $100,000 DEMO, trade_mode=0, Hedge",
+    "symbol": "XAUUSD \u2014 trade_mode=4 (FULL), vmin 0.01, contract 100, digits 2, live spread $0.45 (backtest charged $0.448)",
+    "bridge": "18814, terminal build 6140, Algo Trading ENABLED (so no retcode 10026 wall as on Maven)",
+    "feed": "29,996 closed H1 bars pulled from FTMO's own terminal \u2014 never the CSVs, which are 2,063h stale and a different feed",
+    "timers": "VPS zigzag-obs.timer hourly at :04 UTC (--live --execute); desktop zigzag-mailer.timer hourly at :06 UTC. Both Persistent=true, VPS Linger=yes.",
+    "first_run": "P(bottom) 0.4806 vs threshold 0.60 -> no fire, no positions. Correct.",
+    "email": "VPS computes / desktop mails, because the VPS cannot reach any SMTP port. Delivery verified with a real send."
+  },
+  "_no_window_manager_note": "No window manager is installed on any Xvfb display, so MT5 dialogs cannot be focused by clicking over VNC. Manual login works but is fiddly. If this recurs, either install a lightweight WM on :101 or drive the login by keyboard with xdotool clearing fields via ~30x BackSpace + ~30x Delete \u2014 never a select-all."
+}

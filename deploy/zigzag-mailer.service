@@ -1,0 +1,13 @@
+# Desktop side of the ZigZag harness: fetch the VPS state and EMAIL it.
+# Split exists because the VPS cannot reach any SMTP port while this host can.
+[Unit]
+Description=ZigZag harness mail relay (fetches VPS state over SSH)
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=/home/rock/Desktop/2026_Projects/Trader36/MT5
+ExecStart=/home/rock/anaconda3/bin/python /home/rock/Desktop/2026_Projects/Trader36/MT5/scripts/v5_zigzag_mail_relay.py
+TimeoutStartSec=180
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zigzag-mailer
