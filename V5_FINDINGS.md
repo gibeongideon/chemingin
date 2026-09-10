@@ -3013,4 +3013,20 @@ EURUSD 0.42, GBPJPY 0.50. It flags **19 series** (all 18 FX pairs plus PLAT 0.23
   and those arms still failed. Their conclusions stand.
 - **Queue #35 is DISQUALIFIED.** The deployable answer is the 4-sleeve book's -0.009.
 
+#### BLAST RADIUS — audited, and it is narrow
+
+The hazard is confined to **intrabar geometry**. FX close-to-close returns are FINE: lag-1
+return autocorrelation is +0.003 (GBPJPY) to -0.191 (EURUSD) against -0.112 for NDX and -0.007
+for gold — no anomalous POSITIVE autocorrelation, which is what genuinely overlapping bars
+would produce. What is off is the bar's window relative to its stamp: median
+|open[t] - close[t-1]| / range is **0.41-0.43 for FX** against 0.25 gold, 0.30 NDX, 0.006 BTC.
+
+So only studies using `clpos` / `upwick` / `lowick` **on FX series** are affected. A grep finds
+exactly two scripts combining FX with intrabar features: `v5_pooled_bottom_detector.py` (mine,
+now screened) and `v5_xau_intermarket_accuracy.py`. The latter's published result was NEGATIVE
+(memory `xau-regime-features-fwd-accuracy`, "XAU regime accuracy edge fails as P&L, all fixes
+exhausted"), and leakage inflates a detector, so that conclusion is conservative and stands.
+**No existing repo finding needs revision.** Every other FX-touching study uses returns,
+correlations or carry, never intrabar geometry.
+
 _Last updated 2026-09-10._
