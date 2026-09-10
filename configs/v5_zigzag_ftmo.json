@@ -48,5 +48,11 @@
     "first_run": "P(bottom) 0.4806 vs threshold 0.60 -> no fire, no positions. Correct.",
     "email": "VPS computes / desktop mails, because the VPS cannot reach any SMTP port. Delivery verified with a real send."
   },
-  "_no_window_manager_note": "No window manager is installed on any Xvfb display, so MT5 dialogs cannot be focused by clicking over VNC. Manual login works but is fiddly. If this recurs, either install a lightweight WM on :101 or drive the login by keyboard with xdotool clearing fields via ~30x BackSpace + ~30x Delete \u2014 never a select-all."
+  "_no_window_manager_note": "No window manager is installed on any Xvfb display, so MT5 dialogs cannot be focused by clicking over VNC. Manual login works but is fiddly. If this recurs, either install a lightweight WM on :101 or drive the login by keyboard with xdotool clearing fields via ~30x BackSpace + ~30x Delete \u2014 never a select-all.",
+  "aux_symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY"
+  ],
+  "_detector": "POOLED as of 2026-09-10: trains on gold + clean H1 majors from the same broker feed, predicts gold. Walk-forward AUC 0.7333->0.7434 (+0.0101, 4.6x SE), 11/11 years, p 0.0005. Each aux series is leak-screened at runtime (V5_FINDINGS 3av) and refused above 0.15; falls back to GOLD-ONLY. Detection only - expectancy is unchanged and still NEGATIVE (3x)."
 }

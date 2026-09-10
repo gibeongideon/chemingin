@@ -103,12 +103,24 @@ def main() -> None:
                 ]
             L.append("")
         L.append("The demo bot has already placed this. Mirror it by hand if you want to.")
+        if s.get("arm"):
+            L.append(f"Model: {s['arm']}"
+                     + (f" (+{', '.join(s.get('aux_used', []))})"
+                        if s.get("aux_used") else ""))
     else:
         L = [f"{s['symbol']}   no trade.   P(bottom) {s['prob']:.2f}  vs  "
              f"{s['threshold']:.2f} threshold."]
+        if s.get("arm"):
+            L.append(f"Model: {s['arm']}"
+                     + (f" (+{', '.join(s.get('aux_used', []))})"
+                        if s.get("aux_used") else ""))
         if s["open_positions"]:
             L.append(f"Holding {s['open_positions']} open position(s); TP/SL are on the broker.")
 
+    if s.get("aux_rejected") or s.get("aux_missing"):
+        bad = [f"{a}" for a, _ in (s.get("aux_rejected") or [])] + \
+              [f"{a}" for a, _ in (s.get("aux_missing") or [])]
+        L.append(f"(reduced model — unavailable: {', '.join(bad)})")
     L += ["", f"{DISCLAIMER}"]
     body = "\n".join(L)
     print(body)

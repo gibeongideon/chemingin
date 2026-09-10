@@ -54,11 +54,31 @@ from sklearn.ensemble import HistGradientBoostingClassifier  # noqa: E402
 
 # verbatim from the tested detector — do not reimplement
 from scripts.v5_xau_turning_ml import features, zigzag_swings, label_near, atr  # noqa: E402
+from scripts.v5_pooled_bottom_detector import intrabar_leak  # noqa: E402
 
 TOL = 3                      # a bar counts as "at a bottom" within +/-3 bars of the pivot
 ZZ_ORDER, ZZ_THETA = 5, 1.5  # fractal order and ATR multiple, as tested
-TRAIN_BARS = 20_000          # trailing training window (~3.2y of H1)
+TRAIN_BARS = 20_000          # trailing training window PER SERIES (~3.2y of H1)
 MIN_TRAIN = 4_000
+LEAK_MAX = 0.15              # refuse any series whose intrabar features leak (see below)
+
+# POOLED TRAINING (added 2026-09-10, validated in `v5_zigzag_pooled_h1.py`).
+# Training on clean H1 majors alongside gold and predicting gold lifts walk-forward AUC
+# 0.7333 -> 0.7434 (+0.0101 = 4.6x the Hanley-McNeil SE of 0.0022), 11 of 11 test years,
+# one-sided sign-test p 0.0005, with precision rising at exactly the operating points the
+# live 0.60 threshold uses: P@recall20 0.617->0.644, P@recall10 0.651->0.693,
+# P@recall05 0.671->0.723.
+#
+# Note the honest size: §3as measured +0.0590 from pooling on D1, but gold H1 has 67,560 bars
+# against D1's 4,318, so most of the D1 gain was CURING A STARVED SAMPLE (§3ak) and does not
+# transfer. +0.0101 is the real H1 number.
+#
+# LEAK SCREEN IS MANDATORY. §3av found all 18 FX **D1** files are forward-stamped and leak
+# ret[t+1] through clpos/upwick/lowick at corr 0.42-0.53. The **H1** series are clean
+# (XAUUSD 0.019, EURUSD 0.028, GBPUSD 0.024, USDJPY 0.008) because the defect is a daily-bar
+# boundary artifact — but every series is screened at runtime anyway and refused above
+# LEAK_MAX, because a silently-leaking auxiliary series would corrupt the live model.
+AUX_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY")
 
 
 @dataclass
@@ -74,6 +94,9 @@ class ZigzagState:
     tp_pct: float
     sl_pct: float
     max_hold: int
+    arm: str = "GOLD-ONLY"        # POOLED once auxiliary series are supplied and pass the screen
+    aux_used: tuple = ()          # which auxiliary symbols actually contributed
+    aux_rejected: tuple = ()      # (symbol, reason) for any that did not
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -86,22 +109,37 @@ def load_tf(tf: str = "H1") -> pd.DataFrame:
     return d.rename(columns=str.lower)
 
 
-def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct: float,
-                       max_hold: int, train_bars: int = TRAIN_BARS) -> ZigzagState:
-    """Fit on a trailing window of strictly-past bars, score the LAST CLOSED bar.
-
-    Purge: the label at bar i depends on pivots up to i+TOL, so the final TOL+1 bars of the
-    training window are dropped. Without that the most recent training labels would peek at
-    bars the model is about to be asked to predict."""
+def _frame(df: pd.DataFrame) -> tuple:
+    """Feature matrix, label and validity mask for one H1 series."""
     F = features(df)
     if "hour" in F.columns:
         F = F.drop(columns=["hour"])          # §3p: within-day artifact on gold
     # theta is an ATR-SCALED SERIES, not a scalar — zigzag_swings indexes it per bar.
     # Matches both tested callers: `theta = THETA_MULT * atr(df)`.
     _, buys = zigzag_swings(df, ZZ_ORDER, ZZ_THETA * atr(df))
-    y = label_near(buys, len(df), TOL)
+    y = label_near(np.asarray(buys, int), len(df), TOL)
+    return F, y, F.notna().all(axis=1).values
 
-    ok = F.notna().all(axis=1).values
+
+def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct: float,
+                       max_hold: int, train_bars: int = TRAIN_BARS,
+                       aux: dict | None = None) -> ZigzagState:
+    """Fit on a trailing window of strictly-past bars, score gold's LAST CLOSED bar.
+
+    Purge: the label at bar i depends on pivots up to i+TOL, so the final TOL+1 bars of EVERY
+    series' training window are dropped. Without that the most recent training labels would
+    peek at bars the model is about to be asked to predict.
+
+    POOLED PATH. `aux` is {symbol: H1 DataFrame} of additional series from the SAME broker feed
+    (never the CSVs — one feed, no splice). Each is screened for intrabar leakage and refused
+    above LEAK_MAX. Two rules make the pooled fit strictly causal:
+      * every auxiliary series is truncated at gold's scored timestamp, so no bar from after the
+        prediction point enters training at all;
+      * the last TOL+1 bars of each truncated auxiliary series are then purged as well. An
+        auxiliary label at bar i needs that series' prices to i+TOL, and those prices are
+        correlated with gold's future, so purging only gold would leave a real leakage path.
+    """
+    F, y, ok = _frame(df)
     n = len(df)
     score_i = n - 1                            # last CLOSED bar (caller must pass closed bars)
     purge = TOL + 1
@@ -110,15 +148,49 @@ def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct
     tr = np.zeros(n, bool)
     tr[lo:hi] = True
     tr &= ok
-    if tr.sum() < MIN_TRAIN or len(np.unique(y[tr])) < 2 or not ok[score_i]:
+    Xs = [F.values[tr]]
+    ys = [y[tr]]
+    n_gold = int(tr.sum())
+    used, rejected = [], []
+    score_ts = df.index[score_i]
+
+    for sym in sorted((aux or {})):
+        ad = aux[sym]
+        try:
+            if ad is None or len(ad) < MIN_TRAIN + purge + 250:
+                rejected.append((sym, "too few bars")); continue
+            lk = intrabar_leak(ad)
+            if lk > LEAK_MAX:
+                rejected.append((sym, f"intrabar leak {lk:.3f}")); continue
+            ad = ad[ad.index <= score_ts]      # nothing from after the prediction point
+            if len(ad) < MIN_TRAIN + purge:
+                rejected.append((sym, "too few bars after truncation")); continue
+            AF, ay, aok = _frame(ad)
+            if list(AF.columns) != list(F.columns):
+                rejected.append((sym, "feature mismatch")); continue
+            ahi = len(ad) - purge              # purge this series' tail too
+            alo = max(0, ahi - train_bars)
+            atr_m = np.zeros(len(ad), bool)
+            atr_m[alo:ahi] = True
+            atr_m &= aok
+            if atr_m.sum() < MIN_TRAIN or len(np.unique(ay[atr_m])) < 2:
+                rejected.append((sym, "insufficient usable rows")); continue
+            Xs.append(AF.values[atr_m]); ys.append(ay[atr_m])
+            used.append(sym)
+        except Exception as e:                 # a bad auxiliary series must never break the run
+            rejected.append((sym, f"error {type(e).__name__}"))
+
+    Xtr = np.vstack(Xs) if len(Xs) > 1 else Xs[0]
+    ytr = np.concatenate(ys) if len(ys) > 1 else ys[0]
+    if n_gold < MIN_TRAIN or len(np.unique(ytr)) < 2 or not ok[score_i]:
         prob = float("nan")
-        n_train = int(tr.sum())
+        n_train = int(len(ytr))
     else:
         clf = HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05,
                                              max_leaf_nodes=31, random_state=0)
-        clf.fit(F.values[tr], y[tr])
+        clf.fit(Xtr, ytr)
         prob = float(clf.predict_proba(F.values[[score_i]])[0, 1])
-        n_train = int(tr.sum())
+        n_train = int(len(ytr))
 
     last = df.index[score_i]
     stale = (pd.Timestamp.now(tz="UTC").tz_localize(None) - last).total_seconds() / 3600
@@ -126,7 +198,9 @@ def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct
                        prob=prob, threshold=threshold,
                        fires=bool(np.isfinite(prob) and prob >= threshold),
                        n_train=n_train, stale_hours=round(stale, 2),
-                       tp_pct=tp_pct, sl_pct=sl_pct, max_hold=max_hold)
+                       tp_pct=tp_pct, sl_pct=sl_pct, max_hold=max_hold,
+                       arm="POOLED" if used else "GOLD-ONLY",
+                       aux_used=tuple(used), aux_rejected=tuple(rejected))
 
 
 def main() -> None:
@@ -142,6 +216,10 @@ def main() -> None:
     print(f"ZIGZAG bottom detector — {args.tf}, {len(df):,} bars")
     print(f"  last closed bar   {s.asof}   close ${s.close:,.2f}   ({s.stale_hours:.1f}h old)")
     print(f"  trained on        {s.n_train:,} bars (trailing, purged by {TOL+1})")
+    print(f"  arm               {s.arm}"
+          + (f"  + {', '.join(s.aux_used)}" if s.aux_used else ""))
+    if s.aux_rejected:
+        print(f"  rejected aux      " + "; ".join(f"{a} ({b})" for a, b in s.aux_rejected))
     print(f"  P(at a bottom)    {s.prob:.4f}   threshold {s.threshold:.2f}")
     print(f"  FIRES             {'YES -> long' if s.fires else 'no'}")
     print(f"  if it fires       TP +{s.tp_pct:.2%}  SL -{s.sl_pct:.2%}  "
