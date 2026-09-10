@@ -11,7 +11,8 @@ The five, and what each is honestly worth:
      figure is printed each day so the gap is visible rather than assumed.
   2. GOLD-TILTED CORE-4 BOOK — XAU 50% / BTC, US100, UKOIL 16.7% each. TRADABLE, net Sharpe
      +1.212, the best measured book. Correlations +0.04..+0.14.
-  3. ZIGZAG BOTTOM DETECTOR — best classification numbers in the project (80% precision @ 5%
+  3. ZIGZAG BOTTOM DETECTOR — best classification numbers in the project, upgraded 2026-09-10
+     to POOLED cross-instrument training (80% precision @ 5%
      recall) and DISPROVEN as a trade (walk-forward -0.76, 0/8 years, DSR 0.000). Traded on the
      demo as an observation harness only.
   4. REGIME DIRECTION EDGE — 51.97% vs a 49.85% persistence baseline, +2.12pp, 8/9 years,
@@ -44,7 +45,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier  # noqa: E402
 
 from src.v5.xau_dual_signals import champion_signal  # noqa: E402
 from scripts.v5_xau_champion_lifts import champion_recipe  # noqa: E402
-from scripts.v5_zigzag_signal import bottom_probability  # noqa: E402
+from scripts.v5_zigzag_signal import AUX_SYMBOLS, bottom_probability  # noqa: E402
 from scripts.v5_repr_ceiling import f_base, f_source, first_touch  # noqa: E402
 
 PORT = 18814
@@ -158,14 +159,26 @@ def main() -> None:
     if h1.empty:
         L.append("  no H1 data")
     else:
-        z = bottom_probability(h1, 0.60, 0.006, 0.005, 48)
+        # POOLED, exactly as the executor runs it — the digest and the executor must never
+        # disagree about what fired, which is why both call the same function the same way.
+        aux = {}
+        for sym in AUX_SYMBOLS:
+            a = rates(mt5, sym, "H1", 30000)
+            if not a.empty:
+                aux[sym] = a
+        z = bottom_probability(h1, 0.60, 0.006, 0.005, 48, aux=aux)
         out["zigzag"] = z.as_dict()
         L.append(f"  P(at a bottom)  {z.prob:.4f}   threshold 0.60   "
                  f"-> {'FIRES -> long' if z.fires else 'no fire'}")
         L.append(f"  last bar        {z.asof}  ({z.stale_hours:.1f}h ago)")
+        L.append(f"  model           {z.arm}, {z.n_train:,} bars"
+                 + (f" (+{', '.join(z.aux_used)})" if z.aux_used else ""))
         L.append(f"  if it fires     TP +0.60%  SL -0.50%  max hold 48h")
-        L.append("  80% precision @ 5% recall as a CLASSIFIER; walk-forward SR -0.76,")
-        L.append("  0/8 years, DSR 0.000 as a TRADE. Negative expectancy by design.")
+        L.append("  UPGRADED 2026-09-10 to POOLED training (gold + clean H1 majors):")
+        L.append("  walk-forward AUC 0.7333 -> 0.7434 (+0.0101, 4.6x SE), 11/11 years,")
+        L.append("  P@recall10 0.651 -> 0.693, P@recall05 0.671 -> 0.723 (V5_FINDINGS 3aw).")
+        L.append("  Still walk-forward SR -0.76, DSR 0.000 as a TRADE: better DETECTION of")
+        L.append("  the same target, and 3as showed a better detector of it is still worthless.")
 
     # ---------- 4: regime direction edge ----------
     L.append("")

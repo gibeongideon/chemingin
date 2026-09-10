@@ -3029,4 +3029,77 @@ exhausted"), and leakage inflates a detector, so that conclusion is conservative
 **No existing repo finding needs revision.** Every other FX-touching study uses returns,
 correlations or carry, never intrabar geometry.
 
+
+### 3aw. LIVE detector UPGRADED to POOLED training — +0.0101 AUC at H1 (not the +0.0590 D1 headline), deployed on the FTMO demo harness (2026-09-10, `scripts/v5_zigzag_pooled_h1.py`, `v5_zigzag_signal.py`, `v5_zigzag_ftmo.py`)
+
+§3as found pooling lifts the bottom detector's AUC by **+0.0590 on D1**. The live harness runs
+**H1**, and that number must not be assumed to transfer: gold H1 has **67,560 bars against
+D1's 4,318**, so most of the D1 gain was CURING A STARVED SAMPLE (§3ak's binding constraint),
+not adding information. Measured before deploying anything.
+
+#### The H1 result — real, and five times smaller than the D1 headline
+
+Walk-forward by calendar year, purge TOL+1 bars, gold + the three clean H1 majors:
+
+| arm | n | AUC gold | SE | vs gold-only | P@rec20 | P@rec10 | P@rec05 |
+|---|---|---|---|---|---|---|---|
+| GOLD-ONLY (incumbent) | 61,713 | 0.7333 | 0.0022 | | 0.617 | 0.651 | 0.671 |
+| **POOLED** | 61,713 | **0.7434** | 0.0022 | **+0.0101** | **0.644** | **0.693** | **0.723** |
+| TRANSFER | 61,713 | 0.7411 | 0.0022 | +0.0078 | 0.634 | 0.677 | 0.722 |
+
+**+0.0101 = 4.6x the Hanley-McNeil SE, 11 of 11 test years, one-sided sign-test p 0.0005**, and
+the gain lands where the live 0.60 threshold actually operates: precision at recall 10% rises
+0.651 -> 0.693 and at recall 5% 0.671 -> 0.723. TRANSFER (never trained on gold) again captures
+most of it (+0.0078), consistent with §3as's universality result.
+
+**The honest framing: the D1 headline was mostly a starvation cure.** +0.0590 -> +0.0101 once
+the sample is no longer starved is exactly what that hypothesis predicts, and it is why the H1
+number was measured rather than assumed.
+
+#### Data safety — §3av's leak does NOT apply at H1, and is screened anyway
+
+§3av found all 18 FX **D1** files forward-stamped, leaking ret[t+1] through
+`clpos`/`upwick`/`lowick` at corr 0.42-0.53. The **H1** files are clean — XAUUSD 0.019,
+EURUSD 0.028, GBPUSD 0.024, USDJPY 0.008 — because the defect is a daily-bar *boundary*
+artifact that hourly bars do not inherit. Every auxiliary series is nonetheless screened with
+`intrabar_leak()` at runtime and **refused above 0.15**, verified by feeding the live path a
+deliberately poisoned series (range smeared with the next bar): it was rejected at leak 0.525
+and the detector fell back to GOLD-ONLY. A silently-degraded model is the failure mode that
+matters here, so the email surfaces any rejected or unavailable series.
+
+#### Causality of the pooled fit
+
+Two rules, because pooling introduces a leakage path that purging gold alone would miss:
+- every auxiliary series is **truncated at gold's scored timestamp**, so no bar from after the
+  prediction point enters training;
+- the last **TOL+1 bars of each truncated auxiliary series are then purged too**. An auxiliary
+  label at bar i needs that series' prices through i+TOL, and those are correlated with gold's
+  future. After this purge every retained label depends only on already-realised data.
+
+#### Deployment state, verified live
+
+FTMO-Demo 1514579005, $100,000, flagged DEMO, bridge 18814, magic 360581, hourly timer active:
+
+```
+model: POOLED, trained on 80,000 bars (+EURUSD, GBPUSD, USDJPY)
+P(bottom) 0.2489  threshold 0.60  -> no fire
+arm POOLED · n_train 80000 · aux_used [EURUSD, GBPUSD, USDJPY] · aux_rejected [] · executed True
+```
+
+13.0s wall clock, 257MB peak RSS on the 2-vCPU droplet — comfortable for an hourly timer.
+Auxiliary bars come from the **broker's own feed**, never the CSVs (the H1 CSV is >2,000 hours
+stale and two repo data files are known to be different feeds for the same instrument): one
+feed, no splice, the rule the gold leg already followed. `v5_signals_digest.py` was upgraded
+identically so the digest and the executor can never disagree about what fired — both now
+report 0.2489 / POOLED / 80,000.
+
+#### WHAT THIS DOES NOT CHANGE
+
+**Nothing about expectancy.** §3x: walk-forward SR **-0.76**, 0/8 years, DSR 0.000. §3as:
+EV/fire **+0.05% against +0.15% for simply holding**, mean fire offset **+0.771 on gold** — a
+confirmation detector. This is a better detector of a target that §3as proved is not worth
+detecting, deployed on a demo account at the user's explicit request ("I just want to see it in
+action, no profit needed"). Every email still carries the negative-expectancy line. **It is not
+a recommendation and must not be pointed at a funded account.**
+
 _Last updated 2026-09-10._
