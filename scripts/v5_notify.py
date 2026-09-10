@@ -58,10 +58,19 @@ def env() -> dict:
     return e
 
 
+# Cloudflare sits in front of api.resend.com (and others) and rejects Python's default
+# `Python-urllib/3.x` User-Agent on client fingerprint, returning a bare `HTTP 403 error code:
+# 1010` with no JSON body — which looks exactly like a bad API key and is not one. Verified
+# 2026-09-10 from the VPS: default UA 403, browser UA 200, curl UA 200, same key and payload.
+# Any ordinary UA passes, so every request sends one.
+UA = "Mozilla/5.0 (X11; Linux x86_64) v5-notify/1.0"
+
+
 def _post(url: str, payload: dict, headers: dict) -> tuple[int, str]:
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", **headers}, method="POST")
+        headers={"Content-Type": "application/json", "User-Agent": UA, **headers},
+        method="POST")
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
             return r.status, r.read().decode()[:400]

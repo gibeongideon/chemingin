@@ -228,6 +228,14 @@ def main() -> None:
     elif actions:
         print("  (dry plan — rerun with --live --execute to send)")
 
+    # Re-query AFTER sending: `held` was captured before the entry, so writing it would report
+    # open_positions 0 on the very run that opened a position — and the notifier renders that
+    # field as "Holding N open position(s)". Verified against ticket 539723326.
+    try:
+        held_now = [p for p in (mt5.positions_get(symbol=symbol) or []) if p.magic == magic]
+    except Exception:
+        held_now = held
+
     STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(dict(
         computed_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -237,7 +245,7 @@ def main() -> None:
         arm=st.arm, n_train=st.n_train, aux_used=list(st.aux_used),
         aux_rejected=[list(x) for x in st.aux_rejected],
         aux_missing=[list(x) for x in aux_missing],
-        open_positions=len(held), actions=[dict(kind=k, vol=v, why=w, **px)
+        open_positions=len(held_now), actions=[dict(kind=k, vol=v, why=w, **px)
                                            for k, _, v, w, px in actions],
         sent=sent, executed=bool(args.live and args.execute and is_demo),
         warning="NEGATIVE EXPECTANCY — walk-forward SR -0.76, 0/8 years, DSR 0.000 (V5_FINDINGS 3x)"
