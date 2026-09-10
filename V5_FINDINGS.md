@@ -3093,6 +3093,27 @@ feed, no splice, the rule the gold leg already followed. `v5_signals_digest.py` 
 identically so the digest and the executor can never disagree about what fired — both now
 report 0.2489 / POOLED / 80,000.
 
+#### NOTIFICATION BANDS (added 2026-09-10 at the user's request)
+
+The relay now has two bands. **The executor is untouched — orders still require prob >= 0.60,
+the walk-forward-selected threshold (§3x: 2023/24/25 all chose 0.6).** This is visibility only:
+
+| prob | email | order placed |
+|---|---|---|
+| **>= 0.60** | `[zigzag] TRADABLE — BUY 0.11 lots XAUUSD @ 4411.37`, body headed **TRADABLE** with entry/SL/TP/close-by | yes, on the demo |
+| **0.55-0.60** | `[zigzag] NOT TRADABLE — XAUUSD P 0.57 (needs 0.60)`, body headed **NOT TRADABLE** with the levels it *would* use and "No order has been placed" | **no** |
+| < 0.55 | silent | no |
+
+**Anti-spam.** The relay runs hourly, so a probability parked at 0.57 would otherwise mail every
+hour. `data/v5_runs/zigzag_relay_seen.json` records the last band and a watch notice fires only
+on ENTERING the band; leaving and re-entering notifies again, and crossing up to TRADABLE always
+notifies. Verified across six simulated transitions with `mail()` stubbed (0.42 silent -> 0.57
+notify -> 0.58 silent -> 0.63 TRADABLE -> 0.41 silent -> 0.56 notify = 3 emails).
+
+Context for why the band is useful: the pooled model fires ~19.6 times/month at 0.60 (gap ~1.6
+days), and 23 live runs produced 0 fires with a maximum probability of 0.5608 — so the watch
+band surfaces exactly the near-misses that were previously invisible.
+
 #### WHAT THIS DOES NOT CHANGE
 
 **Nothing about expectancy.** §3x: walk-forward SR **-0.76**, 0/8 years, DSR 0.000. §3as:
