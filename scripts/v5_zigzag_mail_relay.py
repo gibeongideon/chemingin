@@ -29,49 +29,16 @@ from email.mime.text import MIMEText
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 VPS = "trader@68.183.91.240"
 REMOTE_JSON = "/home/trader/MT5/data/v5_runs/zigzag_ftmo_state.json"
 STALE_ALERT_H = 6
-DISCLAIMER = "Demo test only — this strategy is expected to lose money (walk-forward -0.76)."
-
-# TWO BANDS (user request 2026-09-10).
-#   prob >= 0.60  -> TRADABLE. The executor has already placed it on the demo. Entry included.
-#   0.55 <= prob  -> NOT TRADABLE. Notification only; no order exists at any broker.
-#   below 0.55    -> silent, as before.
-# The 0.60 line is the WALK-FORWARD-SELECTED threshold (§3x: 2023/24/25 all chose 0.6). The
-# watch band deliberately does NOT move it — the executor still places orders only at >= 0.60,
-# so this adds visibility and changes nothing about what gets traded.
-NOTIFY_MIN = 0.55
-# The relay runs hourly, so a probability parked at 0.57 would mail every hour. `SEEN` records
-# the last band and a watch notice is sent when the band is ENTERED, not on every run inside it.
-# Leaving the band and re-entering notifies again; crossing up to TRADABLE always notifies.
 SEEN = ROOT / "data" / "v5_runs" / "zigzag_relay_seen.json"
 
+# Bands, subject, body and dedupe all live in v5_zigzag_message so this desktop sender and the
+# VPS sender can never disagree about what fired.
+from scripts.v5_zigzag_message import DISCLAIMER, build, load_band, save_band  # noqa: E402
 
-def band(prob, thr: float) -> str:
-    if prob is None or not (prob == prob):        # NaN-safe
-        return "none"
-    if prob >= thr:
-        return "tradable"
-    if prob >= NOTIFY_MIN:
-        return "watch"
-    return "none"
-
-
-def last_band() -> str:
-    try:
-        return json.loads(SEEN.read_text()).get("band", "none")
-    except Exception:
-        return "none"
-
-
-def save_band(b: str, prob: float) -> None:
-    try:
-        SEEN.parent.mkdir(parents=True, exist_ok=True)
-        SEEN.write_text(json.dumps(dict(band=b, prob=prob,
-                                        at=datetime.now(timezone.utc).isoformat())))
-    except Exception:
-        pass
 
 
 def creds() -> dict:
@@ -121,69 +88,8 @@ def main() -> None:
     age = (datetime.now(timezone.utc)
            - datetime.fromisoformat(s["computed_utc"])).total_seconds() / 3600
 
-    prob = s.get("prob")
-    thr = s.get("threshold", 0.60)
-    cur = band(prob, thr)
-    prev = last_band()
-
-    # --- SIMPLE, ACTIONABLE BODY. The order details first; everything else is one line. ---
-    if s["actions"]:
-        L = []
-        for a in s["actions"]:
-            if a["kind"] == "BUY":
-                L += [
-                    f"BUY {s['symbol']}   {a['vol']} lots",
-                    "",
-                    f"  Entry   {a['entry']}      (market)",
-                    f"  SL      {a['sl']}      (-0.50%)",
-                    f"  TP      {a['tp']}      (+0.60%)",
-                    f"  Close   {a['close_by']} if neither is hit",
-                ]
-            else:
-                L += [
-                    f"CLOSE {s['symbol']}   {a['vol']} lots",
-                    "",
-                    f"  Opened at {a['entry']}, held {a.get('age_h')}h — 48h limit reached.",
-                ]
-            L.append("")
-        L.insert(0, "TRADABLE")
-        L.insert(1, "")
-        L.append("The demo bot has already placed this. Mirror it by hand if you want to.")
-        if s.get("arm"):
-            L.append(f"Model: {s['arm']}"
-                     + (f" (+{', '.join(s.get('aux_used', []))})"
-                        if s.get("aux_used") else ""))
-    elif cur == "watch":
-        # NOT TRADABLE: close to the line but under it. No order exists anywhere.
-        pp = s.get("prospective") or {}
-        L = ["NOT TRADABLE",
-             "",
-             f"{s['symbol']}   P(bottom) {prob:.3f}   needs {thr:.2f}",
-             "",
-             f"  Would be   BUY {pp.get('lots')} lots @ {pp.get('entry')}",
-             f"  SL {pp.get('sl')}   TP {pp.get('tp')}",
-             "",
-             "No order has been placed. Notification only."]
-        if s.get("arm"):
-            L.append(f"Model: {s['arm']}"
-                     + (f" (+{', '.join(s.get('aux_used', []))})"
-                        if s.get("aux_used") else ""))
-    else:
-        L = [f"{s['symbol']}   no trade.   P(bottom) {s['prob']:.2f}  vs  "
-             f"{s['threshold']:.2f} threshold."]
-        if s.get("arm"):
-            L.append(f"Model: {s['arm']}"
-                     + (f" (+{', '.join(s.get('aux_used', []))})"
-                        if s.get("aux_used") else ""))
-        if s["open_positions"]:
-            L.append(f"Holding {s['open_positions']} open position(s); TP/SL are on the broker.")
-
-    if s.get("aux_rejected") or s.get("aux_missing"):
-        bad = [f"{a}" for a, _ in (s.get("aux_rejected") or [])] + \
-              [f"{a}" for a, _ in (s.get("aux_missing") or [])]
-        L.append(f"(reduced model — unavailable: {', '.join(bad)})")
-    L += ["", f"{DISCLAIMER}"]
-    body = "\n".join(L)
+    m = build(s, load_band(SEEN))
+    body = m["body"]
     print(body)
 
     if age > STALE_ALERT_H:
@@ -194,27 +100,12 @@ def main() -> None:
              f"Last known state:\n\n{body}")
         sys.exit(f"state {age:.0f}h stale — warning mailed")
 
-    # send on a fire, on ENTERING the watch band, or when forced
-    entered_watch = (cur == "watch" and prev != "watch")
-    if s["actions"] or entered_watch or args.always:
-        if s["actions"]:
-            a = s["actions"][0]
-            # subject carries the order itself, so it is actionable from a phone lock screen
-            subj = (f"[zigzag] TRADABLE — BUY {a['vol']} lots {s['symbol']} @ {a['entry']}"
-                    if a["kind"] == "BUY"
-                    else f"[zigzag] CLOSE {a['vol']} lots {s['symbol']}")
-        elif cur == "watch":
-            subj = (f"[zigzag] NOT TRADABLE — {s['symbol']} P {prob:.2f} "
-                    f"(needs {thr:.2f})")
-        else:
-            subj = (f"[zigzag] {s['symbol']} no trade "
-                    f"(P {s['prob']:.2f}/{s['threshold']:.2f})")
-        mail(subj, body)
+    if m["should_send"] or args.always:
+        mail(m["subject"], body)
     else:
-        why = ("already notified in this watch band" if cur == "watch"
-               else f"P {prob:.4f} below {NOTIFY_MIN:.2f}")
-        print(f"\n(nothing sent — {why}; --always to mail anyway)")
-    save_band(cur, float(prob) if prob is not None else float("nan"))
+        print(f"\n(nothing sent — band {m['band']}, already notified or below "
+              f"the watch floor; --always to mail anyway)")
+    save_band(SEEN, m["band"], s.get("prob"))
 
 
 if __name__ == "__main__":
