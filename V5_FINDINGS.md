@@ -115,7 +115,40 @@ by an order of magnitude (oracle dSharpe +3.694, t 16.00), and was still un-runn
   top-detector family (this repo's historical best point, 70% precision @ 9% recall, is ~2
   trades/yr and unmeasurable at any horizon).
 
-**Guiding principle behind all seven controls — evidence may only DOWNGRADE, never let a
+**8. AUC IS PAYOFF-BLIND — REPORT EV PER FIRE, AND THE MEAN OFFSET, BEFORE CLAIMING A
+CLASSIFIER IMPROVEMENT** (added 2026-09-10, §3as). Controls #5 and #7 ask whether the prize is
+real and measurable. #8 asks whether a *measured* ranking gain converts, and it is the control
+this repo lacked when it produced its largest-ever detector lift and lost money with it:
+
+- **The case.** Pooled cross-instrument training lifted gold's OOS AUC 0.6876 -> 0.7452
+  (+0.0576, SE 0.0092 = **5.9 sigma**), in **15 of 15** years, sign-test **p 0.00003**, with a
+  clean shuffled-label control and a transfer arm that never saw gold at all. Economics:
+  panel dSharpe **-0.702** (t -3.17, 3/15 years), cross-sectional 1.2 SE from zero, gold
+  overlay +0.066 at t 1.81. **A 5.9-sigma ranking gain produced negative P&L in every
+  structure.** AUC counts concordant pairs; money counts magnitudes, and they decouple whenever
+  the payoff concentrates on a subset of the labelled events.
+- **The check, which is cheap.** Report **EV per fire** — the mean forward return over ALL
+  fires, false positives included — against (a) the round-trip cost and (b) **the drift the
+  position displaces.** The incumbent detector's EV/fire was +0.05% per 5 days against +0.15%
+  for simply being long: it earned one third of holding, paired t **-3.64**. A long-only timer
+  in a drifting market must clear buy-and-hold, not zero.
+- **Where a label spans several bars, report the fire-weighted mean OFFSET.** `label_near`
+  tags +/-3 bars around a pivot, and the available 5-day return across those 7 bars ranges
+  -0.6% to +2.6%. The detector's mean true-positive offset was **+0.967** — it fired 28% of the
+  time one bar AFTER the low and 5% one bar before. **A detector with a positive mean offset is
+  a CONFIRMATION detector and is not tradeable regardless of its precision**, because it waits
+  for the move to become visible, which is exactly what makes the pattern easy to learn.
+- **Fixing the label is not a way out, and the reason generalises.** An offset-aware label
+  worked mechanically (mean offset -0.489, capture 51%->62%, AUC 0.7794) and made money
+  strictly worse, because the bars before a low are still falling: fire late and the move is
+  gone, fire early and you buy falling knives (false positives -3.43% vs -2.37%). **When the
+  payoff sits on one bar that is unknowable until it has passed, both error directions are
+  independently fatal and no representation, feature or model fixes it.**
+- **Scope.** #8 retires any programme whose mechanism is "rank the same label better." It does
+  not touch programmes that change the TARGET (predict volatility, time-to-target, or the
+  champion's own P&L sign).
+
+**Guiding principle behind all eight controls — evidence may only DOWNGRADE, never let a
 good story UPGRADE.** A verified failure (dead cost-adjusted Sharpe, a walk-forward
 collapse, a lookahead-probe fail) always overrides an exciting-looking number; an
 exciting-looking number never overrides a verified failure, no matter how good the
@@ -2602,4 +2635,382 @@ blind spots, so a reader doesn't mistake "extensively researched" for "fully und
   7 originally screened** — SPX/NDX was the best of a small, ad hoc set, not a systematic
   search of the full correlated-pair universe this repo's data could support.
 
-_Last updated 2026-09-03._
+
+### 3as. POOLED CROSS-INSTRUMENT training — the largest AUC lift in this repo's history (+0.0576, 15/15 years, p 0.00003) and it makes NEGATIVE money; the mechanism is finally identified (2026-09-10, `scripts/v5_pooled_bottom_detector.py`, `v5_pooled_economics.py`, `v5_anticipation_label.py`)
+
+Queue item #1 of `EXPLORATION-QUEUE.md`, and the item §3ao designed as "Phase 1c" and never
+ran. §3ak concluded the binding constraint was **event count** — gold alone yields ~250 decided
+non-overlapping events, SE(AUC) 0.0367, best-of-8 pure-noise lift +0.053, so a real +0.02
+effect is unfalsifiable — and estimated 45 years of data would be needed. The repo has **51 D1
+series sitting in `data/` that no detector study had ever used.**
+
+#### The measurement, which is solid
+
+Walk-forward by calendar year 2012-2026 across a 51-instrument panel (236,393 pooled rows, base
+rate 0.339; gold 4,318 rows), purged TOL+1 days, predicting gold's own out-of-sample bars:
+
+| arm | n | AUC on GOLD | SE | vs gold-only | P@rec20 | P@rec10 |
+|---|---|---|---|---|---|---|
+| GOLD-ONLY | 3467 | 0.6876 | 0.0098 | | 0.523 | 0.494 |
+| **POOLED** | 3467 | **0.7452** | 0.0092 | **+0.0576** | **0.651** | 0.669 |
+| TRANSFER | 3467 | 0.7446 | 0.0092 | +0.0570 | 0.646 | 0.684 |
+
+**+0.0576 at SE 0.0092 is 5.9 standard errors** — the largest and most robust detector lift
+this repo has produced. It survived every control:
+
+- **Shuffled-label control** (block-shuffle the label within each instrument, preserving its
+  autocorrelation and base rate): every arm collapses to 0.50 and the lift goes NEGATIVE
+  (GOLD-ONLY 0.509, POOLED 0.497, TRANSFER 0.504, lift -0.0120). No leak.
+- **15 of 15 test years positive**, one-sided sign-test **p = 0.00003**.
+- **Split halves flat**: early 2012-2018 mean dAUC +0.0449, late 2019-2026 **+0.0472**. This
+  refutes the obvious objection that POOLED merely beats a starved model — by 2025 GOLD-ONLY
+  trains on 3,959 bars and pooling still adds +0.028.
+- **TRANSFER, trained on every instrument EXCEPT gold, scores +0.0570.** The bottom-pivot
+  relationship is **universal across assets**, not gold-specific. That is a genuinely new
+  result here and it is what made the cross-sectional test below legitimate.
+
+One hypothesis was killed analytically rather than by a run: AUC is rank-based and invariant to
+any monotone rescoring, so "pooling just learned a better base-rate calibration" cannot produce
+an AUC lift.
+
+#### The economics, which are a disaster
+
+Three structures, ~14 variants, costs at 3bp one-way, day-count discipline per rule 1.3.6
+(each series annualised on its OWN realised bars/year):
+
+| paired test | dSharpe | t | years |
+|---|---|---|---|
+| GOLD oracle-boost vs champion | +0.125 | +2.63 | 11/15 |
+| GOLD detector-boost vs champion | +0.066 | +1.81 | 10/15 |
+| PANEL **oracle** vs buy-and-hold | **+0.564** | **+3.10** | 11/15 |
+| PANEL **detector** vs buy-and-hold | **-0.702** | **-3.17** | 3/15 |
+| PANEL detector vs champion | -0.762 | -2.45 | 4/15 |
+
+Cross-sectionally (queue #38 — rank all 50 instruments daily by P(bottom), dollar-neutral
+top/bottom 8, which the TRANSFER result is what makes scores comparable across instruments):
+gross Sharpe **-0.312**, inverted **+0.312**, against SE **0.269** — 1.2 SE, nothing. Every net
+variant negative. The XS ORACLE on the same construction is gross **+5.076**. Rank correlation
+with 60-day cross-sectional momentum is only **-0.260**, so it is not merely inverted momentum.
+
+So: a real, overwhelming AUC lift, a label with genuine value, and no money in any structure.
+
+#### The mechanism, measured — this is the finding
+
+`label_near` tags TOL=3 bars either side of a pivot, so **one label covers 7 bars whose
+economics differ by a factor of three.** Measured on the panel (12,459 pivots, 51 instruments):
+
+| offset from true pivot | -3 | -2 | -1 | **0** | +1 | +2 | +3 | non-pivot |
+|---|---|---|---|---|---|---|---|---|
+| 5-day return available | -0.6% | +0.4% | +1.8% | **+2.6%** | +1.8% | +1.3% | +0.9% | -0.3% |
+| detector fire rate | 6.4% | 6.1% | 5.1% | 10.2% | **28.0%** | **27.5%** | 16.7% | 3.8% |
+
+**The detector fires 28% of the time one bar AFTER the low and 5% one bar before. Mean
+true-positive offset +0.967.** It is a **CONFIRMATION detector, not an anticipation
+detector**: it waits until the rally is visible in the features, because that is exactly what
+makes the pattern easy to recognise — and worthless to trade.
+
+- available at the pivot **+2.60%**, captured by its true positives **+1.24%** -> it forfeits
+  **52%** of the move;
+- **4,484 false-positive fires at -2.01% each** — 34% of all fires — erase what is left;
+- net **EV/fire +0.05%** over 5 days, against **+0.15% for simply being long**. The detector's
+  fires earn ONE THIRD of what holding earns, paired t **-3.64**.
+
+That single number explains tonight's -0.702, §3x's walk-forward -0.76, and the entire
+detector family's history.
+
+#### The prescribed fix was built, and it fails for a reason that closes the family
+
+The label is **offset-blind** — it pays the same reward for anticipating a low and for noticing
+it two days late. So the TARGET was varied (Tier 4, never done here), gating on the ECONOMIC
+axis rather than AUC (the lesson from the Phase 0b gate that had an unresolvable band):
+
+| arm | mean offset | captured/available | AUC(own label) | EV/fire net | vs holding | t |
+|---|---|---|---|---|---|---|
+| INCUMBENT (+/-3) | +0.967 | 0.510 | 0.7513 | -0.0001 | -0.0015 | -3.64 |
+| **ANTICIPATE (-3..0)** | **-0.489** | **0.622** | 0.7794 | -0.0034 | -0.0048 | -2.86 |
+| PIVOT-ONLY (0) | -0.200 | 0.559 | **0.8839** | -0.0060 | -0.0074 | -1.67 |
+| RET-WEIGHT | +0.877 | 0.469 | 0.7510 | -0.0021 | -0.0036 | -2.49 |
+
+**The fix works mechanically and fails economically.** ANTICIPATE genuinely flipped the
+detector from confirmation (+0.967) to anticipation (-0.489) and lifted capture 51% -> 62%,
+with AUC on its own label rising to 0.7794. **And it made the money strictly worse.**
+
+The reason is a knife-edge that can now be stated exactly. Available return is +2.60% at offset
+0 but only -0.6% / +0.4% at offsets -3 / -2, because **the bars before a low are still
+falling.** Fire late and the move is gone; fire early and you are buying falling knives — which
+is why ANTICIPATE's false positives cost **-3.43%** against the incumbent's -2.37%. **The entire
+payoff sits on ONE bar that is definitionally unknowable until it has passed, and both error
+directions are independently fatal.** PIVOT-ONLY, the arm that targets only that bar, reaches
+AUC 0.8839 and fires 146 times in 15 years across 51 instruments while still losing money.
+
+#### PROPOSED MANDATORY CONTROL #8 — AUC IS PAYOFF-BLIND
+
+Tonight is the repo's first case of a large, robust, control-surviving AUC lift (+0.0576, 5.9
+SE, 15/15 years, p 0.00003) that produces **negative** P&L in every structure. AUC counts
+concordant pairs; money counts magnitudes, and the two are decoupled whenever the payoff is
+concentrated on a small subset of the labelled events. The check is cheap:
+
+> **Before reporting any classifier improvement, report EV per fire — the mean forward return
+> over ALL fires including false positives — against (a) the round-trip cost and (b) the drift
+> the position displaces. If EV/fire does not exceed both, the AUC gain is a measurement and
+> not money, no matter how significant it is.** And where the label spans multiple bars, report
+> the fire-weighted mean OFFSET: a detector whose mean offset is positive is a confirmation
+> detector and is not tradeable regardless of its precision.
+
+This control retires, without further runs, every queue item whose mechanism is "improve the
+detector's ranking of the 7-bar bottom label" — Tier 2 (#5-8, add features), Tier 3 (#9-13,
+time and session features), Tier 5 (#19-27, models and ensembling): **roughly 20 of the 38
+queued approaches.** They were all aimed at an axis now proven not to convert.
+
+#### Two errors of my own, recorded
+
+1. **`buys` is an INDEX ARRAY, not a boolean mask.** `zigzag_swings` returns
+   `np.array([i for i, t, _ in kept if t == "L"], int)`. Two diagnostic scripts did
+   `np.flatnonzero(np.asarray(buys).astype(bool))`, which maps every nonzero index to True and
+   returns `0,1,2,...,n_pivots` — measuring the first ~200 bars of each series instead of the
+   pivots. It produced a confident, wrong claim that a ZigZag bottom is a **sell** signal
+   (h=5 mean -0.130, t -10.98). The event path exposed it: the true 5-day return from a pivot
+   is **+2.77% mean, +1.64% median, 92.6% positive.** `label_near(buys, ...)` in the detector
+   itself takes indices directly and was never affected. **Assert `piv.max() < len(series)`.**
+2. **Conditioning on |forward move| selects on the dependent variable.** An earlier cell
+   reported label-1 forward returns of +1.19 vol units inside the top magnitude quintile. That
+   quintile is DEFINED by the outcome being large, so the figure is a selection artifact. The
+   honest unconditional number is the event path above.
+
+#### What survives the night
+
+Tier 7 — **reframe the target** (#34 predict volatility for sizing, #35 champ-meta at H1, #36
+time-to-target) — is untouched by control #8, because those are different targets rather than
+better rankings of the bottom label. Tier 6 trade structure survives only conditionally: a
+better exit cannot rescue a negative gross EV/fire.
+
+**The live FTMO harness is unaffected in status** — it was deployed at the user's explicit
+request as a demo observation harness carrying a NEGATIVE EXPECTANCY warning, and tonight
+quantifies why more precisely than §3x did: mean fire offset +0.771 on gold, EV/fire below the
+drift it displaces.
+
+
+### 3at. Queue #34 — POOLED ML VOLATILITY FORECAST: R^2 +0.23 of real incremental information, and PERFECT vol foresight makes the book WORSE. Closed at the ceiling (2026-09-10, `scripts/v5_pooled_vol_sizing.py`)
+
+Tier 7, the one tier MANDATORY CONTROL #8 does not retire, because it changes the TARGET rather
+than re-ranking the bottom label. Volatility was the strongest remaining prior: vol is an order
+of magnitude more predictable than direction, and §3ai's range-based estimators (t +2.25) were
+the repo's best-ever overlay before being killed as a 2022+ artifact. What was new: §3ai/§3ad
+used only TRAILING estimators (realised, Parkinson, Garman-Klass, Rogers-Satchell) — none was a
+FORECAST — and tonight's pooled-panel capability had never been pointed at vol.
+
+**Target design matters here.** The model predicts `log(forward 20d vol / trailing 60d vol)`,
+not the vol level. Predicting the RATIO means a model that merely learns "vol is persistent"
+scores R^2 = 0 by construction, so any positive R^2 is genuinely INCREMENTAL over the estimator
+the book already uses. The feature matrix deliberately includes all four §3ai estimators, so
+the ML arm cannot win by having a better backward-looking average — it must beat their span.
+
+| step | result |
+|---|---|
+| **information** | ML-POOLED **R^2 +0.2299**, corr +0.4650, n 182,990 · ML-TRANSFER **+0.2320** |
+| **economics (panel, 51 legs, matched vol)** | INCUMBENT Sharpe +1.212 · ML-POOLED +1.201 (dSharpe **-0.011**, t -0.20) · ML-TRANSFER +1.211 (**-0.001**, t -0.02) · **ORACLE-VOL +1.065 (dSharpe -0.146, t -1.33)** |
+| **gold sleeve** | ML-POOLED +0.056 (t 1.17) · ML-TRANSFER +0.076 (t 1.59) · ORACLE **-0.076** |
+
+**The ORACLE arm is NEGATIVE, so the item closes at the ceiling rather than at the model.**
+Perfect foresight of forward 20-day volatility, used as a sizing input at matched vol, makes
+the book *worse*. No forecast of a quantity can beat knowing it exactly, so no vol model —
+however good — helps here. The mechanism is coherent and consistent with §3ai: sizing down
+ahead of high-vol periods hurts a TREND follower, because high vol is where the trends are.
+§3ai showed this for one estimator family; this establishes it for the information itself.
+
+Gold's small positive ML deltas (+0.056 / +0.076, t 1.17 / 1.59) are below any bar and its own
+oracle is negative, which makes them noise rather than a lead. Not rounded up.
+
+**Third instance of control #8's pattern, now on a regression target.** R^2 +0.23 is a large,
+real, transferable forecasting result worth nothing economically — exactly as +0.0576 AUC was
+in §3as. The generalisation: *matched-vol economics, gated at the oracle first, is the only
+metric that has ever predicted P&L in this repo.*
+
+**A bug worth recording.** The first run reported ORACLE-VOL at dSharpe **+0.367, t +10.16** —
+apparently a decisive pass. It was mine: books were built over each symbol's FULL history, and
+SPX carries data back to **1927** (24,746 rows, 18,078 pre-2000) with USDJPY to 1996. The
+INCUMBENT arm therefore traded ~85 extra years of SPX while the ML arms, having no predictions
+there, sat flat at zero — and on pre-2012 dates the panel mean was 100% SPX. Restricting every
+arm to the shared OOS window moved ORACLE-VOL from +0.367 to **-0.146** and flipped the
+verdict. **Any panel comparison must assert a shared evaluation window; unequal history is
+indistinguishable from skill.**
+
+
+### 3au. POOLED TOP detector — the LARGEST oracle prize ever measured here (+1.252 panel / +1.491 gold, t +6.7, 15/15) and NO detector reaches any of it; the pivot family closes symmetrically on mechanism (2026-09-10, `scripts/v5_pooled_top_detector.py`)
+
+The gap the repo left open for five studies. Memory `oracle-ceiling-control-tops-not-bottoms`
+and §3 line 524 recorded that perfect foresight of gold's **BOTTOMS** is worth dSharpe **+0.017**
+while **TOPS** are worth **+0.26**, and that "5 studies chased the wrong side". Every detector
+study since — §3x, §3ao, §3ar, §3as — is still on bottoms. `zigzag_swings` returns `sells`
+alongside `buys` and **no study in this repo had ever used it.**
+
+Run with control #8 applied from the first line rather than bolted on: oracle gate first, then
+EV/fire and the fire-weighted mean OFFSET as primaries, AUC printed for continuity only.
+
+#### The oracle: the largest prize this repo has recorded
+
+Perfect top knowledge used to TRIM the long-only champion to flat for 5 bars, **at matched vol**:
+
+| | dSharpe | paired t | years |
+|---|---|---|---|
+| PANEL oracle-trim vs champion | **+1.252** | **+6.72** | **15/15** |
+| GOLD oracle-trim vs champion | **+1.491** | **+6.37** | **15/15** |
+
+Panel base Sharpe +1.237 -> oracle-trim **+2.489**. That is **6x the +0.20 gate** and ~5x the
+earlier H4 gold estimate of +0.26. The top side is where the money is, confirmed and now
+properly sized on D1 at book level.
+
+#### And no detector reaches it — fire-rate-matched, 20 cells
+
+A fixed 0.60 threshold is not comparable across labels with different base rates (POOLED-ANT
+fired 0.24% of bars; POOLED-EARLY never fired, so its exactly-0.000 dSharpe was a thresholding
+artifact, not a result). Each arm was therefore given the threshold producing a set fire rate:
+
+| arm | mean offset | EV/fire | best PANEL dSR | worst PANEL dSR |
+|---|---|---|---|---|
+| POOLED | +0.98 .. +1.62 | +0.0005 .. +0.0017 | **+0.090** (t +0.84) | -0.179 |
+| GOLD-ONLY | +0.36 .. +0.77 | +0.0019 .. +0.0031 | -0.011 | -0.243 |
+| POOLED-ANT | -0.59 .. -0.94 | +0.0042 .. +0.0061 | -0.086 | **-0.604** (t -3.17) |
+| POOLED-EARLY | -1.13 .. -1.26 | +0.0038 .. +0.0050 | -0.073 | **-0.751** (t -3.04) |
+
+Best of 20 cells is **t +0.84** — inside the best-of-K noise floor, so not a result even before
+a max-statistic null. Pooling again REPAIRS a bad detector (panel -0.456 -> -0.075, t -2.11 ->
+-0.50) without crossing zero, consistent with §3as and §3at.
+
+#### The mechanism prediction I made was REFUTED by measurement — and that is the finding
+
+I argued on mechanism grounds that tops should behave differently from bottoms: the champion is
+long-only, so a top signal is a TRIM, an action with no entry and therefore no falling-knife
+exposure. **Being early ought to be cheap.** The sweep says the opposite, monotonically:
+
+> **the more anticipatory the arm, the worse the economics.** POOLED-EARLY (mean offset -1.2)
+> reaches panel dSharpe **-0.751 at t -3.04**, and EV/fire is *highest* for the earliest arms
+> (+0.005 vs +0.001) — exactly backwards for a trim, which needs NEGATIVE forward return.
+
+The reason: **an early "top" is indistinguishable from a strong uptrend.** The features that
+say "extended, overbought" are the same features that say "trending hard". Trimming those bars
+forfeits the drift that *is* the champion's entire edge. This is the repo's oldest result
+(kill-the-shorts) reappearing on the detector axis.
+
+#### The pivot-detection family is now closed symmetrically, on mechanism
+
+Four fatal cells, both sides, both error directions:
+
+| | fire EARLY | fire LATE |
+|---|---|---|
+| **bottoms** (§3as) | buy falling knives (FP -3.43%) | move gone (52% forfeited, offset +0.97) |
+| **tops** (§3au) | trim rallies, forfeit drift (-0.751) | decline already happened (offset +1.32) |
+
+**Both label engineering experiments worked mechanically and failed economically.** Offset-aware
+labels demonstrably control *when* a model fires — bottoms +0.967 -> -0.489, tops +1.323 ->
+-0.300 — so this is not a modelling failure. It is that **a pivot is only identifiable once it
+has resolved, and the bars where it has not yet resolved are, by construction, the bars that
+look like continuation.** No representation, feature, model or label fixes that.
+
+#### The number a future session should read first
+
+**Oracle +1.252, best honest detector +0.090.** That 14x gap is the largest oracle-to-achievable
+gap in this repo's history, and it is the precise statement of where the value is and why it is
+unreachable. The prize is real; the geometry of the target is what forbids collecting it.
+
+
+### 3av. Queue #35 champ-meta — a +0.261 / t +8.54 "result" RETRACTED: 18 FX D1 series in `data/` are forward-stamped and leak the next bar through the intrabar features. New DATA HAZARD + two method corrections (2026-09-10, `scripts/v5_pooled_champ_meta.py`)
+
+The one target where control #8's valuable-but-unmonetisable gap **cannot** open, because the
+label IS the economics: `y = sign(champion position x forward 5d return)` — "does the book's
+current position make money from here". A model of that cannot be valuable and unmonetisable;
+monetising it is the definition of the label. Run pooled (the two prior meta-labeling attempts,
+memory `xau-per-trade-prob-sizing-disproven`, were both gold-only).
+
+#### What it appeared to show, and the decomposition that made it credible
+
+Oracle gate (control #5) passed enormously: PANEL **+2.534** (t +17.16, 15/15), GOLD +2.586;
+champion +1.231 -> oracle-gated +3.765. Base rate 0.5194.
+
+| test | dSharpe | t | years | block-p |
+|---|---|---|---|---|
+| PANEL POOLED **SIZE** (continuous) | **+0.251** | **+8.52** | 14/15 | 0.0000 |
+| GOLD POOLED SIZE | **+0.000** | +0.01 | 6/15 | — |
+| XS-ONLY (instrument weights, no timing) | +0.000 | +0.12 | 7/15 | 0.4175 |
+| **TS-ONLY** (timing, no instrument tilt) | **+0.261** | **+8.54** | 14/15 | **0.0000** |
+| SHUFFLE control | -0.004 | -0.18 | 7/15 | 0.5425 |
+| VOL-TILT benchmark | +0.004 | +0.02 | 9/15 | 0.4850 |
+| TRAILING-SHARPE benchmark | -0.035 | -0.80 | 6/15 | 0.7675 |
+
+Per-leg: **38/50 positive, sign-test p 0.000153, 18 legs at t > +2 against 1 at t < -2.** It
+survived a 20-day block bootstrap pricing the 5-day label overlap, a block-shuffled-label
+control, and two known-factor benchmarks. **It is all TIMING, not cross-sectional allocation.**
+
+#### Why it is false
+
+**The real 4-sleeve book (`configs/v5_maven_book.json`: XAUCHAMP 0.50, BTC/NDX/BRENT 0.1667)
+showed dSharpe -0.009, t -0.24, 7/15, block-p 0.6025** (at 8bp, -0.034), with split halves
+disagreeing in sign (-0.060 / +0.036). The honest number was the one that nearly got discarded.
+
+Chasing that gap: **all 18 legs with t > +2 are FX pairs**, with near-identical dSharpe
+(+1.90..+2.31) and t (+20..+26), and a book of just those legs runs base -0.055 -> overlay
+**+4.818**. A t of +26 from a +/-15% sizing modulation is not an edge. `corr(dSR, leg vol)`
+= **-0.449**; the low-vol half's median dSharpe is +2.07 against the high-vol half's +0.012.
+
+Direct measurement on GBPJPY: **corr(P[t], ret[t+1]) = +0.6966** (gold +0.0656). Random
+permuted-multiplier controls on the same construction gave +0.06 / +0.19 / +0.20, so the
+construction is sound and the features carry the future. Per-column:
+
+| feature | GBPJPY corr with ret[t+1] | GOLD |
+|---|---|---|
+| `upwick` | **+0.5094** | +0.0444 |
+| `lowick` | **-0.5005** | -0.0254 |
+| `clpos` | **-0.4996** | -0.0208 |
+| `vol_features` (new tonight, max col) | +0.0311 | +0.0265 |
+
+#### THE ROOT CAUSE — A DATA HAZARD, NOT A CODE BUG
+
+How often does bar t's `[low, high]` contain bar **t+1**'s close versus bar **t-1**'s close?
+
+| | forward | backward | |
+|---|---|---|---|
+| GBPJPY | 0.728 | 0.504 | inverted |
+| EURUSD | 0.699 | 0.497 | inverted |
+| AUDNZD | 0.759 | 0.546 | inverted |
+| GOLD | 0.390 | 0.540 | normal |
+| BTC | 0.521 | 0.939 | normal |
+| NDX | 0.413 | 0.615 | normal |
+| BRENT | 0.479 | 0.729 | normal |
+
+A correctly stamped bar's range straddles the PRECEDING close, so backward > forward. **Every
+FX D1 file in `data/` is inverted: its OHLC spans into the following bar relative to its
+timestamp.** That makes the intrabar features partially descriptive of the next bar.
+
+**A reusable screen is now in `v5_pooled_bottom_detector.py`.** Note the proxy is not enough:
+`forward_stamp_ratio` MISSES USDJPY (fwd 0.632 < bwd 0.649) which still leaks at 0.317. Use
+**`intrabar_leak(d)` = |corr(clpos[t], ret[t+1])| with a 0.15 threshold**, which measures the
+harm itself and separates cleanly — clean GOLD 0.021 / NDX 0.078; leaking USDJPY 0.32,
+EURUSD 0.42, GBPJPY 0.50. It flags **19 series** (all 18 FX pairs plus PLAT 0.23). Invoke with
+`--drop-forward-stamped`. **Any pooled study using clpos/upwick/lowick must apply it.**
+
+#### TWO METHOD CORRECTIONS, both mine
+
+1. **A shuffled-LABEL control cannot detect FEATURE lookahead.** I ran one in §3as, it came
+   back clean at 0.50, and I treated that as sufficient evidence of no leakage. Shuffling the
+   label destroys *every* feature-label relationship, leaky or not, so the test is blind to a
+   feature that contains the future. **It is a control against label leakage only.**
+2. **Truncation-based `probe_lookahead` cannot detect DATA misalignment.** The feature code is
+   causal; the defect is in the bars. Truncating and recomputing reproduces the same values, so
+   the probe passes. This is exactly one of the three blind spots named in
+   `SHORT-VARIANT-PLAN.md`, now observed in the wild. **The direct test — correlate every
+   feature column against the NEXT bar's return, per instrument — costs seconds and is the only
+   thing that caught it.** Add it to any new feature block.
+
+#### What survives, and what this costs the earlier entries
+
+- **§3as's positive AUC claim is RE-VERIFIED on a clean 31-instrument panel: POOLED +0.0590,
+  TRANSFER +0.0579, still 15/15 years, split halves +0.0455 / +0.0519** (previously +0.0576 /
+  +0.0570 with the FX series included). Gold's own features are clean and the evaluation was
+  always on gold, so the lift never depended on the defect.
+- §3at (vol sizing) used only `vol_features`, which is clean, and closed on a NEGATIVE ORACLE —
+  a statement about the information, not the model. Unaffected.
+- §3as and §3au's **negative** economic results are conservative: leakage inflates a detector,
+  and those arms still failed. Their conclusions stand.
+- **Queue #35 is DISQUALIFIED.** The deployable answer is the 4-sleeve book's -0.009.
+
+_Last updated 2026-09-10._
