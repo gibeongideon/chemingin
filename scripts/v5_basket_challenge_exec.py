@@ -197,6 +197,20 @@ def apply_compliance_sl(conn, symbol, magic, equity, cap_pct, send,
     px = float(tick.bid) if d > 0 else float(tick.ask)
     sl = avg_entry - d * dist
 
+    # THE CAP CAN BE MATHEMATICALLY UNREACHABLE ON A SMALL LONG. `dist = budget / per_unit`
+    # takes no account of the fact that a long's worst case is price -> 0. On 2026-09-16 the
+    # 0.03-lot BTCUSD sleeve gave budget $2,987 / per_unit 0.03 = dist 99,566 against an entry
+    # of 75,874, i.e. a stop at -23,692, which the broker refused with retcode 10016 ("invalid
+    # stops"). The position could only ever lose its $2,276 of notional, so there was nothing
+    # to cap -- but the log said "REJECTED" and would have buried a genuine rejection in noise.
+    # Report the arithmetic instead of sending an impossible order.
+    if d > 0:
+        max_possible_loss = per_unit * float(avg_entry)      # price -> 0
+        if max_possible_loss <= budget:
+            return (f"{symbol}: no compliant SL needed — worst case (price -> 0) loses "
+                    f"${max_possible_loss:,.0f}, under the {cap_pct:.1%} cap "
+                    f"(${budget:,.0f}). Position is too small to breach it.")
+
     # broker minimum stop distance
     point = float(si.point) or 0.01
     min_gap = float(getattr(si, "trade_stops_level", 0) or 0) * point
@@ -272,6 +286,10 @@ def main() -> None:
     ap.add_argument("--advance-phase", action="store_true")
     ap.add_argument("--config", default=str(CONFIG_FILE),
                     help="challenge config JSON (default: FundingPips basket)")
+    ap.add_argument("--port", type=int, default=None,
+                    help="mt5linux bridge port; falls back to the config's 'port', then 18812. "
+                         "Needed because one host runs several terminals (18812 Maven, "
+                         "18813 cent, 18814 FTMO) and MT5Connector defaults to Maven.")
     ap.add_argument("--guard-only", action="store_true",
                     help="fast real-time protector: evaluate guards + flatten on "
                          "breach, but DO NOT reconcile/open (for a 1-2min timer)")
@@ -284,7 +302,9 @@ def main() -> None:
     symmap = {k: v for k, v in cfg["symbols"].items() if not k.startswith("_")}
     state_path = Path(args.state)
 
-    conn = MT5Connector()
+    port = args.port or int(cfg.get("port") or 18812)
+    conn = MT5Connector(port=port)
+    print(f"  bridge port {port}")
     conn.connect()
     try:
         acct = conn.account_info()

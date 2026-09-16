@@ -1,0 +1,93 @@
+{
+  "created_on": "2026-07-18",
+  "purpose": "GOLD-TILTED core-4 champion book, TRADED on the FTMO demo from 2026-09-16 at the user's request, replacing the ZigZag harness (which is now signal-only after 5 live orders took the demo from $100,000.00 to $99,564.82 \u2014 exactly the negative expectancy V5_FINDINGS 3x/3as measured).",
+  "firm": "FTMO",
+  "model": "ftmo",
+  "vol": 0.09,
+  "_vol_note": "vol 0.09 is the repo's FTMO dial (v5_ftmo_challenge / v5_ftmo_wide), NOT v5_gold_max_sharpe's 0.20 \u2014 that config carries an explicit _dd_warning that it breaches a 10% wall BY CONSTRUCTION. 0.09 keeps the demo inside FTMO's rules so the book can actually be observed rather than halted.",
+  "_model_note": "FTMO 2-Step (ftmo.com/en/trading-objectives, verified 2026-07-18): P1 +10% / P2 +5% target; 5% max daily loss (equity incl. floating, resets 00:00 CE(S)T); 10% max overall loss STATIC on initial; min 4 trading days; NO time limit; no 2-Step consistency rule; 1:100 leverage. This 4-asset book @9% sim: SR 1.67, ~97.1% pass, median ~10.5mo, path DD -11.8% (guard halts at 8%; the -11.8% is the 9-yr path, rarely realised inside a short challenge). Never raise vol mid-challenge.",
+  "magic": 360591,
+  "run_id": "v5-ftmo-gold-tilted",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo)",
+  "reset_tz": "Europe/Prague",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": [
+      "XAUCHAMP"
+    ],
+    "crypto": [
+      "BTC"
+    ],
+    "eq_us": [
+      "NDX"
+    ],
+    "energy": [
+      "BRENT"
+    ]
+  },
+  "_classes_note": "The 100K-capable book. NOT sizeable below ~$100K (gold min-lot $4,020, BTC $640). For a $10K account use configs/v5_fp_flex_10k.json (SPX+ASX+ETH).",
+  "_buffer_note": "no-trade band: skip a symbol whose target vs held leverage differs by < buffer x its own target (cuts churn).",
+  "symbols": {
+    "_note": "engine symbol -> FTMO broker name (verified live on FTMO-Demo 2026-07-18). contract_size/price read live at execute time.",
+    "XAUCHAMP": {
+      "fp_symbol": "XAUUSD",
+      "class": "xau",
+      "tf": "H4",
+      "_broker": "FTMO FULL, contract 100oz, vmin 0.01"
+    },
+    "BTC": {
+      "fp_symbol": "BTCUSD",
+      "class": "crypto",
+      "tf": "D1",
+      "_broker": "FTMO FULL, contract 1.0 BTC/lot, vmin 0.01, spread ~$1 (1.5bp)"
+    },
+    "BRENT": {
+      "fp_symbol": "UKOIL.cash",
+      "class": "energy",
+      "tf": "D1",
+      "_broker": "FTMO FULL, contract 100, vmin 0.01, min-lot ~$95, spread 7.58bp (verified live 2026-07-24)"
+    },
+    "NDX": {
+      "fp_symbol": "US100.cash",
+      "class": "eq_us",
+      "tf": "D1",
+      "_broker": "FTMO FULL, contract 1.0, vmin 0.01, spread ~1.5pt (0.5bp)"
+    }
+  },
+  "guards": {
+    "daily_guard_frac": 0.035,
+    "overall_halt_frac": 0.08,
+    "phase_targets": {
+      "1": 0.1,
+      "2": 0.05
+    },
+    "_note": "FTMO: daily limit 5% -> flatten at 3.5% from 00:00-CET anchor; max loss 10% -> halt at 8% from initial; targets +10% (P1) / +5% (P2). 1.5% buffer before each firm line."
+  },
+  "min_trading_days": 4,
+  "news_filter": {
+    "enabled": true,
+    "currencies": [
+      "USD"
+    ],
+    "impact": "High",
+    "before_min": 30,
+    "after_min": 30,
+    "major_before_min": 60,
+    "major_after_min": 45,
+    "close_in_profit": true,
+    "refresh_minutes": 60,
+    "cache_file": "data/news_cache.json"
+  },
+  "stop_loss_pct_per_position": 0.03,
+  "_stop_loss_note": "Prop-firm compliance only. Caps each symbol's worst case at 3% of account equity via a broker-side SL, recomputed every pass (vol-targeting changes position size continuously). Measured 2018-2026: sits 2.3-4.2x DAILY ATR away at the tightest historical position sizes and was NEVER hit by a single session in 8+ years (worst days BTC -38.6%, BRENT -31.5%, NDX -12.5%, XAU -11.6%). The book's real protection is the trend filter shrinking exposure; this stop is a backstop, not a strategy component. All tickets on a symbol get the SAME stop price derived from the volume-weighted average entry, so the AGGREGATE loss is capped.",
+  "class_weights": {
+    "xau": 0.5,
+    "crypto": 0.1667,
+    "eq_us": 0.1667,
+    "energy": 0.1667
+  },
+  "port": 18814,
+  "_weights_note": "Gold tilt = the 0.50/0.1667x3 class risk split of v5_maven_book and v5_gold_max_sharpe. v5_basket_challenge.target_leverage reads class_weights directly; absent, it would fall back to equal class risk.",
+  "_carry_note": "MEASURED LIVE ON THIS ACCOUNT 2026-09-16: XAUUSD -7.08%/yr, BTCUSD -30.00%/yr, US100.cash -7.57%/yr, UKOIL.cash +4.91%/yr. The champion forecast does not know about financing. The gold sleeve's edge was measured on SWAP-FREE GoldEternal (3ag: sleeve net SR 0.886 -> 1.090), so on FTMO's swap-charging XAUUSD this book is materially worse than the headline. That is a known, deliberate cost of observing it here.",
+  "_data_note": "The engine reads LOCAL CSVs, not the broker feed: data/{sym}_D1_long.csv (Yahoo, via refresh_d1_panel.py) and data/XAUUSD_H4_long.csv (MT5, via refresh_xau_h4.py \u2014 written 2026-09-16 because NOTHING refreshed it and it was 16 days stale). deploy/book-ftmo.sh refreshes BOTH before every run; without that the book sizes off months-old prices."
+}
