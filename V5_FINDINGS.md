@@ -3123,4 +3123,122 @@ detecting, deployed on a demo account at the user's explicit request ("I just wa
 action, no profit needed"). Every email still carries the negative-expectancy line. **It is not
 a recommendation and must not be pointed at a funded account.**
 
-_Last updated 2026-09-10._
+
+### 3ax. RANGE / EXTREMES representation on XAUUSD — the range is 8x wider than in 2015 and that ALONE explains the zigzag's live losses; the min/max features themselves carry nothing past geometry (2026-09-18, `scripts/v5_range_fetch.py`, `v5_range_study.py`, `v5_range_predict.py`)
+
+A genuinely new data representation, at the user's request: **daily and weekly HIGH/LOW boxes
+and where price sits inside them**, rather than returns or z-scored windows. Every prior study
+here fed the model returns (`features()`, EWMAC/breakout forecasts, `vol_features()`); none
+asked the level-based question. Fresh multi-timeframe XAUUSD pulled from the broker feed
+(M15 2.5y, M30 3.4y, H1 5.1y, D1 11.6y, W1 11.5y) because the CSVs are stale and the D1 panel
+is Yahoo GC=F futures, not the spot CFD traded.
+
+#### THE FINDING THAT MATTERS OPERATIONALLY: the range has exploded
+
+| year | mean daily range | as % of price | SL 0.50% as a share of ONE day's range |
+|---|---|---|---|
+| 2015 | $15.34 | 1.34% | 0.37 |
+| 2019 | $15.53 | 1.10% | 0.45 |
+| 2022 | $25.55 | 1.42% | 0.35 |
+| 2025 | $60.16 | 1.71% | 0.29 |
+| **2026** | **$125.21** | **2.73%** | **0.18** |
+
+Last 252 sessions: mean range **$115.17 (2.57%)**, and **96.0% of sessions have a range
+exceeding the zigzag's TP+SL combined.** The live harness brackets at TP +0.60% / SL -0.50% —
+**0.23 and 0.19 of a single day's travel.** Both barriers sit inside one session's noise, so on
+a 48-hour hold which one is hit first is close to a path coin-flip *regardless of whether the
+detector was right*. §3x's grid was selected when the ratio was ~0.4; it has halved since.
+
+**This is an independent, mechanical explanation of the live result** — 5 orders took the FTMO
+demo from $100,000.00 to $99,564.82 — and it sits alongside §3as's diagnosis (mean fire offset
++0.771, a confirmation detector). **Any fixed-percentage bracket on gold must now be re-derived
+in ATR or range units, not percent.**
+
+#### Descriptive results
+
+- **Range is predictable; direction is not.** Range% lag-1 autocorr **0.500**; the 5-day mean
+  predicts tomorrow's range at **R^2 0.308**. corr(today's return, sign of tomorrow's) =
+  **-0.037**. This reproduces §3at's asymmetry on a different statistic and is the honest reason
+  a range framing is interesting — and its central limitation: a range forecast is
+  direction-free and cannot be traded directionally.
+- **The user's literal hypothesis is refuted.** "Even in a day the bottom and top seem almost
+  the same": across 656 M15 sessions the daily high and low share an hour in **0.5%** of days
+  and sit a **median 12.5 hours apart** (p10 4.2h, p90 19.0h). The day has strong directional
+  structure — lows cluster at 01:00 UTC (12.7%), highs at 16:00-18:00 and 23:00.
+- **Weekly travel efficiency** = weekly range / sum of daily ranges = **0.442 median** over 606
+  weeks (0.445 over the last 52). The week travels ~2.3x its net span. This is a trend-vs-chop
+  measure built purely from extremes.
+- **Trend structure, last 252 sessions** (net +15.4%): higher-high-and-higher-low bars 42.1%,
+  lower-low-and-lower-high 35.3%, inside 13.1%, outside 9.5%.
+
+#### Two patterns that look tradeable and are not
+
+1. **Mon-low / Fri-high is pure DRIFT.** Monday holds the weekly low 31.7% and Friday the
+   weekly high 30.3% — but split by outcome it **inverts perfectly**: on UP weeks Mon holds the
+   low 0.508 / Fri the high 0.521; on DOWN weeks that becomes 0.088 / 0.042, with Mon holding
+   the HIGH 0.467 and Fri the LOW 0.479. Tautological. (Memory `xau-weekly-cycle-disproven`
+   already killed the Mon->Fri hold as a trade.)
+2. **The close-position U-shape is one year.** Quintiles of close-position looked non-monotonic
+   (Q5 +0.117% at t +3.08, Q1 +0.065%, Q4 -0.055%), and the last 252 sessions looked striking
+   (Q1 +0.386%, Q5 +0.410%). Collapsed to the single pre-registered statistic
+   corr(|pos-0.5|, tomorrow's return) it is **+0.0245, t +1.34**, with the per-year sign
+   flipping (2017 **-0.148**, 2021 -0.057, 2026 **+0.207**). The apparent effect is 2026 alone.
+
+#### The prediction test, and its refutation
+
+Target: **does tomorrow touch today's HIGH before today's LOW?** — resolved on H1 bars (daily
+bars cannot say which came first), 85.5% of sessions resolved, 14.2% touch neither, base rate
+0.5505. It is a real trade (long at the close, TP = today's high, SL = today's low) whose
+bracket **scales with the range**, fixing the defect above. 37 features, all from
+extremes/levels/ranges. Recency weighting tested as its own arm (250-session half-life), as
+requested — two arms, not a sweep.
+
+**THE NULL THAT DECIDES IT.** A close near today's high is simply *closer* to the high, so it
+gets touched first more often as pure geometry. The distance-implied probability scores
+**AUC 0.8659** by itself. Beating 0.50 here proves nothing.
+
+| arm | AUC | vs distance null | EV/trade net | t |
+|---|---|---|---|---|
+| DISTANCE NULL | 0.8659 | — | +0.0018% | +0.06 |
+| UNIFORM | 0.8451 | **-0.0208** | +0.0183% | +0.44 |
+| RECENCY hl250 | 0.8408 | -0.0251 | — | — |
+
+**The model is WORSE than geometry alone**, and its EV is indistinguishable from zero. Held to
+the next close instead of bracketed, at matched vol against buy-and-hold: first-touch model
+dSharpe **-1.34 (t -3.20, 0/3 years)**, direct-direction model **-0.97 (t -2.24, 0/3)**,
+distance null -0.94. Every arm loses to simply being long. **Recency weighting did not help**
+(0.8408 vs 0.8451 uniform; dSharpe -1.22 vs -1.34), so the user's weighting hypothesis is
+tested and negative on this target.
+
+#### THE ERROR THAT ALMOST BECAME A RESULT — and the tell that caught it
+
+The first run reported **AUC +0.0386 over the distance null (3.2 SE), EV/trade +0.1598% at
+t +4.68, 3/3 years, +40%/yr**, and the hold-to-close variant reported a direct-direction model
+at **Sharpe 5.52, paired t +9.19** against buy-and-hold. Sharpe 5.5 on daily gold is not a
+result, it is a bug, and that implausibility is what prompted the audit rather than any control.
+
+The cause was one line of my own feature code:
+
+```python
+wk_hi = w1["high"].reindex(d1.index, method="ffill")     # LOOKAHEAD
+```
+
+Weekly bars are stamped at the week's **start**, so `ffill` assigns Monday's weekly bar — whose
+high and low span the *entire* week — to every day Monday through Friday. **On Tuesday the
+model already knew Friday's high.** It contaminated `pos_week`, both `dist_wk_*` columns and
+`wk_eff`.
+
+Replaced with two causal constructions: **week-to-date** extremes (`groupby(week).cummax()`,
+using only bars up to t) and the **previous completed week's** extremes. A per-feature probe now
+shows max |corr(feature, tomorrow's return)| = **0.0317 across 37 features**. With the fix, the
+headline collapsed from +0.1598%/t +4.68 to +0.0183%/t +0.44, and from Sharpe 5.52 to 0.71.
+
+**Method note to keep.** A shuffled-label control passed cleanly in the leaked run (0.5109) —
+because shuffling the label destroys every relationship, leaky or not. Neither would a
+truncation probe have caught it, since the code is deterministic and the defect is in the
+*alignment* of a coarser timeframe onto a finer one. **Resampling a higher timeframe onto a
+lower one is a lookahead by default; the only reliable test is correlating every feature
+against the next bar's return, per instrument.** That is the same lesson as §3av's
+forward-stamped FX bars, arrived at from the opposite direction.
+
+_Last updated 2026-09-18._
