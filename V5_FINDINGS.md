@@ -3241,4 +3241,104 @@ lower one is a lookahead by default; the only reliable test is correlating every
 against the next bar's return, per instrument.** That is the same lesson as §3av's
 forward-stamped FX bars, arrived at from the opposite direction.
 
+
+### 3ay. Range/extremes across TIMEFRAMES and barriers — 0 skill in 12 cells; the reusable output is the BREAKEVEN TABLE, and two more drift artifacts die (2026-09-18, `scripts/v5_range_multitf.py`)
+
+Extends §3ax downward at the user's request ("try the same ideas on lower timeframes and find
+edge by playing around with combinations"). Two design changes make the search answerable
+rather than open-ended:
+
+1. **Symmetric barriers.** §3ax used the bar's own high/low, so a close near the high was
+   simply NEARER it — the distance null alone scored AUC 0.8659 and no model could beat
+   geometry. Here the label is *+k·ATR before −k·ATR within H bars*, so **the distance null is
+   exactly 0.5** and any AUC above it is information. It also implements §3ax's one operational
+   finding: brackets in ATR, never in percent.
+2. **A pre-registered grid with a max-statistic null.** 3 timeframes × 2 feature sets, then a
+   3-barrier sweep. Picking the best of 6 is worth roughly +0.03 AUC for free, and the
+   block-shuffled max-AUC distribution measures exactly that: **p50 0.5129, p95 0.5344,
+   p99 0.5404.**
+
+#### THE REUSABLE RESULT: what the spread demands, by timeframe
+
+`breakeven P = 0.5 + cost/(2·k·ATR)` at a floored 1.5bp one-way:
+
+| timeframe | k=1 ATR | k=2 | k=3 |
+|---|---|---|---|
+| **M15** | **0.5868** | — | — |
+| **H1** | 0.5494 | 0.5250 | 0.5170 |
+| **D1** | 0.5095 | 0.5054 | 0.5037 |
+
+**The barrier shrinks with the timeframe; the spread does not.** A genuinely skilled model would
+need **58.7% directional accuracy at M15** to break even, against 51.0% at D1 — and the best
+honest accuracy this repo has ever achieved on any gold label is ~0.59 AUC. **This table is the
+design constraint to check BEFORE building any intraday structure here**, and it is the
+quantified form of the repo's recurring "intraday dies at the spread" result (§3n, §3s, the LLM
+trader, the fast-trend runner).
+
+#### 12 cells, no skill anywhere
+
+| tf | features | AUC | SE | margin vs breakeven | EV/trade | ann |
+|---|---|---|---|---|---|---|
+| M15 | RANGE-BOX | 0.4987 | 0.0029 | −0.0766 | −0.0285% | −13.32% |
+| M15 | RANGE+SESSION | 0.4992 | 0.0029 | −0.0819 | −0.0295% | −14.51% |
+| H1 | RANGE-BOX | 0.4984 | 0.0035 | −0.0401 | −0.0231% | −2.79% |
+| H1 | RANGE+SESSION | **0.5003** | 0.0035 | −0.0374 | −0.0220% | −2.76% |
+| D1 | RANGE-BOX / +SESSION | 0.4765 | 0.0151 | +0.0687 | +0.1986% | +1.78% |
+
+Best cell **H1/RANGE+SESSION at AUC 0.5003**, p-value against its own max-statistic null
+**0.98**. Adding session features (hour sin/cos, London/NY/Asia/overlap flags, dow) moved AUC by
++0.0019 — nothing. Leak probe clean throughout (max |corr(feature, next return)| 0.019–0.035).
+
+#### THE TRAP IN THE ONLY POSITIVE CELLS: drift wearing a costume
+
+Widening the barrier lowers breakeven, so EV turns positive — and it is **pure long exposure**:
+
+| tf | k | base rate | AUC | hit@fire | **skill = hit − base** | EV | t |
+|---|---|---|---|---|---|---|---|
+| D1 | 1 | 0.5783 | 0.4790 | 0.5433 | **−0.0351** | +0.196% | +1.98 |
+| D1 | 2 | 0.6287 | 0.4662 | 0.5809 | **−0.0478** | +0.492% | +2.72 |
+| D1 | 3 | **0.6690** | 0.5041 | 0.7035 | +0.0345 | **+1.725%** | **+6.66** |
+
+A 3-ATR upside barrier is touched first **67%** of the time because gold trends up. The
+D1/k=1 and k=2 cells have EV **positive** and skill **negative** simultaneously — the model is
+worse than random and the trade still makes money, because the money is the drift.
+
+> **METHOD NOTE worth keeping: always print the BASE RATE beside the hit rate.** `skill = hit −
+> base` is the drift-free statistic. A positive EV with skill ≤ 0 is long exposure, which the
+> champion already harvests more efficiently and with fewer spread payments. EV/fire alone
+> (control #8) does not catch this; control #8's "drift the position displaces" clause does, and
+> this is the cleanest illustration of it yet.
+
+#### Two more drift artifacts killed by the same control
+
+§3ax killed Mon-low/Fri-high by splitting on outcome. The identical test kills the intraday
+session-timing pattern, which looked like the study's best descriptive lead (lows cluster at
+01:00 UTC, highs at 16:00–18:00):
+
+| | UP days | DOWN days |
+|---|---|---|
+| P(low forms 00:00–04:00) | 0.547 | **0.045** |
+| P(high forms 00:00–04:00) | 0.041 | **0.514** |
+
+A perfect inversion — tautological, no clock structure. Traded directly (buy 03:00 UTC, sell
+17:00 UTC, 654 sessions, 2bp): **+0.0339%, t +0.83, SR +0.51**, against **+0.0839%, SR +0.98**
+for simply holding the same sessions open-to-close. **The "seasonality" captures less than
+holding.**
+
+> **The general form, now three-for-three (Mon/Fri, close-position U-shape, session timing):
+> any statistic about WHERE an extreme falls in a window is mechanically determined by the sign
+> of that window's return. Split by outcome first; if it inverts, there is nothing there.**
+
+#### Status
+
+The range/extremes representation is **closed at every timeframe tested** (M15/H1/D1), every
+barrier (1/2/3 ATR), both feature sets, and both trade structures (bracketed and hold-to-close,
+§3ax). Combined with §3ax's refutation this is 18 cells at AUC ≈ 0.50. Per §3ak, further search
+on this representation raises the bar faster than the statistic.
+
+**What survives is not a signal but a constraint**: the breakeven table above, and §3ax's
+finding that gold's daily range has gone from 1.34% to 2.73% of price, which makes the live
+zigzag harness's fixed 0.60%/0.50% bracket **0.23 and 0.18 of one day's travel**. That remains
+the one open, actionable item.
+
 _Last updated 2026-09-18._
