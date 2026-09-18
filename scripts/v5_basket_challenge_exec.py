@@ -435,6 +435,38 @@ def main() -> None:
         # Runs AFTER the reconcile so the stop matches the position we now hold, and on
         # EVERY pass because vol-targeting keeps changing that size.
         sl_cap = cfg.get("stop_loss_pct_per_position")
+        if not sl_cap:
+            # SL DISABLED IN CONFIG -> actively CLEAR any stop this bot previously set.
+            # Merely skipping `apply_compliance_sl` would leave the old broker-side stops in
+            # place forever, so "remove the stop loss" would silently not remove anything.
+            # Only magic-matched tickets are touched: a hand-placed position is never modified.
+            cleared, failed = 0, []
+            for esym in sorted(targets):
+                bsym = symmap.get(esym, {}).get("fp_symbol")
+                if not bsym:
+                    continue
+                # MT5Connector exposes get_positions(symbol, magic) -- NOT positions_get.
+                # The first version of this block called the wrong name inside a bare
+                # `except Exception: held = []`, so it printed "none outstanding" while four
+                # positions still carried broker-side stops. Narrow the except to the calls
+                # that can legitimately fail and let a typo raise.
+                held = [q for q in (conn.get_positions(symbol=bsym, magic=magic) or [])
+                        if float(q.sl or 0.0) != 0.0]
+                for q in held:
+                    if not send:
+                        print(f"  would CLEAR SL on {bsym} #{q.ticket} "
+                              f"(currently {q.sl})")
+                        continue
+                    try:
+                        conn.modify_position(q.ticket, sl=0.0, tp=float(q.tp or 0.0))
+                        cleared += 1
+                    except Exception as exc:  # noqa: BLE001
+                        failed.append(f"{bsym}#{q.ticket}: {exc}")
+            print(f"  compliance SL: DISABLED in config"
+                  + (f" — cleared {cleared} broker-side stop(s)" if cleared else "")
+                  + (" — none outstanding" if not cleared and not failed else ""))
+            for msg in failed:
+                print(f"  !! SL clear FAILED {msg}")
         if sl_cap:
             print(f"  compliance SL: cap {float(sl_cap):.1%} of equity per symbol")
             for esym in sorted(targets):
