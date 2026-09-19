@@ -1,0 +1,12 @@
+# XAUUSD advisor — ADVISORY ONLY, no order path (tests/test_v5_xau_advisor.py asserts the
+# import closure contains no order_send / TRADE_ACTION).
+[Unit]
+Description=XAUUSD adverse-move advisor (warn-only; computes and notifies)
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-advisor.sh
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xau-advisor

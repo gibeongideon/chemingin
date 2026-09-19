@@ -1,0 +1,19 @@
+# Every 5 minutes at :20 seconds past.
+#
+# WHY :03/5 AND NOT :00/5. Stepping by 5 from 3 gives 03,08,13,...,58 -- alternating parity, so
+# half the slots still land on the same minute as the repo's every-2-minute units. The :20-second
+# offset plus the flock plus a ~2-call steady-state fast path is what actually keeps them apart;
+# if contention shows up in the log, switch to *:03/10:20, which is all-odd and fully disjoint.
+#
+# Persistent=false: a missed 5-minute slot is worthless by the time it would fire, and catching
+# up a backlog on boot would step the state machine repeatedly for bars long since closed.
+[Unit]
+Description=Timer for the XAUUSD advisor (every 5 minutes)
+[Timer]
+OnCalendar=*-*-* *:03/5:20
+OnBootSec=120sec
+Persistent=false
+AccuracySec=10s
+Unit=xau-advisor.service
+[Install]
+WantedBy=timers.target

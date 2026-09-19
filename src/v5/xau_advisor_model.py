@@ -6,22 +6,25 @@ every failure path sets `health` to something other than "ok" and leaves the pro
 model is the failure mode `v5_zigzag_message.py:115-119` already exists to prevent, and here it
 would be worse, because the output of this file is advice a person acts on.
 
-WHAT IS QUOTED TO THE USER, AND WHY IT IS NOT `p`. §3az found no calibrator with positive Brier
-skill on any of 24 cells: the RANKING carries information, the per-bar number does not. So the
+WHAT IS QUOTED TO THE USER, AND WHY IT IS NOT `p`. §3ba found no calibrator with positive Brier
+skill on any of 16 clean-feed cells: the RANKING carries information, the per-bar number does not. So the
 reading is mapped through the artifact's frozen reliability table to the MEASURED frequency of
-the bucket it lands in — "bars that scored this high went on to move adversely 64.6% of the
-time, 212 of them, CI [57.5, 72.6]" — which is a fact about the sample rather than a claim about
-this bar. `p` is still returned, labelled as a ranking score, so nothing is hidden.
+the bucket it lands in — "bars that scored this high went on to move adversely 57.0% of the
+time, 820 of them, CI [53.0, 59.6], against a 49.0% base rate" — which is a fact about the
+sample rather than a claim about this bar. `p` is still returned, labelled as a ranking score, so nothing is hidden.
 
 THE DIRECTION PANEL IS RETURNED WITH `usable: False`. It would be easy, and wrong, to omit it:
 the user asked for a direction call and is owed the measurement, not silence. It comes back with
 its own refutation attached (the max-stat null p-values and the drift comparison) so it can be
 judged rather than acted on.
 
-FEED FAMILY. Features must be built from the SAME quote series the artifact was trained on
-(`data/XAUUSD_{H4,M15}_long.csv`, refreshed from bridge 18814). Mixing feeds moves gold's close
-by a median $5.84, rising to $13.33 in 2026. `advise` does not fetch anything itself precisely so
-the caller has to be explicit about where the frames came from.
+FEED FAMILY, AND WHY THIS FILE FETCHES NOTHING. §3ba: `data/XAUUSD_H4_long.csv` carries FTMO's
+quotes from 2023-06-28 and the original feed before that, while the M15 file was never refreshed
+— two brokers in one dataset, diverging to a median $13.61 by 2026, which fabricated the SOURCE
+arm's entire apparent edge. `advise` therefore takes its frames as arguments and never goes
+looking for them, so every caller has to be explicit about provenance. The shipped artifact is
+the BASE arm and needs H4 alone; a SOURCE artifact reaching this code is a sign it was trained
+against the withdrawn result.
 """
 from __future__ import annotations
 
@@ -168,15 +171,25 @@ def advise(h4: pd.DataFrame, m15: pd.DataFrame, path: Path | str = ARTIFACT) -> 
     return out
 
 
-def health_of(reading: dict | None, now: pd.Timestamp, max_age_h: float = 9.0) -> str:
+def health_of(reading: dict | None, now: pd.Timestamp, max_age_h: float = 9.0,
+              market_closed: bool = False) -> str:
     """Translate a reading into the state machine's health field.
 
-    9 hours, not 4: gold's H4 grid has real gaps (the daily broker break, the weekend), so a
-    4-hour rule would call a normal Friday evening stale. Two H4 periods plus slack is late
-    enough to mean something is actually wrong on a weekday.
+    MARKET_CLOSED IS CHECKED FIRST AND IS NOT A FAULT. Gold prints no bars between Friday ~21:00
+    and Sunday ~22:00 UTC, so an age rule alone calls every weekend a stale feed — the exact
+    false alarm that had `book-ftmo.service` failing three passes in a row on 2026-09-19. Over a
+    weekend that would be ~48 identical alerts, which is how a real alert gets ignored. The state
+    still freezes (no new bar is no new information), but it freezes for a stated, expected
+    reason.
+
+    9 hours, not 4, for the stale threshold: gold's H4 grid has real gaps (the daily broker
+    break, holidays), so a 4-hour rule would call a normal Friday evening stale. Two H4 periods
+    plus slack is late enough to mean something is actually wrong while the market is open.
     """
     if reading is None:
         return "model_unavailable"
+    if market_closed:
+        return "market_closed"
     age = (pd.Timestamp(now) - pd.Timestamp(reading["decision_time"])).total_seconds() / 3600
     if age > max_age_h:
         return "stale_feed"
