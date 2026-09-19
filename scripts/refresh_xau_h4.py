@@ -17,6 +17,20 @@ by 10x, so the raw MT5 integer is what goes in.
 MERGE RULE, same as the D1 refresher: existing rows are preserved and freshly fetched rows win
 on overlap, so a short fetch can never silently truncate eleven years of history.
 
+*** THAT MERGE RULE SPLICES BROKER FEEDS, AND IT COST A RESULT. *** `--bars 5000` reaches back
+to 2023-06-28, so every run rewrites two and a half years of history with the CURRENT broker's
+quotes while leaving everything older alone. That is correct for the trading path -- the book
+must size off the quotes of the broker it trades -- and it quietly turned `XAUUSD_H4_long.csv`
+into two brokers glued together for research. Paired against the never-refreshed M15 file the two
+series agree to the cent through 2022 and then diverge to a median $13.61 by 2026, which
+fabricated an M15 "edge" in §3ao and §3az: the adverse label was resolved on one broker's bars
+while the feature arm being tested was built from another's. See V5_FINDINGS §3ba.
+
+So every run now writes a `<file>.provenance.json` sidecar recording which rows came from which
+broker and when. It cannot prevent the splice -- the live path needs it -- but it makes the
+splice impossible to be unaware of, and `provenance()` below is what a study should read before
+pairing this file with any other timeframe.
+
 CLOSED BARS ONLY. `copy_rates_from_pos(..,0,n)` returns the in-progress bar at position 0;
 writing it would put a bar into the signal history that can still change.
 
@@ -37,8 +51,10 @@ on a 5-minute service is the difference between a live reading and a stale one.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -77,6 +93,35 @@ def fetch(mt5, symbol: str, n: int, tf: str = "H4") -> pd.DataFrame:
     return d.drop(index=d.index[d.index + pd.Timedelta(minutes=minutes) > now], errors="ignore")
 
 
+def provenance(csv: Path) -> dict:
+    """What a study must check before pairing this file with another timeframe.
+
+    Returns the recorded refresh history. An empty/missing sidecar means the file predates this
+    machinery and its provenance is UNKNOWN, which is not the same as clean.
+    """
+    f = Path(csv).with_suffix(".provenance.json")
+    if not f.exists():
+        return {"known": False, "refreshes": [],
+                "warning": f"no provenance sidecar for {Path(csv).name}: the file may splice "
+                           "feeds. Verify against another timeframe before using it. (§3ba)"}
+    d = json.loads(f.read_text())
+    d["known"] = True
+    return d
+
+
+def _record(csv: Path, server: str, login, tf: str, first: str, last: str, n: int) -> None:
+    f = Path(csv).with_suffix(".provenance.json")
+    d = json.loads(f.read_text()) if f.exists() else {"refreshes": []}
+    d["refreshes"].append(dict(
+        utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        server=server, login=login, tf=tf, rows_written=n,
+        range_overwritten=[first, last]))
+    servers = sorted({r["server"] for r in d["refreshes"] if r.get("server")})
+    d["servers_seen"] = servers
+    d["spliced"] = len(servers) > 1 or None
+    f.write_text(json.dumps(d, indent=2))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=18814)
@@ -98,6 +143,9 @@ def main() -> None:
     if not mt5.initialize():
         raise SystemExit(f"bridge {a.port} init failed: {mt5.last_error()}")
     new = fetch(mt5, a.symbol, a.bars, a.tf)
+    acct = mt5.account_info()
+    server = getattr(acct, "server", "unknown") if acct else "unknown"
+    login = getattr(acct, "login", None) if acct else None
     mt5.shutdown()
 
     if csv.exists():
@@ -115,7 +163,11 @@ def main() -> None:
             merged[c] = np.nan
     merged = merged[COLS]
 
-    print(f"target  : {csv.relative_to(ROOT)}")
+    try:
+        shown = csv.relative_to(ROOT)
+    except ValueError:                       # --csv may point outside the repo
+        shown = csv
+    print(f"target  : {shown}")
     print(f"existing: {before_n:,} rows, last {before_last}")
     print(f"fetched : {len(new):,} closed {a.tf} bars, {new.index.min()} -> {new.index.max()}")
     print(f"merged  : {len(merged):,} rows, last {merged.index.max()} "
@@ -130,7 +182,17 @@ def main() -> None:
     tmp = csv.with_suffix(".csv.tmp")
     merged.to_csv(tmp, index_label="time")
     tmp.replace(csv)        # atomic: a crash mid-write cannot leave a truncated panel
-    print(f"\nwrote {csv.relative_to(ROOT)}")
+    print(f"\nwrote {shown}")
+    _record(csv, server, login, a.tf, str(new.index.min()), str(new.index.max()), len(new))
+    pv = provenance(csv)
+    if pv.get("spliced"):
+        print(f"  !! PROVENANCE: this file now contains bars from MORE THAN ONE broker "
+              f"{pv['servers_seen']}.")
+        print("     Correct for live sizing, WRONG for research paired with another timeframe.")
+        print("     See V5_FINDINGS §3ba before using it in a study.")
+    else:
+        print(f"  provenance: {server} (login {login}), "
+              f"{len(pv['refreshes'])} refresh(es) recorded")
 
 
 if __name__ == "__main__":

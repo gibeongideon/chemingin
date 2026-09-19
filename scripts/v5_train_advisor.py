@@ -3,16 +3,25 @@
 WHY THE ARTIFACT CARRIES THE VERDICT. `v5_advisor_verdict.py` decided that the direction panel is
 TIER B (no measured edge) and the adverse panel is TIER B-plus TOP-TAIL-ONLY. Those are facts
 about the measurement, not about the model weights, so a service that recomputed them at serve
-time could disagree with V5_FINDINGS §3az. Everything the card displays — the tier, the
+time could disagree with V5_FINDINGS §3az/§3ba. Everything the card displays — the tier, the
 `usable` flag, the reliability table, the operating points, the base rate, the resolution rate
 and the literal advice strings — is written here, read-only, and the runtime prints it verbatim.
 
 WHAT IS AND IS NOT FITTED HERE.
-  * ADVERSE (shipped, warn-only): cell `k=1.0 ATR / 4h / SOURCE`, chosen because it carries the
-    best AUC (0.5359), the only positive Brier skill of 24 cells (+0.0058) and — the tiebreak —
-    a MONOTONE operating curve. The gap-winning cell `0.5/4` is non-monotone above its 0.55
-    bucket and is deliberately not shipped (§3az).
-  * DIRECTION (shipped `usable: false`): fitted anyway, at h=2 (8h) / SOURCE, so the card can
+  * ADVERSE (shipped, warn-only): cell `k=1.0 ATR / 9h / BASE`, on the CLEAN single-feed dataset.
+    §3ba withdrew the cell this file originally shipped: `1.0/4/SOURCE` was chosen for the only
+    positive Brier skill of 24 cells (+0.0058) and an operating point of 0.646, both of which
+    were artifacts of pairing FTMO H4 bars with another broker's M15. On one feed its Brier skill
+    is -0.0065 and its operating point 0.548, and SOURCE loses to BASE in 8 of 8 cells.
+    `1.0/9/BASE` is shipped because it produced the family-max reliability gap (+16.52pp, the
+    statistic that cleared the best-of-16 null at p 0.010) AND its top bucket sits above the base
+    rate in BOTH halves (0.596 / 0.536 against 0.490). `1.0/6/BASE` is closer to the 4-6h horizon
+    the user asked for but FAILS that gate outright: its top bucket has no first-half
+    observations at all, meaning the model never produced a high reading before 2022 — §3ap's
+    killer exactly.
+  * BASE, not SOURCE, is also strictly better operationally: no M15 at serve time, so the
+    feed-mismatch and M15-staleness failure modes leave the live path entirely.
+  * DIRECTION (shipped `usable: false`): fitted anyway, at h=2 (8h) / BASE, so the card can
     print a number ALONGSIDE the statement that it has no measured edge. Omitting it entirely
     would be less honest than showing it with its own refutation attached: the user asked for a
     direction call and is owed the measurement, not silence.
@@ -57,11 +66,16 @@ from src.v5.advisor_labels import climatology, first_touch_atr, fwd_dir, resolut
 OUT = ROOT / "data" / "v5_runs" / "xau_advisor"
 MODEL = ROOT / "data" / "models" / "xau_advisor"
 
-# ---- the shipped cells, fixed by the §3az verdict. Changing these changes the product. ----
-ADV = dict(k_atr=1.0, hours=4, arm="SOURCE")
-DIR = dict(h=2, arm="SOURCE")
-ADV_WARN = 0.60          # the operating point: 4.7% coverage, observed 0.646 CI [0.568,0.733]
-ADV_CLEAR = 0.55         # release the warning below this (a 5pp dead-band, not a 0.5 cut)
+# ---- the shipped cells, fixed by the §3ba verdict. Changing these changes the product. ----
+ADV = dict(k_atr=1.0, hours=9, arm="BASE")
+DIR = dict(h=2, arm="BASE")
+# 0.55, not 0.60: on the clean feed this cell's best measured lift is at 0.55 (observed 0.570,
+# CI [0.530,0.596] against a 0.490 base, 10.6% coverage). 0.60 gives 0.563 on less coverage --
+# no better, and on fewer events. Chosen from the operating curve, which is the statistic the
+# product consumes (§3az's own lesson about picking within a qualified family).
+ADV_WARN = 0.55
+ADV_CLEAR = 0.50         # release below this: a 5pp dead-band, and still above the 0.490 base
+CLEAN_FEED = True        # rebuild H4 from M15 so the label and the features are one broker
 
 
 def _split(n: int, purge: int) -> tuple:
@@ -99,7 +113,8 @@ def _measured(family: str, cell: str) -> dict:
     """Pull this cell's MEASURED numbers out of the Phase-1 artifacts. Nothing is recomputed:
     if the grid on disk disagrees with §3az, the mismatch must surface here, not be papered over
     by a fresh fit that happens to land somewhere else."""
-    grid = pd.read_csv(OUT / ("adverse_grid.csv" if family == "adv" else "horizon_sweep.csv"))
+    grid = pd.read_csv(OUT / ("adverse_grid_cleanfeed.csv" if family == "adv"
+                              else "horizon_sweep.csv"))
     if family == "adv":
         r = grid[(grid.k_atr == ADV["k_atr"]) & (grid.hours == ADV["hours"])
                  & (grid.arm == ADV["arm"])]
@@ -108,9 +123,10 @@ def _measured(family: str, cell: str) -> dict:
     if not len(r):
         raise SystemExit(f"cell {cell} not in the Phase-1 grid — re-run v5_advisor_measure.py")
     r = r.iloc[0]
-    rel = pd.read_csv(OUT / f"reliability_{family}.csv")
+    suffix = "_cleanfeed" if family == "adv" else ""
+    rel = pd.read_csv(OUT / f"reliability_{family}{suffix}.csv")
     rel = rel[rel.cell == cell]
-    ops = pd.read_csv(OUT / f"operating_points_{family}.csv")
+    ops = pd.read_csv(OUT / f"operating_points_{family}{suffix}.csv")
     ops = ops[ops.cell == cell] if "cell" in ops.columns else ops
     keep = ["n", "base_rate", "acc", "acc_drift", "d_drift_pp", "d_drift_ci", "bss",
             "bss_ci_excludes_0", "auc", "ece", "years_drift", "resolved_frac"]
@@ -133,7 +149,21 @@ def main() -> None:
     if not verdict.get("tier_c"):
         raise SystemExit("TIER C did not pass — the harness is not replicating §3r/§3ao. Stop.")
 
-    h4, m15 = load_frames()
+    h4_filed, m15 = load_frames()
+    if CLEAN_FEED:
+        from scripts.v5_advisor_feedcheck import feed_divergence, rebuild_h4_from_m15
+        h4 = rebuild_h4_from_m15(m15)
+        ix = h4.index.intersection(h4_filed.index)
+        d = (h4.loc[ix, "close"] - h4_filed.loc[ix, "close"]).abs()
+        pre = d[ix.year <= 2022]
+        if pre.median() > 0.01 or (pre <= 0.10).mean() < 0.99:
+            raise SystemExit("rebuilt H4 does not reproduce the filed H4 pre-2023 — stop (§3ba)")
+        print(f"CLEAN FEED: H4 rebuilt from M15; reconstruction verified on {len(pre):,} "
+              f"pre-2023 bars (median {pre.median():.4f}, "
+              f"{(pre <= 0.10).mean()*100:.1f}% within $0.10)")
+        print(feed_divergence(h4_filed, m15).to_string(float_format=lambda x: f"{x:.4f}"))
+    else:
+        h4 = h4_filed
     atr = atr_series(h4, 20)
     ov = h4.index[(h4.index >= m15.index[0]) & (h4.index <= m15.index[-1])]
 
@@ -160,6 +190,10 @@ def main() -> None:
         "findings": "V5_FINDINGS.md §3az",
         "preregistration": "data/v5_runs/xau_advisor/PREREGISTRATION.md",
         "overall_verdict": verdict["overall"],
+        "feed": ("CLEAN: H4 rebuilt from M15 so label and features are one broker (§3ba). "
+                 "The filed XAUUSD_H4_long.csv splices FTMO bars from 2023-06-28 onward."
+                 if CLEAN_FEED else "FILED (spliced) — see V5_FINDINGS §3ba"),
+        "serve_needs_m15": ADV["arm"] == "SOURCE",
         "data": {"h4_last_bar": str(h4.index[-1]), "m15_last_bar": str(m15.index[-1]),
                  "overlap_bars": int(len(ov)),
                  "feed": "data/XAUUSD_{H4,M15}_long.csv — one feed family, never mixed"},

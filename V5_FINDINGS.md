@@ -3344,6 +3344,13 @@ the one open, actionable item.
 
 ### 3az. XAUUSD direction ADVISOR, Phase 1 — direction is TIER B (no edge past a best-of-8 null); the ADVERSE-MOVE top tail is real and clears its null at p99; and I found a lookahead in my own label that had produced AUC 0.90 (2026-09-19, `scripts/v5_advisor_measure.py`, `v5_advisor_nulls.py`, `v5_advisor_verdict.py`, `src/v5/advisor_calibration.py`, `advisor_labels.py`)
 
+> **CORRECTION — READ §3ba FIRST.** The adverse-move numbers below were measured on a dataset
+> whose H4 and M15 files are DIFFERENT BROKER FEEDS after 2023-06-28. On a single feed the
+> headline operating point (0.646 at threshold 0.60) falls to ~0.55, the only positive Brier
+> skill of 24 cells disappears, and the "SOURCE beats BASE" corroboration REVERSES to BASE 8/8.
+> The family-level null result survives; the shipped cell and the M15 corroboration do not.
+> §3ba has the clean-feed measurement and supersedes every adverse number in this section.
+
 A different product from everything above it: the user asked for an **advisor** — a direction
 call with probabilities, refreshed every 5 minutes, holding a state until a threshold flips it —
 explicitly not for profit. That matters because §3r's five failed trade structures failed for
@@ -3547,5 +3554,147 @@ with n_source 246, the replication surfacing defect 2 simply by printing both co
   that too — an unconditional reading of a conditional number is §3ay's error one level up.
 - Phase 2 (the 5-minute service, state machine and notifier) is unblocked, with the thresholds
   set around the base rate and the displayed number taken from the measured bucket frequency.
+
+
+### 3ba. The advisor's own dataset was two brokers glued together — §3az's headline and §3ao's "durable capability" are both feed artifacts (2026-09-19, `scripts/v5_advisor_feedcheck.py`)
+
+Found while wiring the advisor's live path, not by a null: `src/v5/xau_advisor_model.py` refused
+to serve because `data/XAUUSD_M15_long.csv` ended a month before `data/XAUUSD_H4_long.csv`. The
+staleness turned out to be the smaller half of the problem.
+
+#### THE DEFECT
+
+`refresh_xau_h4.py --bars 5000` fetches 5,000 H4 bars, which reaches back to **2023-06-28**, and
+merges them into `XAUUSD_H4_long.csv` with fresh rows winning. It has been run from bridge 18814
+since 2026-09-16, so every H4 bar from 2023-06-28 onward now carries **FTMO's** quotes. Nothing
+has ever refreshed the M15 file, which still carries the **original** feed for its whole span.
+Measured at the same instant (H4 close vs the M15 bar ending on it):
+
+| year | 2015–2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|
+| within $0.10 | **100.0%** | 29.9% | 2.3% | 0.9% | 0.5% |
+| median \|Δ\| | **$0.0000** | $1.24 | $3.47 | $6.64 | **$13.61** |
+
+The adverse label sets barriers from the H4 close and ATR, then asks which the M15 path touches
+first. From 2023-06-28 it was **pricing barriers in one broker's quotes and testing touches in
+another's**, drifting by up to $13.61 against a 1.0-ATR barrier ~$41 wide. Worse, that period is
+the SECOND half of the reliability split — the half carrying the top tail (0.605 vs 0.547). The
+contamination sat exactly where the result lived.
+
+#### THE CLEAN DATASET, AND WHY IT IS TRUSTWORTHY
+
+The original H4 is not in git (data files are untracked), but it does not need to be: **H4 is an
+exact aggregation of M15**, and the M15 file is one feed throughout. Rebuilding H4 from M15
+reproduces the filed H4 **to the cent for every year through 2022** (100% of 12,790 bars within
+$0.10, median difference exactly 0.0000) and diverges only where FTMO overwrote it. That single
+check both validates the reconstruction and localises the damage, which is why it is asserted at
+the top of every run rather than done once.
+
+#### WHAT SURVIVES, AND WHAT DOES NOT
+
+**The family-level null survives — barely.** Re-running all 16 adverse cells on the clean feed:
+
+| statistic | mixed (§3az) | p99 | p | **clean** | p99 | **p** |
+|---|---|---|---|---|---|---|
+| best reliability gap | +17.06 | +13.54 | 0.0000 | **+16.52** | +16.01 | **0.0100** |
+| best AUC | 0.5359 | 0.5280 | 0.0000 | **0.5334** | 0.5301 | **0.0050** |
+
+**The shipped cell does not.** `1.0 ATR / 4h / SOURCE` was chosen for the only positive Brier
+skill of 24 cells (+0.0058) and an operating point of 0.646 at threshold 0.60:
+
+| | mixed | clean |
+|---|---|---|
+| AUC | 0.5359 | 0.5329 |
+| Brier skill | **+0.0058** | **−0.0065** |
+| observed @ 0.60 | **0.646** | **0.548** |
+| base rate | 0.494 | 0.508 |
+| lift | **+15.2pp** | **+4.0pp** |
+
+**0 of 16 cells now have positive Brier skill**, against 1 of 16 before. The best honest
+operating points on clean data are `1.0/6/BASE` (0.563 at threshold 0.60, coverage 6.9%, base
+0.497, +6.6pp) and `1.0/9/BASE` (0.570 at 0.55, coverage 10.6%, base 0.490, +8.0pp). **P≈0.60 is
+not attainable; the honest ceiling is ~0.56.**
+
+#### THE REVERSAL THAT EXPLAINS THE MECHANISM
+
+| k / horizon | 0.5/4 | 0.5/6 | 0.5/9 | 0.75/6 | 0.75/9 | 1.0/4 | 1.0/6 | 1.0/9 |
+|---|---|---|---|---|---|---|---|---|
+| mixed winner | SRC | SRC | SRC | SRC | BASE | SRC | SRC | BASE |
+| **clean winner** | **BASE** | **BASE** | **BASE** | **BASE** | **BASE** | **BASE** | **BASE** | **BASE** |
+
+SOURCE won 6 of 8 on the mixed feed and loses **8 of 8** on a single feed. That is not noise, and
+the mechanism is specific: **the label is resolved on the M15 series, and the SOURCE features are
+built from that same M15 series, while the BASE features come from a different (H4) series.** When
+the two series are the same feed this is harmless. When they are not, SOURCE holds privileged
+information about the resolution path that BASE structurally cannot have — a leak that lives in
+the *provenance* of the data rather than in any timestamp.
+
+#### THIS ALSO RETRACTS §3ao's HEADLINE
+
+§3ao's Family A resolves `first_touch` on H4 while its SOURCE arm reads M15, so it has the same
+defect. Re-run verbatim at K=30:
+
+| | mixed | clean |
+|---|---|---|
+| dI | **+0.0151** | **+0.0039** |
+| AUC (SOURCE) | 0.6029 | 0.5889 |
+| years | 7/9 | 6/9 |
+
+§3ao's recorded headline is **dI +0.0142 against an alignment-null p99 of +0.0112**. On a single
+feed dI is **+0.0039 — comfortably inside that null.** And this is on top of the separate defect
+recorded in §3az, that `walk_forward_ll` selects the model class on the test set
+(`v5_repr_ceiling.py:219-232`), worth ≈ +0.006 bits and biased toward the higher-capacity arm.
+The two corrections together account for more than the whole effect.
+
+**"M15 intrabar path beats its null at p99" is withdrawn.** It was recorded as the run's one
+durable capability. It was two data files from two brokers.
+
+#### THE RULE
+
+> **A dataset assembled from more than one broker is a leak, and no timestamp check can see it.**
+> Every lookahead control in this repo — shuffled labels, truncation probes, purge gaps,
+> same-timeframe equivalence, `intrabar_leak()` — tests WHEN a value was knowable. None tests
+> WHERE it came from. When the label is resolved on series A and a feature arm is built from
+> series A while its comparison arm is built from series B, the arms are not comparable however
+> causal each one is. Before any cross-timeframe study: assert the frames agree at their shared
+> instants (H4 close vs the M15 bar ending on it, median |Δ| ≈ 0), per year, and refuse to run
+> if they do not.
+
+Note the live/research conflict this exposes: mixing IS correct for the trading path — the
+champion book must size off the quotes of the broker it trades — and wrong for research. One file
+cannot serve both. `refresh_xau_h4.py` now stamps provenance so the mixing can never again be
+invisible.
+
+#### AND THE FEED CHANGE HAS A PRICE AT SERVE TIME
+
+The clean dataset is the ORIGINAL feed; the live bridge (18814) serves FTMO's. So the frozen
+model was scored on both H4 series and the warn decisions compared. Splitting the eras isolates
+the two effects, because before 2023-06-28 the prices are identical and only the M15→H4
+aggregation differs:
+
+| | n | \|Δp\| exactly 0 | warn rate | decision disagreement | recall of warnings |
+|---|---|---|---|---|---|
+| pre-splice (aggregation only) | 13,458 | **98.8%** | 13.58% vs 13.61% | **0.33%** | **98.9%** |
+| spliced (aggregation + broker) | 4,741 | 68.5% | 11.18% vs 11.09% | **6.20%** | **71.9%** |
+
+Rebuilding H4 from M15 is therefore a faithful substitute for the broker's own H4 — 0.33%
+disagreement, which also retires the partial-bar worry for this arm. The **broker** difference is
+what costs: the warning RATE is preserved almost exactly (11.18% vs 11.09%), but only **71.9% of
+individual warnings survive** the feed change. On an edge of +8pp that is a real tax, and it is
+the reason a thin signal and a broker migration do not mix. FTMO's own H4 reaches back only to
+2023-06-28 (the 5,000-bar request cap), too short to re-validate a 9-year walk-forward, so
+training on the serving feed is not currently an option.
+
+#### WHAT THE ADVISOR ACTUALLY SHIPS
+
+Direction is unchanged: **Tier B, no measured edge** — that verdict never depended on M15.
+Adverse becomes **BASE-arm, H4-only**, which is strictly better operationally: no M15 at serve
+time, so the feed-mismatch and M15-staleness failure modes leave the live path entirely. The
+honest card is "elevated risk, measured ~57% against a 49% base rate, ~11% of bars", not "P=65":
+the shipped cell is `1.0 ATR / 9h / BASE` at threshold 0.55, observed **0.570 CI [0.530, 0.596]**
+against a 0.490 base on 10.6% coverage, top bucket above base in both halves (0.596 / 0.536).
+`1.0/6/BASE` sits closer to the 4-6h horizon that was asked for but fails that both-halves gate
+outright — its top bucket has **no first-half observations at all**, so the model never produced a
+high reading before 2022.
 
 _Last updated 2026-09-19._
