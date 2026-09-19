@@ -276,3 +276,76 @@ Recording this in advance so that a Tier B verdict cannot be reframed afterwards
 and a Tier A verdict cannot be reframed as having been obvious.
 
 _Committed 2026-09-19. Amendments, if any, are appended below with dates._
+
+---
+
+# AMENDMENT 1 — 2026-09-19, before any candidate cell was read
+
+Both Tier C replication targets were mis-specified by me. Tier C failed on both, the failures
+were traced to the specification rather than to the market, and the corrections are recorded
+here rather than by editing §4. No candidate cell had been read at this point.
+
+## 1a. Family A's replication cell is **K=30**, not K=12
+
+§4 named `k=12 H4 bars` because 12 is `v5_repr_ceiling.py`'s CLI default. It is not the cell
+behind the headline. Running §3ao's own `walk_forward_ll` verbatim across K:
+
+| K | undecided | base rate | n_BASE | n_SOURCE | ll_BASE | ll_SOURCE | dI | AUC_SOURCE | years |
+|---|---|---|---|---|---|---|---|---|---|
+| 12 | 0.777 | 0.452 | 269 | 260 | 0.69823 | 0.69494 | +0.0047 | 0.5730 | 4/8 |
+| 24 | 0.549 | 0.438 | 265 | 261 | 0.69065 | 0.68798 | +0.0038 | 0.5484 | 5/9 |
+| **30** | **0.461** | **0.435** | **251** | **246** | 0.67539 | 0.66494 | **+0.0151** | **0.6029** | **7/9** |
+| 48 | 0.272 | 0.438 | 208 | 206 | 0.68589 | 0.68158 | +0.0062 | 0.5414 | 6/9 |
+
+K=30 matches every published figure — §3ao recorded dI **+0.0142**, AUC **0.603**, **7/9** years,
+**46%** undecided, base rate **0.427**, n **251**. **The harness is therefore validated**, and
+§4's Family A target becomes `K=30, BARRIER=0.02, SOURCE vs BASE → dI +0.0142 ± 0.0100`.
+
+## 1b. Family D's replication must score the RAW probability, as §3r did
+
+§4 compared a *calibrated* probability at a 0.5 threshold against §3r's accuracy, which is not
+the same quantity. §3r fits one HistGB on all strictly-past bars and thresholds the raw
+`predict_proba` at 0.5. The mismatch was not cosmetic — it inverted the reading:
+
+    Tier C as first written (calibrated, 0.5 threshold, three-way split):
+      acc 53.56%  persistence 49.84%  drift 53.62%   d_persistence +3.73pp  -> FAIL (too high)
+
+**The calibrated probability had collapsed into the drift baseline** (acc 53.56% vs drift
+53.62%, `d_drift` −0.06pp, 3/9 years). That is mechanical: at fwd6 the base rate is 0.536, so an
+isotonic map onto observed frequencies puts almost every bar above 0.5 and a 0.5 threshold
+becomes "always up". It is not a bug, and it is an important product finding recorded here:
+
+> **A 0.5 threshold on a calibrated probability is the DRIFT forecast, not a direction call.**
+> Every state threshold in the live service must therefore be a margin around the **base rate**,
+> not around 0.5. §7's gates are unaffected — they were already stated as deltas against
+> baselines rather than against 0.5.
+
+§4's Family D target becomes: replicate §3r's protocol exactly — one HistGB per fold on all
+purged strictly-past bars, **raw** `predict_proba`, 0.5 threshold — and require
+`Δ_persistence ∈ [+1.10, +3.10]pp`. The advisor's own three-way-split calibrated pipeline is
+then measured separately, as the product, and is not what Tier C gates.
+
+## 1c. Two defects in §3ao's protocol, found while diagnosing, to be reported with the results
+
+Neither changes this pre-registration's gates; both are recorded now so they cannot be presented
+later as post-hoc excuses.
+
+1. **`walk_forward_ll` selects the model class on the TEST set.**
+   `v5_repr_ceiling.py:219-232` fits both a `LogisticRegression` and a
+   `HistGradientBoostingClassifier`, computes each one's log-loss **on `yte`**, keeps the lower,
+   and reports that same log-loss as the out-of-sample result. At K=12, holding the model class
+   fixed instead gives dI **−0.0017** (logit) or **+0.0082** (histgb) against the peeked
+   **+0.0047**; the peek lowers log-loss by 0.0066 on BASE and 0.0107 on SOURCE, so because the
+   gain is larger for the higher-capacity arm it **inflates dI by ≈ +0.006 bits**. §3ao
+   identified exactly this mechanism when its synthetic control fired ("dI is biased toward the
+   higher-capacity arm") but left the selection peek in place. The advisor's own harness selects
+   on a purged SELECT slice and is unaffected.
+2. **The two arms are not scored on identical event sets.** `f_source` carries more NaNs than
+   `f_base` (M15 coverage), so at K=30 BASE has 9,843 usable rows against SOURCE's 9,739 — 104
+   BASE-only rows — and `dI` subtracts log-losses measured on different samples. The advisor's
+   harness intersects the masks before differencing.
+
+Magnitude to be reported with the Family A results: an honest re-measurement of §3ao's headline
+cell, with the model class fixed and the masks intersected, on the same data.
+
+_Amendment 1 committed 2026-09-19._
