@@ -3410,23 +3410,32 @@ base rate in both halves while the BOTTOM bucket does not — its 2018-21 freque
 
 `1.0 ATR / 4h / SOURCE` carries the **only positive Brier skill in 24 cells** (+0.0058, CI still
 includes 0) and the usable operating point. Its threshold curve is **monotone across all five
-thresholds** (base rate 0.494):
+thresholds** (base rate 0.494), stated in the convention the service actually runs — entry at
+the threshold, release 0.02 below it:
 
-| threshold | coverage | n | observed adverse rate | block-bootstrap CI | crossings/mo |
-|---|---|---|---|---|---|
-| 0.52 | 26.1% | 1,143 | 0.543 | [0.500, 0.572] | 3.3 |
-| 0.55 | 15.1% | 661 | 0.569 | [0.507, 0.613] | 3.0 |
-| 0.58 | 6.0% | 262 | 0.615 | [0.515, 0.702] | 1.7 |
-| **0.60** | **4.7%** | 206 | **0.646** | **[0.568, 0.733]** | **1.3** |
-| 0.65 | 2.5% | 110 | 0.736 | — | 0.8 |
+| threshold | coverage | n | observed adverse rate | block-bootstrap CI | crossings/mo | dwell |
+|---|---|---|---|---|---|---|
+| 0.52 | 32.5% | 1,423 | 0.528 | [0.494, 0.554] | 2.8 | 16h |
+| 0.55 | 20.1% | 879 | 0.546 | [0.493, 0.581] | 2.3 | 16h |
+| 0.58 | 6.8% | 296 | 0.605 | [0.496, 0.696] | 1.6 | 8h |
+| **0.60** | **4.8%** | 212 | **0.646** | **[0.575, 0.726]** | **1.3** | 8h |
+| 0.65 | 2.6% | 114 | 0.719 | — | 0.8 | 8h |
 
 **So the user's "P=0.60" is attainable — on the adverse label, in the top ~5% of bars, at a
-4-hour horizon.** Against a 0.494 base rate that is +15pp, with a CI lower bound (0.568) clear of
+4-hour horizon.** Against a 0.494 base rate that is +15pp, with a CI lower bound (0.575) clear of
 the base, fired ~1.3 times a month at an 8-hour median dwell.
 
+**State the hysteresis convention with the number.** The same cell scored *stateless* — a plain
+threshold crossing, no dead-band — reads 0.646 [0.573, 0.733] on n 206 at 4.7% coverage. The two
+agree to 0.001, so the result is not a hysteresis artifact; but they diverge widely at the loose
+end (0.52: 32.5% coverage and 2.8 crossings/mo held, versus 26.1% and 3.3 stateless), because a
+dead-band both extends dwell and suppresses re-entries. Quoting a coverage or a fire-rate without
+naming the convention repeats §3ah's static-vs-trailing drawdown trap in a new place.
+
 **And the cell that won the null is NOT the one to ship.** `0.5 ATR / 4h` took the max-statistic
-gap (+17.06pp), but its threshold curve is **non-monotone** — 0.55 gives 0.593, then 0.60 gives
-0.549 and 0.65 gives 0.589. Above its 0.55 bucket it is reading noise at n ≈ 200. A reliability
+gap (+17.06pp), but its threshold curve is **non-monotone in both conventions** — 0.55 gives
+0.593, then 0.58 → 0.590, 0.60 → 0.571, 0.65 → 0.585 (held), and 0.593 / 0.589 / 0.549 / 0.589
+stateless. Above its 0.55 bucket it is reading noise at n ≈ 200. A reliability
 gap is computed on merged buckets and can be carried entirely by the two ends, whereas the
 operating curve is what the service actually indexes into — so the curve is the tiebreak, and it
 picks the cell with the better AUC and the only positive Brier skill over the cell that won the
