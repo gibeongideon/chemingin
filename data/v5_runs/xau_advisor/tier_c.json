@@ -1,0 +1,33 @@
+{
+  "direction": {
+    "n": 13649,
+    "acc": 0.520550956114001,
+    "acc_persistence": 0.4983515275844384,
+    "base_rate": 0.536229760422009,
+    "d_pers_pp": 2.2199428529562604,
+    "d_pers_ci": [
+      0.571470437394681,
+      3.832148875375485
+    ],
+    "years_pers": "8/9",
+    "passed": true,
+    "window": [
+      1.1,
+      3.1
+    ],
+    "protocol": "3r verbatim: single HistGB, raw proba, 0.5 threshold"
+  },
+  "adverse": {
+    "K": 30,
+    "dI_bits": 0.015077481173362939,
+    "target": 0.0142,
+    "tol": 0.01,
+    "auc_source": 0.6028501009810661,
+    "n_base": 251,
+    "n_source": 246,
+    "years": "7/9",
+    "passed": true,
+    "protocol": "3ao walk_forward_ll verbatim (selects model on test set)"
+  },
+  "passed": true
+}

@@ -1,0 +1,25 @@
+{
+  "family": "dir",
+  "draws": 200,
+  "block": 60,
+  "cells": 8,
+  "observed_best_cell": "2_BASE",
+  "observed_best_gap_pp": 8.036188680631218,
+  "observed_best_auc": 0.5164388703257795,
+  "null_gap": {
+    "mean": 5.641232429801571,
+    "p50": 5.214387624840428,
+    "p95": 10.758353721724411,
+    "p99": 12.711217535863309
+  },
+  "null_auc": {
+    "mean": 0.5098907870575948,
+    "p50": 0.5090203354919838,
+    "p95": 0.5183546306493274,
+    "p99": 0.5226636173554597
+  },
+  "p_value_gap": 0.175,
+  "p_value_auc": 0.1,
+  "gap_cleared_p95": false,
+  "auc_cleared_p95": false
+}
