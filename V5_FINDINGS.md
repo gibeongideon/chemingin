@@ -3341,4 +3341,202 @@ finding that gold's daily range has gone from 1.34% to 2.73% of price, which mak
 zigzag harness's fixed 0.60%/0.50% bracket **0.23 and 0.18 of one day's travel**. That remains
 the one open, actionable item.
 
-_Last updated 2026-09-18._
+
+### 3az. XAUUSD direction ADVISOR, Phase 1 — direction is TIER B (no edge past a best-of-8 null); the ADVERSE-MOVE top tail is real and clears its null at p99; and I found a lookahead in my own label that had produced AUC 0.90 (2026-09-19, `scripts/v5_advisor_measure.py`, `v5_advisor_nulls.py`, `v5_advisor_verdict.py`, `src/v5/advisor_calibration.py`, `advisor_labels.py`)
+
+A different product from everything above it: the user asked for an **advisor** — a direction
+call with probabilities, refreshed every 5 minutes, holding a state until a threshold flips it —
+explicitly not for profit. That matters because §3r's five failed trade structures failed for
+*trading* reasons: its confidence gating reached **55.6%** accuracy and died only because
+"sitting flat ~98% of the time forfeits gold's own structural drift", an opportunity cost an
+advisor does not pay. Pre-registered in `data/v5_runs/xau_advisor/PREREGISTRATION.md`
+(committed **6df4b12**, amended **9b4b8ac**), 24 declared cells, gates evaluated mechanically.
+
+#### THE FINDING THAT REFRAMES §3r: it loses to "gold rises"
+
+§3r's headline is 51.97% against a **49.85% PERSISTENCE** baseline, +2.12pp, 8/9 years. The
+number it never printed is the DRIFT baseline — just assume gold goes up:
+
+| horizon | model | persistence | **drift** | Δ persistence | Δ drift |
+|---|---|---|---|---|---|
+| 4h | 51.68% | 49.32% | 51.39% | +2.37pp | +0.29pp |
+| 8h | 51.63% | 48.84% | **52.05%** | +2.79pp | **−0.42pp** |
+| 12h | 51.59% | 48.90% | 52.52% | +2.69pp | **−0.93pp** |
+| 24h | 52.23% | 49.85% | **53.56%** | +2.38pp | **−1.33pp** |
+
+**The one measured direction edge in this repo beats "repeat the last move" and loses to "gold
+goes up".** For an advisor that is the decisive comparison, because the reader's default is
+drift. §3ay's own rule — always print the base rate beside the hit rate — applied to §3r inverts
+its headline. This is not a retraction of §3r's arithmetic; it is the missing column.
+
+#### Direction family: TIER B, and the null says so
+
+8 cells, calibrated three-way-split pipeline, walk-forward 2018-2026:
+
+| h | arm | n | acc | drift | Δdrift | BSS | AUC |
+|---|---|---|---|---|---|---|---|
+| 1 (4h) | BASE | 13,649 | 51.60% | 51.38% | +0.22 | −0.0105 | 0.5164 |
+| 2 (8h) | SOURCE | 13,513 | 52.03% | 51.85% | +0.18 | −0.0054 | 0.5117 |
+| 3 (12h) | SOURCE | 13,512 | 52.04% | 50.81% | +1.24 | −0.0056 | 0.5047 |
+| 6 (24h) | BASE | 13,649 | 53.56% | 53.62% | −0.06 | −0.0202 | 0.5029 |
+
+**Brier skill is negative in all 8.** And the max-statistic null settles it: the best observed
+reliability gap is **+8.04pp against a best-of-8 null p95 of +10.76** (p = **0.175**), and the
+best AUC **0.5164 against p95 0.5184** (p = **0.100**). The direction family is
+indistinguishable from the best cell a no-edge dataset would have produced.
+
+#### Adverse-move family: TIER B-plus, TOP TAIL ONLY — and it clears p99
+
+16 cells: symmetric ±k·ATR first-touch, resolved on M15 bars after the H4 **close**.
+
+| statistic | observed best | null p50 | null p95 | null p99 | p |
+|---|---|---|---|---|---|
+| reliability gap | **+17.06pp** | +6.92 | +11.22 | +13.54 | **0.0000** |
+| AUC | **0.5359** | 0.5137 | 0.5235 | 0.5280 | **0.0000** |
+
+Both clear **p99** of the best-of-16 null. Note what the null itself says: a no-edge dataset
+routinely yields an **11pp** reliability gap when you take the best of 16 — which is why §3ak's
+"searching harder is a losing move" needed this machinery rather than a per-cell test.
+
+**The tails split, and only one side survives.** Across the family the TOP bucket sits above the
+base rate in both halves while the BOTTOM bucket does not — its 2018-21 frequency lands at
+~0.500 against a ~0.487 base. So the advisor may warn on elevated risk and **must stay silent on
+"low risk"**. The two best cells:
+
+| cell | n | resolved | base | AUC | BSS | gap | top tail | years |
+|---|---|---|---|---|---|---|---|---|
+| `0.5 ATR / 4h / SOURCE` | 10,384 | 75.5% | 0.486 | 0.5247 | −0.0012 | **+17.06pp** | ✓ | 4/9 |
+| `1.0 ATR / 4h / SOURCE` | 4,373 | 31.1% | 0.494 | **0.5359** | **+0.0058** | +16.71pp | ✓ | 5/9 |
+
+`1.0 ATR / 4h / SOURCE` carries the **only positive Brier skill in 24 cells** (+0.0058, CI still
+includes 0) and the usable operating point. Its threshold curve is **monotone across all five
+thresholds** (base rate 0.494):
+
+| threshold | coverage | n | observed adverse rate | block-bootstrap CI | crossings/mo |
+|---|---|---|---|---|---|
+| 0.52 | 26.1% | 1,143 | 0.543 | [0.500, 0.572] | 3.3 |
+| 0.55 | 15.1% | 661 | 0.569 | [0.507, 0.613] | 3.0 |
+| 0.58 | 6.0% | 262 | 0.615 | [0.515, 0.702] | 1.7 |
+| **0.60** | **4.7%** | 206 | **0.646** | **[0.568, 0.733]** | **1.3** |
+| 0.65 | 2.5% | 110 | 0.736 | — | 0.8 |
+
+**So the user's "P=0.60" is attainable — on the adverse label, in the top ~5% of bars, at a
+4-hour horizon.** Against a 0.494 base rate that is +15pp, with a CI lower bound (0.568) clear of
+the base, fired ~1.3 times a month at an 8-hour median dwell.
+
+**And the cell that won the null is NOT the one to ship.** `0.5 ATR / 4h` took the max-statistic
+gap (+17.06pp), but its threshold curve is **non-monotone** — 0.55 gives 0.593, then 0.60 gives
+0.549 and 0.65 gives 0.589. Above its 0.55 bucket it is reading noise at n ≈ 200. A reliability
+gap is computed on merged buckets and can be carried entirely by the two ends, whereas the
+operating curve is what the service actually indexes into — so the curve is the tiebreak, and it
+picks the cell with the better AUC and the only positive Brier skill over the cell that won the
+null. **Add to the max-stat protocol: clearing the null qualifies the FAMILY, not the arg-max
+cell; choose within the family on the statistic the product consumes.**
+
+**What it still fails, stated plainly:** gate 3 (years — 5/9 vs drift), gate 4 (Brier-skill CI
+includes 0), and the bottom tail. And the shipped cell was chosen **after** seeing results; the
+pre-registered primary (`0.5 ATR / 6h`) is weaker (gap +10.96, AUC 0.5162). The max-stat null
+prices exactly that selection and was cleared, but the unbiased estimate is the primary's, not
+the maximum's.
+
+#### SOURCE > BASE, which independently corroborates §3ao
+
+The M15 intrabar-path features beat the baseline block in **6 of 8** adverse cells
+(0.5247/0.5133, 0.5162/0.5125, 0.5114/0.5038, 0.5203/0.5125, 0.5300/0.5241, 0.5359/0.5208) and
+carry every top-tail pass. §3ao found the same input beat an information null at p99 on a
+2-5 day version of this label; it survives here at 4-9 hours, measured on **10,384 decided
+events against §3ao's 251**.
+
+#### THE LOOKAHEAD IN MY OWN LABEL — AUC 0.901, caught by implausibility
+
+The adverse family's first run reported **AUC 0.9010, accuracy 82.78%, Brier skill +0.50**
+against a 0.514 base rate. Nothing in this repo has ever exceeded 0.603. The diagnostic tell was
+the *shape*: AUC **rose as the horizon shortened** (9h 0.813 → 6h 0.844 → 4h 0.901).
+
+Cause: **an H4 bar stamped 12:00 does not close until 16:00.** My `searchsorted(..., "right")`
+started the M15 path at 12:15 — inside the very bar whose close supplied the decision price and
+the barrier levels. At a 4-hour horizon the entire 16-bar path sat *within* the decision bar.
+Fixed with an explicit `dec_bar_minutes=240` so the path starts at the close. Effect:
+
+| | leaky | fixed |
+|---|---|---|
+| AUC (0.5 ATR / 4h) | **0.9010** | **0.5133** |
+| accuracy | 82.78% | 51.76% |
+| Brier skill | +0.5018 | −0.0075 |
+| resolved | 0.816 | 0.866 |
+| base rate | 0.5079 | 0.4918 |
+
+**The same-timeframe equivalence test could not catch it.** `first_touch_atr` agrees with the
+existing `label_symmetric` at **1.000000** on 17,865 bars — because when the path and decision
+frames are identical, starting at the next bar IS correct. The bug only exists when the path is
+finer than the decision frame, which is precisely the case the generalisation added. This is the
+third cross-timeframe alignment leak in this file's history (§3av's forward-stamped FX D1 bars,
+§3ax's weekly `reindex(ffill)`), and the rule is now three-for-three:
+
+> **Resampling or aligning one timeframe onto another is a lookahead by default. A bar stamped
+> t is not knowable until t + its duration. No shuffled-label control, truncation probe, or
+> same-timeframe equivalence test can see it — only an explicit check that every input
+> timestamp precedes the decision timestamp, or an implausible result.**
+
+#### Two defects found in §3ao's own protocol
+
+Recorded in the pre-registration amendment before any candidate cell was read, so they cannot be
+read as post-hoc excuses:
+
+1. **`walk_forward_ll` selects the model class on the TEST set.** `v5_repr_ceiling.py:219-232`
+   fits a logistic and a HistGB, computes each one's log-loss **on `yte`**, keeps the lower, and
+   reports that same log-loss as out-of-sample. Holding the class fixed at K=12 gives dI
+   **−0.0017** (logit) or **+0.0082** (histgb) against the peeked **+0.0047**; the peek lowers
+   log-loss by 0.0066 on BASE and 0.0107 on SOURCE, so because the gain is larger for the
+   higher-capacity arm it **inflates dI by ≈ +0.006 bits**. §3ao named this exact mechanism when
+   its synthetic control fired ("dI is biased toward the higher-capacity arm") but left the
+   selection peek in place.
+2. **The arms are scored on different event sets.** `f_source` carries more NaNs than `f_base`,
+   — **18,340 vs 18,199 complete rows** on the same H4 index, which lands as **251 vs 246**
+   non-overlapping events at §3ao's K=30 — and `dI` subtracts two log-losses measured on
+   different samples. Small, but it is free to fix and it points the same way as the peek.
+
+Neither invalidates §3ao's direction of travel — the M15 path is corroborated independently
+above — but its **+0.0142 should be read as ≈ +0.008 ± the selection bias**, not as a clean
+information gain. The advisor's harness selects on a purged SELECT slice and intersects the
+masks.
+
+#### A product finding: a 0.5 threshold on a calibrated probability IS the drift forecast
+
+Tier C initially failed for being **too good** (+3.73pp over persistence, window [+1.10,+3.10]).
+Cause: acc 53.56% versus drift 53.62% — the calibrated probability had collapsed into the drift
+baseline. At fwd6 the base rate is 0.536, so an isotonic map onto observed frequencies puts
+almost every bar above 0.5 and thresholding at 0.5 becomes "always up". Mechanical, not a bug,
+and it dictates the live design:
+
+> **Every state threshold must be a margin around the BASE RATE, never around 0.5.**
+
+#### New machinery, because none of it existed
+
+`grep -rni "brier"` returned nothing before this. `src/v5/advisor_calibration.py` adds Brier,
+Brier skill against train-prior climatology, the Murphy decomposition (which separates
+*dishonest* from merely *uninformative* — a near-zero skill with reliability ≈ 0 is honest and
+shippable), reliability tables with per-half columns and moving-block CIs, ECE/MCE, operating
+points with a hysteresis band, and a general block-bootstrap CI. Verified: a deliberately
+shifted forecast shows **100× the reliability term** and ECE 0.156 vs 0.013; the block SE is
+**5.5× the naive SE** on autocorrelated input.
+
+Tier C replication, which gates everything: Family D reproduces §3r at **52.06% / 49.84% /
++2.22pp / 8-of-9** against the recorded 51.97% / 49.85% / +2.12pp / 8-of-9; Family A reproduces
+§3ao at **n_base 251, AUC 0.6029, dI +0.0151, 7/9** against 251 / 0.603 / +0.0142 / 7-of-9 —
+with n_source 246, the replication surfacing defect 2 simply by printing both counts.
+
+#### Where this leaves the product
+
+- **Direction panel: no measured edge.** It ships `usable: false` and prints the base rate with
+  that stated in words. Not a failure to report — the pre-registration named it the expected
+  outcome in advance (§11).
+- **Adverse panel: warn-only, top tail**, on `1.0 ATR / 4h / SOURCE` at threshold 0.60 — 4.7%
+  coverage, ~1.3 crossings/month, measured **64.6% [56.8, 73.3] against a 49.4% base**. It may
+  say "elevated risk of an adverse move, consider exiting longs" and must never say "low risk"
+  or "go short". It speaks for only the **31%** of bars that resolve within 4h, and must print
+  that too — an unconditional reading of a conditional number is §3ay's error one level up.
+- Phase 2 (the 5-minute service, state machine and notifier) is unblocked, with the thresholds
+  set around the base rate and the displayed number taken from the measured bucket frequency.
+
+_Last updated 2026-09-19._
