@@ -58,8 +58,20 @@ def load(path: Path | str = ARTIFACT) -> dict:
     key = (str(p), jf.stat().st_mtime_ns, bf.stat().st_mtime_ns)
     if _CACHE.get("key") != key:
         import joblib
+        import sklearn
+        meta = json.loads(jf.read_text())
+        want = meta.get("sklearn")
+        if want and want != sklearn.__version__:
+            # Refused, not warned. sklearn's own message for this case says results may be
+            # invalid, and an advisory service whose entire value is a calibrated number must
+            # not serve one it cannot vouch for. Retrain on the serving host.
+            raise AdvisorUnavailable(
+                f"artifact was trained under scikit-learn {want} but this host runs "
+                f"{sklearn.__version__}. Pickled estimators are not guaranteed across versions "
+                "and a mis-calibrated probability is worse than none. Re-run "
+                "scripts/v5_train_advisor.py on THIS host.")
         _CACHE.clear()
-        _CACHE.update(key=key, meta=json.loads(jf.read_text()), blobs=joblib.load(bf))
+        _CACHE.update(key=key, meta=meta, blobs=joblib.load(bf))
     return _CACHE
 
 

@@ -185,8 +185,15 @@ def main() -> None:
 
     m_adv, m_dir = _measured("adv", adv_cell), _measured("dir", dir_cell)
 
+    import sklearn
     meta = {
         "trained_on": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        # Recorded because a pickled estimator is only guaranteed to behave under the version
+        # that wrote it. Training on a desktop at sklearn 1.6.1 and serving on a VPS at 1.7.2
+        # makes sklearn itself warn that results may be invalid, and a silently wrong
+        # probability is the one failure this whole product is built to avoid.
+        "sklearn": sklearn.__version__,
+        "python": sys.version.split()[0],
         "findings": "V5_FINDINGS.md §3az",
         "preregistration": "data/v5_runs/xau_advisor/PREREGISTRATION.md",
         "overall_verdict": verdict["overall"],
