@@ -83,12 +83,13 @@ def main() -> None:
                                           observed_n=int(b["n"]),
                                           observed_ci=[b.get("ci_lo"), b.get("ci_hi")])
         broken = s.get("broken")
-        if age_h > STALE_ALERT_H and not broken:
+        if age_h > STALE_ALERT_H and not broken and not s.get("market_closed"):
             broken = (f"The newest advisor state is {age_h:.0f}h old (computed "
                       f"{s['computed_utc']}). A CLEAR reading this old is not evidence of a "
                       f"calm market.")
         m = build(s.get("state", {}), reading, meta, seen, now=now,
-                  market=s.get("market"), broken=broken)
+                  market=s.get("market"), broken=broken,
+                  market_closed=bool(s.get("market_closed")))
 
     print(m["body"])
     print(f"\ntrigger={m['trigger']}  should_send={m['should_send']}")

@@ -63,7 +63,7 @@ def _fmt_ci(ci) -> str:
 
 def build(state: dict, reading: dict | None, meta: dict, seen: dict,
           now: datetime | None = None, market: dict | None = None,
-          broken: str | None = None) -> dict:
+          broken: str | None = None, market_closed: bool = False) -> dict:
     """Return {subject, body, should_send, trigger, seen}. Pure — no I/O, no sending."""
     now = now or datetime.now(timezone.utc)
     hk = _hour_key(now)
@@ -94,8 +94,9 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     prev = seen.get("state")
 
     # ------------------------------------------------------------------ subject
-    if health == "market_closed":
-        subject = "[xau-advisor] market closed — no new bars due"
+    if market_closed and health == "ok" and not frozen:
+        subject = (f"[xau-advisor] {name} — market closed, no new bars due"
+                   + (f" ({obs_pct} vs base {100*base:.0f}%)" if observed is not None else ""))
     elif frozen or health != "ok":
         subject = f"[xau-advisor] {name} HELD — {health} (no current reading)"
     elif name == "ELEVATED":
@@ -168,7 +169,7 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     L.append("HEALTH")
     L.append("-" * 72)
     L.append(f"  status     : {health}")
-    if health == "market_closed":
+    if market_closed:
         L.append("  Gold is not quoting. No H4 bar can close and no reading can change until")
         L.append("  the market reopens, so the state below is held for an EXPECTED reason.")
         L.append(f"  quiet rule : while closed this card drops to ONE message a day. The")
@@ -199,14 +200,16 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     body = "\n".join(L)
 
     # ------------------------------------------------------------------ trigger
-    if health == "market_closed":
+    if market_closed and health == "ok":
         # Once a day, not once an hour. A weekend at hourly cadence is ~48 identical emails,
         # which is exactly how a real alert gets trained into background noise -- the same
         # mistake `book-ftmo.service` was making by failing every weekend pass.
         trigger = "closed"
         day = now.strftime("%Y-%m-%d")
-        should = seen.get("closed_day") != day
-        new_seen = {**seen, "closed_day": day, "health": health}
+        # A flip INTO the warning still goes out immediately even with the market shut: the
+        # reading is real, and the user may well hold a position over the close.
+        should = seen.get("closed_day") != day or seen.get("state") != name
+        new_seen = {**seen, "closed_day": day, "health": health, "state": name}
     elif frozen or health != "ok":
         trigger = "health"
         should = seen.get("health_hour") != hk or seen.get("health") != health

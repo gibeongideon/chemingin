@@ -187,12 +187,17 @@ def health_of(reading: dict | None, now: pd.Timestamp, max_age_h: float = 9.0,
               market_closed: bool = False) -> str:
     """Translate a reading into the state machine's health field.
 
-    MARKET_CLOSED IS CHECKED FIRST AND IS NOT A FAULT. Gold prints no bars between Friday ~21:00
-    and Sunday ~22:00 UTC, so an age rule alone calls every weekend a stale feed — the exact
-    false alarm that had `book-ftmo.service` failing three passes in a row on 2026-09-19. Over a
-    weekend that would be ~48 identical alerts, which is how a real alert gets ignored. The state
-    still freezes (no new bar is no new information), but it freezes for a stated, expected
-    reason.
+    A CLOSED MARKET SUPPRESSES THE STALENESS CHECK; IT IS NOT ITSELF A FAULT. Gold prints no
+    bars between Friday ~21:00 and Sunday ~22:00 UTC, so an age rule alone calls every weekend a
+    stale feed — the same false alarm that had `book-ftmo.service` failing three passes in a row
+    on 2026-09-19, and over a weekend it would be ~48 identical alerts, which is how a real alert
+    gets trained into background noise.
+
+    But "closed" is a fact about the MARKET, not about the reading. Friday's last H4 bar closed
+    legitimately and its probability is perfectly good; all that is true is that no NEWER bar is
+    due. So health stays "ok" and the state machine advances on that bar as normal — otherwise a
+    first run over a weekend would sit at UNKNOWN for two days while holding a valid reading it
+    refused to use. The caller carries `market_closed` separately, and the card says so.
 
     9 hours, not 4, for the stale threshold: gold's H4 grid has real gaps (the daily broker
     break, holidays), so a 4-hour rule would call a normal Friday evening stale. Two H4 periods
@@ -200,11 +205,11 @@ def health_of(reading: dict | None, now: pd.Timestamp, max_age_h: float = 9.0,
     """
     if reading is None:
         return "model_unavailable"
+    if reading.get("adverse", {}).get("p") is None:
+        return "model_unavailable"
     if market_closed:
-        return "market_closed"
+        return "ok"              # stale is expected and meaningless while nothing is quoting
     age = (pd.Timestamp(now) - pd.Timestamp(reading["decision_time"])).total_seconds() / 3600
     if age > max_age_h:
         return "stale_feed"
-    if reading.get("adverse", {}).get("p") is None:
-        return "model_unavailable"
     return "ok"

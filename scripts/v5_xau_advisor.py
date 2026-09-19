@@ -162,7 +162,7 @@ def main() -> None:
 
     obs = (reading or {}).get("adverse", {}).get("observed")
     out.update(state=to_dict(state), health=health, stepped=stepped, broken=broken,
-               market=market, p=p, observed=obs,
+               market=market, market_closed=closed, p=p, observed=obs,
                headline=describe(state, th, now, observed=obs))
     if not a.dry:
         _atomic(STATE, out)

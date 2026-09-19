@@ -109,6 +109,35 @@ def _fit_final(X: pd.DataFrame, y: np.ndarray, purge: int) -> dict:
                                        if len(cal) else yv[np.concatenate([fit, sel])]))
 
 
+def _shipped_observed(m: dict) -> float:
+    """The measured frequency at the threshold actually shipped."""
+    for o in m.get("operating_points", []):
+        if abs(float(o["threshold"]) - ADV_WARN) < 1e-9:
+            return float(o["observed"])
+    return float("nan")
+
+
+def _bottom_tail_note(m: dict) -> str:
+    """State what the LOWEST bucket actually did, per half — computed, never asserted.
+
+    The first version of this string hardcoded the mixed-feed numbers and survived a change of
+    dataset unnoticed, which is precisely the failure mode the whole artifact-carries-the-verdict
+    design exists to prevent. A limits line that cannot go stale has to be derived from the same
+    table the card prints.
+    """
+    rel = m.get("reliability", [])
+    if not rel:
+        return ("the LOW end is NOT trustworthy: a low reading means 'no signal', not 'safe'")
+    b, base = rel[0], float(m.get("base_rate", float("nan")))
+    h1, h2 = b.get("obs_first_half"), b.get("obs_second_half")
+    def f(x):
+        return f"{float(x):.3f}" if x is not None and x == x else "no data"
+    return (f"the LOW end is NOT trustworthy: the bottom bucket "
+            f"({float(b['lo']):.2f}-{float(b['hi']):.2f}, n {int(b['n'])}) ran {float(b['observed']):.3f} "
+            f"overall but {f(h1)} in 2018-21 and {f(h2)} in 2022-26 against a {base:.3f} base, so "
+            f"a low reading means 'no signal', not 'safe'")
+
+
 def _measured(family: str, cell: str) -> dict:
     """Pull this cell's MEASURED numbers out of the Phase-1 artifacts. Nothing is recomputed:
     if the grid on disk disagrees with §3az, the mismatch must surface here, not be papered over
@@ -194,7 +223,7 @@ def main() -> None:
         # probability is the one failure this whole product is built to avoid.
         "sklearn": sklearn.__version__,
         "python": sys.version.split()[0],
-        "findings": "V5_FINDINGS.md §3az",
+        "findings": "V5_FINDINGS.md §3az + §3ba (corrected)",
         "preregistration": "data/v5_runs/xau_advisor/PREREGISTRATION.md",
         "overall_verdict": verdict["overall"],
         "feed": ("CLEAN: H4 rebuilt from M15 so label and features are one broker (§3ba). "
@@ -219,14 +248,15 @@ def main() -> None:
             "advice_clear": "no elevated adverse-move risk measured",
             "must_never_say": ["low risk", "go short", "sell", "safe"],
             "limits": [
-                f"speaks for only the {rr['resolved_frac']*100:.0f}% of 4h windows that resolve "
+                f"speaks for only the {rr['resolved_frac']*100:.0f}% of {ADV['hours']}h windows "
+                f"that resolve "
                 f"+/-{ADV['k_atr']} ATR; the rest end inside the band and are not forecast",
                 f"at p>={ADV_WARN} the measured adverse rate is "
                 f"{[o for o in m_adv['operating_points'] if abs(o['threshold']-ADV_WARN)<1e-9][0]['observed']:.3f} "
-                f"against a base rate of {m_adv.get('base_rate'):.3f} — roughly 1 in 3 of these "
-                f"warnings still resolves the other way",
-                "the LOW end is NOT trustworthy: the bottom bucket's 2018-21 frequency sits at "
-                "~0.500 against a ~0.487 base, so a low reading means 'no signal', not 'safe'",
+                f"against a base rate of {m_adv.get('base_rate'):.3f} — so roughly "
+                f"{(1 - _shipped_observed(m_adv))*10:.0f} in 10 of these warnings still resolve "
+                f"the other way",
+                _bottom_tail_note(m_adv),
                 f"Brier skill {m_adv.get('bss'):+.4f} with a CI spanning 0 — the RANKING is "
                 "informative, the per-bar number is the measured bucket frequency",
                 f"only {m_adv.get('years_drift')} years beat the base-rate rule",

@@ -3697,4 +3697,73 @@ against a 0.490 base on 10.6% coverage, top bucket above base in both halves (0.
 outright — its top bucket has **no first-half observations at all**, so the model never produced a
 high reading before 2022.
 
-_Last updated 2026-09-19._
+
+### 3bb. Feed audit of every price file: the splice is not one file's problem — 25 of 38 timeframe pairs are not one series, and the FX D1 panel disagrees with its own intraday files across the entire history (2026-09-20, `scripts/v5_feed_audit.py`)
+
+§3ba found one spliced file. This is the sweep the finding demanded, and it says the defect is
+structural rather than incidental.
+
+#### THE TEST, AND THE MISTAKE IN ITS FIRST VERSION
+
+Two files of one instrument must agree where they overlap: the coarse bar's close equals the
+close of the fine bar ending on it. Scored per YEAR, because a refresh only reaches back so far
+and pooling hides the boundary — over eleven years the contaminated rows are a minority and the
+pooled median stays at exactly 0.0000, which is why §3ba went unnoticed for three years.
+
+The first run used a flat **$0.10** tolerance and reported every FX pair clean. That was not a
+result, it was the test failing to apply: $0.10 on EURUSD at 1.08 is a thousand pips, so nothing
+could fail. Re-run at a relative **0.2 bp** — about $0.09 on gold, 0.3 pip on USDJPY, 0.2 pip on
+EURUSD — 25 of 38 pairs fail. **Any fixed-unit threshold in a multi-asset check is a silent pass
+for whichever assets are cheap**, and it produced a clean bill of health for 30 seconds.
+
+D1 also has its session boundary SEARCHED rather than assumed, since a rollover-hour mismatch and
+a feed splice are indistinguishable until the other offsets are tried. A convention error lands
+near 1.00 at the right offset; a splice improves at none.
+
+#### THE RESULT IS PERFECTLY BIMODAL, WHICH IS WHY IT IS NOT A THRESHOLD ARTIFACT
+
+Agreement is either **1.00** or **0.01–0.31**. Nothing lands in between, so no choice of
+tolerance in that gap changes a verdict. Per symbol, the consistent group and the outliers:
+
+| symbol | one series | OUTLIERS | worst agreement |
+|---|---|---|---|
+| **XAUUSD** | M15, H1 | **H4**, **M30** | 0.04 (H4, from 2023), 0.31 (M30, from 2026) |
+| **EURUSD** | M1, M5, M30 · *and separately* M15, H1, H4 | **D1** | 0.02 across the two groups |
+| **GBPUSD** | M15, H1, H4 | **D1** | 0.03 |
+| **USDJPY** | M15, H1, H4 | **D1** | 0.08 |
+
+Three distinct defects, not one:
+
+1. **XAUUSD H4 — §3ba**, `refresh_xau_h4.py --bars 5000` overwriting from 2023-06-28.
+2. **XAUUSD M30 — a second, independent splice**, 2026 only (agreement 1.00 through 2025, 0.31 in
+   2026). M30's last bar is 2026-07-17 against M15's 2026-06-15: it received a top-up the others
+   did not. The same mechanism, a different file, found only because the audit was run at all.
+3. **The FX D1 panel is a different source from the FX intraday files, across the WHOLE history**
+   — not from a refresh date, from 2015. `refresh_d1_panel.py` pulls D1 from Yahoo while the
+   intraday files come from MT5. That is not a bug in either file; it becomes one the moment a
+   study pairs them.
+
+EURUSD additionally splits into **two** mutually-consistent intraday groups ({M1, M5, M30} and
+{M15, H1, H4}), each internally perfect and 0.02 against the other. Two vendors in one directory.
+
+#### WHAT IS ACTUALLY AT RISK
+
+Eleven scripts load two or more timeframes of one symbol. Cross-referencing against the pairs
+that fail, the exposed ones are: `v5_repr_ceiling.py` and `v5_advisor_measure.py` (XAUUSD H4+M15
+— **already retracted**, §3ba), `v5_m15_trim_overlay.py` / `v5_m15_trim_book.py` (H4+M15),
+`v5_xau_fast_trend_{lab,discrete}.py` (H1+M15+M30) and `v5_multi_tf_trend.py` (H1+M30). The
+XAUUSD H1+M15 pair is **clean at 1.00**, so anything using only those two is unaffected.
+
+Note what is NOT at risk, and why the distinction matters: a study using a single timeframe
+cannot have this defect however wrong it is otherwise, and the live trading path *should* use the
+broker's own quotes. The defect is specific to comparing two frames of different provenance.
+
+#### THE RULE, SHARPENED
+
+> §3ba said to check that frames agree at shared instants. This adds: **check it per year, at a
+> RELATIVE tolerance, with D1's session boundary searched — and check every pair, not the pair
+> you happen to be using.** The M30 splice existed for two months in a file nobody suspected, and
+> the FX D1 mismatch has been there since 2015. `scripts/v5_feed_audit.py` exits non-zero when
+> any pair fails, so it belongs in front of any new cross-timeframe study.
+
+_Last updated 2026-09-20._
