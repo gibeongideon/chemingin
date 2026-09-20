@@ -3904,4 +3904,107 @@ nothing to do with the quality of the patterns: the premise of waiting is what f
 > were available and it was right, and the detectors reached half of it, and the idea still loses.
 > Add the skipped-sample column to any filter or confirmation test.
 
+
+### 3bd. Swap-free gold re-verified without placing an order, and made hand-executable: the advantage survives any plausible basis (breakeven −3.62%/yr) and a DAILY hand-check costs 0.014 Sharpe (2026-09-20, `scripts/v5_goldeternal_sensitivity.py`)
+
+Asked which finding in this file is actually worth pursuing. The answer is §3ag's swap-free gold,
+because it is the only thing ever measured here that beat the signal-research programme: 64
+signal trials in one round, **6,615 trials across 70 candidate diversifiers at a median −0.169**,
+16 ICT concepts, XS-momentum, and §3bc's entry timing all negative, against one CONTRACTUAL
+change worth **+0.20 Sharpe**. Two objections had to be cleared first, and the user added a third
+constraint: **Maven does not permit Expert Advisors.**
+
+#### OBJECTION 1: THE ZERO CARRY IS AN INFERENCE FROM A METADATA FIELD
+
+Re-read live on 2026-09-20: `GoldEternal` is still `swap_mode=0` (DISABLED), but its
+`swap_long`/`swap_short` now read **−30.0** where §3ag's table recorded 0.00%/yr. DISABLED mode
+*should* leave those dormant. No order has ever been placed on the instrument, so nobody has
+observed an actual overnight settlement, and Maven's no-EA rule means the bot cannot place one.
+
+**So the question was reframed from "what is it worth at zero carry" to "what carry would erase
+it".** Same signal, same sizing, clean H4, only the carry varies:
+
+| GoldEternal carry scenario | net SR | vs XAUUSD | maxDD | CAGR | ΔCAGR |
+|---|---|---|---|---|---|
+| measured basis +0.234%/yr | **+1.099** | +0.214 | −19.5% | 15.62% | +3.45pp |
+| §3ag's assumption, exactly 0 | +1.086 | +0.201 | −19.7% | 15.41% | +3.24pp |
+| pessimistic −1.0%/yr | +1.030 | +0.145 | −20.5% | 14.50% | +2.34pp |
+| pessimistic −2.0%/yr | +0.975 | +0.090 | −21.4% | 13.61% | +1.44pp |
+| **the dormant −30 field is real (−2.51%/yr)** | **+0.947** | **+0.062** | −21.8% | 13.15% | +0.99pp |
+| swap quietly switched on (−3.78%/yr) | +0.876 | −0.009 | −22.9% | 12.03% | −0.14pp |
+| *XAUUSD baseline (−3.70%/yr)* | *+0.885* | — | *−22.8%* | *12.17%* | — |
+
+**Breakeven: −3.62%/yr.** GoldEternal keeps winning until its all-in carry reaches essentially the
+full XAUUSD swap — including the case where the dormant −30 field turns out to be live, which
+still leaves +0.062 Sharpe. **The conclusion does not need the basis estimate to be right; it
+needs only that Maven has not switched the swap on, which is a one-line monthly check.**
+
+Reproduces §3ag on the recorded cells (XAUUSD 0.885/−22.8%/12.17% vs recorded
+0.886/−22.8%/11.85%; GoldEternal-at-zero 1.086/−19.7%/15.41% vs 1.090/−19.7%/15.04%), and the
+filed-vs-clean H4 comparison shows the splice is worth ≤0.004 Sharpe here — a single boundary
+return, not a systematic leak, as expected for a one-timeframe backtest.
+
+#### OBJECTION 2: THE FREE LUNCH, RE-MEASURED WITH MORE DATA
+
+A perpetual with no swap must recover funding somewhere, so the log basis GoldEternal/XAUUSD was
+regressed on time again:
+
+| | span | slope | \|t\| | return corr |
+|---|---|---|---|---|
+| H1 | 175 days | **+0.234%/yr** | 11.9 | 0.9904 |
+| D1 | 182 days | **+0.347%/yr** | 4.3 | 0.9980 |
+
+Both are the **wrong sign** to hide a −3.78%/yr charge, and 3.86pp clear of the breakeven. But
+both have MOVED since §3ag (+0.17 → +0.234, +0.21 → +0.347 in 17 days), so the estimate is
+unsettled and is charged as a scenario rather than banked.
+
+#### THE NEW CONSTRAINT: NO EAs, SO HOW MUCH HAND-WORK?
+
+Turnover becomes a first-class number, and the first look is discouraging — **46.8 position
+changes per month**. But the shape of the work matters more than its volume:
+
+- **direction flips: 1 in the entire 8.5-year evaluation** (0.01/month). The champion is
+  long-only on gold and essentially never reverses.
+- so the 47 monthly events are **continuous SIZE adjustment**, not decisions.
+
+Which raises the question that actually decides feasibility: what does checking LESS OFTEN cost?
+
+| schedule | changes/mo | net SR | vs engine | CAGR | maxDD |
+|---|---|---|---|---|---|
+| engine (every H4 bar) | 46.6 | +1.099 | — | 15.62% | −19.5% |
+| **daily** | **14.8** | **+1.085** | **−0.014** | 15.43% | −20.6% |
+| every 2 days | 9.9 | +1.032 | −0.067 | 14.79% | −20.1% |
+| weekly | 3.8 | +0.952 | −0.147 | 15.00% | −21.0% |
+| fortnightly | 2.1 | +0.770 | −0.329 | 12.14% | −26.9% |
+
+**A daily hand-check costs 0.014 Sharpe and cuts the work by two thirds.** And the decisive
+comparison: **even a WEEKLY hand-check on GoldEternal (+0.952) beats the fully automated XAUUSD
+book (+0.885)**, because the financing advantage is larger than the hand-execution penalty. The
+existing `deploy/xau-manual-alert.*` path already emails these instructions and contains no order
+code, so the no-EA constraint is satisfied by machinery that is already running.
+
+#### A LOOKAHEAD I INTRODUCED AND CAUGHT, IN A CLASS I HAD ALREADY DOCUMENTED
+
+The first rebalance table read: daily SR +1.761, every-2-days +2.083, **monthly +2.215** against
+the engine's +1.099 — i.e. it "discovered" that checking less often doubles the Sharpe, with a
+smaller drawdown. Cause: `h.resample(freq).last()` indexes each period's **closing** value at the
+period's **start**, so `reindex(..., method="ffill")` propagates it BACKWARDS — up to a full month
+on a monthly schedule. Fixed with `.first()`, the value at each period's first bar, which is
+knowable then.
+
+This is the same bug as §3ax's weekly `ffill` that faked +40%/yr, and it is recorded in my own
+notes as a rule. **Knowing the rule did not prevent it; the implausible number did.** The tell
+was monotonicity: less work cannot improve a result, so a non-monotone effort ladder is a bug
+report. Two other numbers in the same run were wrong for duller reasons — `dd_of` already returns
+a percentage and was scaled again (−2277% drawdowns), and `engine_fin` returns DAILY returns so
+the CAGR had to annualise at 252 rather than the H4 bar count (+134% CAGRs).
+
+#### VERDICT
+
+**This is the one thing worth pursuing, and it is now specified well enough to act on.** It needs
+no new research: the signal is unchanged, the instrument is available, the execution path exists,
+and the risk is bounded by a monthly one-line swap check. The open item is no longer a backtest —
+it is a single observed overnight settlement, which under the no-EA rule must be a MANUAL
+0.01-lot position (~$4,364 notional, $0.55 spread), or a written confirmation from Maven.
+
 _Last updated 2026-09-20._
