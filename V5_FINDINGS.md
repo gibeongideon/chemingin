@@ -3766,4 +3766,142 @@ broker's own quotes. The defect is specific to comparing two frames of different
 > the FX D1 mismatch has been there since 2015. `scripts/v5_feed_audit.py` exits non-zero when
 > any pair fails, so it belongs in front of any new cross-timeframe study.
 
+
+### 3bc. M15 entry timing on the measured H4 call — the oracle prize is real (14.6 spreads), the patterns reach half of it, and ADVERSE SELECTION eats the lot: waiting for a pullback selects the trades that were going to fail (2026-09-20, `scripts/v5_mtf_entry_oracle.py`, `v5_mtf_entry_timing.py`, `v5_mtf_entry_limit.py`, `src/v5/mtf_frames.py`)
+
+User asked for the classic multi-timeframe stack: **H4 for direction and supply/demand, H1 for
+structure/FVG/order blocks/liquidity, M15 for confirmation and entry.** §3v/§3w had already
+closed every H4/H1 ingredient of that (12 concepts, 4 confluence combos, zero survivors), but
+they never reached M15 — nothing survived H4/H1 to justify going lower. So the scope was
+narrowed to the one untested layer and the one question the earlier sweep could not ask:
+**given a directional call that is already measured, is a better PRICE available by waiting?**
+
+The bias layer is §3ba's shipped advisor cell `1.0/9/BASE` (UP 60.3%, DOWN 56.2%, both tails
+validated across halves) rather than a hand-drawn structural read — which is what makes this a
+different question from §3v's, where the H4 "bias" was itself one of the things under test.
+
+#### FIRST, THE DATA HAD TO BE REBUILT
+
+§3bb's audit says XAUUSD's consistent core is **M15 + H1** and that **H4 is an outlier at 0.04
+agreement from 2023**. A stack reading bias from H4 and confirming on M15 is therefore the exact
+provenance defect that manufactured §3ao and §3az. `src/v5/mtf_frames.py` aggregates all three
+frames from the single M15 series, verified every run:
+
+| check | result |
+|---|---|
+| H4 rebuild vs filed, pre-2023 | n 12,790, median \|Δ\| **0.0000**, 100.0% within $0.10 |
+| H1 close == the M15 bar ending on it | n 67,552, max \|Δ\| **0.000000** |
+| H4 close == the M15 bar ending on it | n 17,621, max \|Δ\| **0.000000** |
+
+`align_to`/`broadcast` hold the cross-timeframe alignment in one audited place, asserted so that
+every mapped H4 close precedes its M15 bar — three results in this file died to getting that
+wrong (§3av, §3ax, §3az's AUC 0.901).
+
+#### THE ORACLE GATE PASSED, WHICH IS WHY THIS WAS WORTH BUILDING
+
+Control #5 before any detector. Both arms exit at the SAME instant, so the only difference is
+the entry price; the best entry in the window is its high for a short and its low for a long.
+823 fires, 2020-2026 (the walk-forward produces no extreme `p` in 2018-19):
+
+| window | oracle gain | in ATR | in $ | **vs spread** | anti-oracle |
+|---|---|---|---|---|---|
+| 0.5h | +0.1302% | 0.21 | +3.53 | 7.5x | −0.1374% |
+| 1h | +0.1796% | 0.29 | +4.88 | 10.4x | −0.2065% |
+| **2h** | **+0.2547%** | 0.41 | +6.88 | **14.6x** | −0.3056% |
+| 4h | +0.3585% | 0.58 | +9.50 | 20.2x | −0.4377% |
+
+A perfect timer was worth **2.8x the naive trade's entire return** (+0.0910%), and the
+oracle-to-anti band of 0.56% says timing genuinely matters here rather than being noise. This is
+the opposite of §3ag's situation and it justified proceeding.
+
+#### AS A MATCHED-COUNT TIMING OVERLAY: ALL 12 CELLS NEGATIVE
+
+Every arm takes the identical 823 trades and exits at the identical instant — when no trigger
+appears inside the window the trade is entered at the window's end anyway. Costs therefore cancel
+in the paired difference, so this is purely about price.
+
+| trigger | 1h | 2h | 4h | fires (2h) |
+|---|---|---|---|---|
+| FVG retest | −0.0213% | −0.0382% | −0.0463% | 7.2% |
+| Order-block tap | −0.0215% | −0.0377% | −0.0479% | 11.7% |
+| Liquidity sweep + reclaim | −0.0199% | −0.0399% | −0.0529% | 31.1% |
+| *plain momentum control* | −0.0080% | −0.0078% | −0.0004% | 55.8% |
+
+Best of 12 is the pattern-free control at −0.0004%. **The ICT triggers lose to plain "wait for
+the EMA to cross" at every window**, and 1-3 years of 7 positive. No max-statistic null was run:
+Gate 6 prices a search, and nothing survived to price.
+
+#### BUT CONDITIONAL ON FIRING THEY LOOK EXCELLENT — AND THAT IS THE TRAP
+
+| trigger @ 2h | n fired | gain \| FIRED | CI90 | gain \| fallback |
+|---|---|---|---|---|
+| FVG | 59 | **+0.1902%** | [+0.152, +0.225] | −0.0559% |
+| Order block | 96 | **+0.2515%** | [+0.153, +0.268] | −0.0759% |
+| Sweep | 256 | **+0.1615%** | [+0.129, +0.185] | −0.1308% |
+| *momentum* | 459 | **−0.0366%** | [−0.050, −0.021] | +0.0286% |
+
+Causal (the trigger reads only bars up to entry) and paired on the same trades, so not a
+lookahead. And note the control inverts — the ICT triggers are positive when they fire while
+momentum is negative, so they are not merely "delay". That reframes the product as **rest a LIMIT
+order at the zone and trade only if it fills**, which is implementable.
+
+#### THE TWO CONTROLS THAT CLOSE IT
+
+**1. A line with no pattern on it does better.** A limit resting below the market on a long fills
+exactly when price dips, and a dip is a better entry whatever drew the line. Against a flat
+k·ATR offset, with capture recomputed on the MATCHED subset:
+
+| placement | fill | gain/fill | oracle \| fill | capture |
+|---|---|---|---|---|
+| ICT FVG | 7.2% | +0.1902% | +0.4149% | 45.8% |
+| ICT order block | 11.7% | +0.2515% | +0.4851% | 51.8% |
+| ICT sweep | 31.1% | +0.1615% | +0.3772% | 42.8% |
+| **flat 0.5·ATR** | **27.6%** | **+0.3050%** | +0.5790% | **52.7%** |
+| flat 0.3·ATR | 47.4% | +0.1806% | +0.4350% | 41.5% |
+
+**A flat 0.5-ATR limit beats the best order block on gain per fill AND fills 2.4x as often.** The
+patterns add nothing over arithmetic. (My first pass printed 119.8% capture for that cell by
+dividing a conditional mean by an unconditional oracle — the denominator has to be the oracle on
+the same subset, and fixing it moves everything into a 42-53% band with the pattern-free cell on
+top.)
+
+**2. ADVERSE SELECTION, and it is enormous.** What did the baseline earn on the trades the limit
+filled, versus the ones it never filled?
+
+| placement | base \| FILLED | base \| SKIPPED | Δ | t |
+|---|---|---|---|---|
+| order block | −0.1213% | +0.1190% | −0.2403% | **−2.76** |
+| sweep | −0.1992% | +0.2220% | −0.4212% | **−5.96** |
+| flat 0.2·ATR | −0.0871% | +0.3723% | −0.4593% | **−6.64** |
+| flat 0.3·ATR | −0.2014% | +0.3544% | −0.5558% | **−8.60** |
+
+> **The pullback you wait for arrives on the trades that were going to work least well. Price
+> that runs away without retracing is price the signal got right.**
+
+So the entry improvement is real — an order block turns a −0.12% trade into a +0.13% one — but it
+only ever gets to act on the losers. EV per signal is the only column that decides:
+
+| approach | EV / signal |
+|---|---|
+| **baseline: market-order every signal** | **+0.0910%** |
+| limit at flat 0.2·ATR (fill 61%) | +0.0246% |
+| limit at an order block (fill 12%) | +0.0152% |
+| limit at flat 0.5·ATR (fill 28%) | +0.0005% |
+
+Sizing up cannot rescue it: the shortfall is in EDGE, and leverage scales edge and risk together
+(`xau-riskfrac-sizing-table`).
+
+#### VERDICT AND THE TRANSFERABLE RULE
+
+**Closed. Take the signal at market; do not wait for M15 confirmation of any kind.** The user's
+three-timeframe stack is disproven in its remaining untested layer, and for a reason that has
+nothing to do with the quality of the patterns: the premise of waiting is what fails.
+
+> **When a strategy waits for a condition before acting, measure what the baseline earned on the
+> trades it SKIPPED.** A conditional-on-fired return is a selected sample, and here selection was
+> worth −0.24% to −0.56% at t up to −8.60 — many times larger than the +0.25% entry improvement
+> it was concealing. The oracle-gap framing (#5) cannot see this: the oracle said 14.6 spreads
+> were available and it was right, and the detectors reached half of it, and the idea still loses.
+> Add the skipped-sample column to any filter or confirmation test.
+
 _Last updated 2026-09-20._
