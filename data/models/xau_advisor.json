@@ -1,6 +1,8 @@
 {
-  "trained_on": "2026-09-19T20:54:28+00:00",
-  "findings": "V5_FINDINGS.md \u00a73az",
+  "trained_on": "2026-09-20T06:45:04+00:00",
+  "sklearn": "1.6.1",
+  "python": "3.13.5",
+  "findings": "V5_FINDINGS.md \u00a73az + \u00a73ba (corrected)",
   "preregistration": "data/v5_runs/xau_advisor/PREREGISTRATION.md",
   "overall_verdict": "B_plus",
   "feed": "CLEAN: H4 rebuilt from M15 so label and features are one broker (\u00a73ba). The filed XAUUSD_H4_long.csv splices FTMO bars from 2023-06-28 onward.",
@@ -19,8 +21,10 @@
     "tier": "B_plus_top_tail",
     "usable": "tails_only",
     "direction_of_label": "y=1 means the DOWN (-k*ATR) barrier is touched first",
-    "warn_at": 0.55,
-    "clear_at": 0.5,
+    "down_at": 0.6,
+    "down_release": 0.55,
+    "up_at": 0.4,
+    "up_release": 0.45,
     "resolved_frac": 0.5727630285152409,
     "base_rate_measured": 0.4897670227828549,
     "measured": {
@@ -190,18 +194,24 @@
         }
       ]
     },
-    "advice_warn": "elevated risk of an adverse move in the next ~4h \u2014 consider trimming or exiting longs",
-    "advice_clear": "no elevated adverse-move risk measured",
+    "advice_down": "gold is more likely to fall 1.0 ATR before rising 1.0 ATR over the next ~9h \u2014 consider trimming or exiting longs",
+    "advice_up": "gold is more likely to rise 1.0 ATR before falling 1.0 ATR over the next ~9h \u2014 a long is on the measured side of this reading",
+    "advice_neutral": "no directional edge measured at this reading",
     "must_never_say": [
-      "low risk",
       "go short",
-      "sell",
-      "safe"
+      "sell short",
+      "guaranteed",
+      "risk-free",
+      "safe",
+      "no risk",
+      "certain"
     ],
+    "both_tails_validated": true,
     "limits": [
-      "speaks for only the 57% of 4h windows that resolve +/-1.0 ATR; the rest end inside the band and are not forecast",
-      "at p>=0.55 the measured adverse rate is 0.570 against a base rate of 0.490 \u2014 roughly 1 in 3 of these warnings still resolves the other way",
-      "the LOW end is NOT trustworthy: the bottom bucket's 2018-21 frequency sits at ~0.500 against a ~0.487 base, so a low reading means 'no signal', not 'safe'",
+      "speaks for only the 57% of 9h windows that resolve +/-1.0 ATR; the rest end inside the band and are not forecast",
+      "DOWN (p 0.60-1.00, n 404): measured 0.562 against a 0.490 base rate, halves 0.596 / 0.536 \u2014 so about 4 in 10 of these calls still resolve the other way",
+      "UP (p 0.00-0.40, n 363): measured 0.603 against a 0.510 base rate, halves 0.677 / 0.562 \u2014 so about 4 in 10 of these calls still resolve the other way",
+      "a LOW reading is now a call in its own right, not an all-clear: it is the UP state above, and it is the only one of 16 clean-feed cells where both ends survive a both-halves check (V5_FINDINGS \u00a73ba/\u00a73bb)",
       "Brier skill -0.0082 with a CI spanning 0 \u2014 the RANKING is informative, the per-bar number is the measured bucket frequency",
       "only 8/9 years beat the base-rate rule"
     ]

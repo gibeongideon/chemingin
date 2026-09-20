@@ -3,13 +3,18 @@
 Both senders import `build()`; neither formats anything itself. That is not tidiness — the
 message carries the honesty of the whole product, and two formatters drift.
 
+THE HEADLINE IS A DIRECTION: DOWN, NEUTRAL or UP, with the measured rate for THAT side.
+`p` is P(gold touches -1 ATR before +1 ATR within 9h), so its complement is the UP call. That
+is a statement about the PATH, and it is not the close-to-close DRIFT question §3az closed at
+Tier B — two different labels, one with measured skill and one without. Both appear on the card,
+labelled, so the distinction is visible rather than asserted.
+
 WHAT THE CARD REFUSES TO DO, AND WHY EACH REFUSAL IS A MEASUREMENT.
-  * It never prints a direction call as actionable. §3az: all 8 direction cells have negative
-    Brier skill and the best one fails its own best-of-8 max-statistic null (p 0.175 / 0.100).
-  * It never says "low risk" or "safe". The BOTTOM reliability bucket is not above chance in
-    both halves, so a low reading means "no signal", not "safe".
-  * It never says short or sell. §3ab: the short leg lost on 10/10 signals; trimming to flat
-    captured ~71% of the oracle prize.
+  * The close-to-close DIRECTION panel is printed but labelled NOT USABLE. §3az: all 8 cells have
+    negative Brier skill and the best fails its own best-of-8 max-statistic null (p 0.175/0.100).
+  * It never proposes a short. §3ab: the short leg lost on 10/10 signals; trimming to flat
+    captured ~71% of the oracle prize. An UP call says a long is on the measured side; a DOWN
+    call says trim, never reverse.
   * It quotes the MEASURED bucket frequency, not the model's probability. §3ba: 0 of 16 cells
     have positive Brier skill, so the ranking informs and the per-bar number does not.
   * It prints the BASE RATE beside every frequency (§3ay's rule), and the resolution rate, so a
@@ -17,14 +22,17 @@ WHAT THE CARD REFUSES TO DO, AND WHY EACH REFUSAL IS A MEASUREMENT.
   * It prints the 71.9% feed-transfer figure, because the model was fitted on one broker's
     quotes and is served on another's, and that is the single largest known tax on it.
 
-TRIGGERS. `broken` / `stale` / `change` / `health` / `heartbeat`. Any successful send advances the
-hour key, so a state change absorbs that hour's heartbeat. `seen` advances ONLY on a successful
-send (`v5_trend_signal.py:185-193`), so a failed delivery retries on the next run and the
-mechanism is self-limiting rather than silently lossy.
+TRIGGERS, AND THE CADENCE THE USER ASKED FOR. A message goes out when the DIRECTION CHANGES —
+that is the point of the product, and it is what they asked for ("only when direction change").
+It also goes out when the pipeline is broken or unhealthy, because silence must never be
+ambiguous, and ONCE A DAY otherwise.
 
-THE HEARTBEAT IS THE CONTRACT. Every message states that more than 70 minutes of silence means
-the pipeline is down, not that the market is quiet. A month of reports was once lost to a blocked
-SMTP port with nobody noticing.
+THE DAILY HEARTBEAT IS KEPT ON PURPOSE, against a literal reading of "only on change". A month
+of reports was once lost to a blocked SMTP port with nobody noticing, and a change-only channel
+cannot tell "nothing changed" from "the sender died three weeks ago". One message a day is the
+cheapest thing that keeps silence meaningful, and every card states the rule so the guarantee is
+legible rather than implied. `seen` advances ONLY on a successful send
+(`v5_trend_signal.py:185-193`), so a failed delivery retries next run.
 """
 from __future__ import annotations
 
@@ -32,8 +40,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-BANNED = ("short", "sell", "low risk", "safe", "go long", "buy")
-QUIET_MINUTES = 70
+BANNED = ("go short", "sell short", "guaranteed", "risk-free")
+QUIET_HOURS = 26                 # a daily heartbeat plus slack for a missed slot
 
 
 def load_seen(path: Path) -> dict:
@@ -94,18 +102,19 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     prev = seen.get("state")
 
     # ------------------------------------------------------------------ subject
-    if market_closed and health == "ok" and not frozen:
-        subject = (f"[xau-advisor] {name} — market closed, no new bars due"
-                   + (f" ({obs_pct} vs base {100*base:.0f}%)" if observed is not None else ""))
-    elif frozen or health != "ok":
+    flipped = bool(prev and prev != name and not frozen)
+    rate = f" P={obs_pct}" if observed is not None else ""
+    if frozen or health != "ok":
         subject = f"[xau-advisor] {name} HELD — {health} (no current reading)"
-    elif name == "ELEVATED":
-        subject = (f"[xau-advisor] ELEVATED adverse risk {obs_pct} "
-                   f"(base {100*base:.0f}%) — consider trimming longs")
+    elif flipped:
+        # The flip is the headline, in the user's own idiom: "now UP (P=60%), was DOWN".
+        subject = f"[xau-advisor] {name}{rate} — was {prev}"
+        if name == "DOWN":
+            subject += " — consider trimming longs"
+    elif market_closed:
+        subject = f"[xau-advisor] {name}{rate} — market closed, no new bars due"
     else:
-        subject = f"[xau-advisor] CLEAR — no elevated adverse risk measured"
-    if prev and prev != name and not frozen:
-        subject += f"  [was {prev}]"
+        subject = f"[xau-advisor] {name}{rate} (unchanged)"
 
     # ------------------------------------------------------------------ body
     L = []
@@ -113,21 +122,33 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     L.append("XAUUSD ADVISOR — advisory only. It places no orders and has no order path.")
     L.append("=" * 72)
     L.append("")
-    L.append(f"STATE        {name}" + ("  (HELD — see HEALTH)" if frozen else ""))
+    arrow = {"DOWN": "v  DOWN", "UP": "^  UP", "NEUTRAL": "-  NEUTRAL"}.get(name, f"?  {name}")
+    L.append(f"DIRECTION    {arrow}" + ("   (HELD — see HEALTH)" if frozen else ""))
+    if flipped:
+        L.append(f"             *** CHANGED from {prev} ***")
     if not frozen and observed is not None:
-        L.append(f"             bars scoring this high went on to move adversely "
-                 f"{obs_pct} of the time")
-        L.append(f"             ({m.get('observed_n')} such bars, "
-                 f"{_fmt_ci(m.get('observed_ci'))}) against a base rate of {100*base:.1f}%")
+        what = ("fall 1 ATR before rising 1 ATR" if name == "DOWN"
+                else "rise 1 ATR before falling 1 ATR" if name == "UP" else "resolve this way")
+        L.append(f"             measured: bars reading like this went on to {what}")
+        L.append(f"             {obs_pct} of the time  (n {m.get('observed_n')}, "
+                 f"base rate {100*base:.1f}%)")
+        h = m.get("observed_halves") or [None, None]
+        if h[0] is not None and h[0] == h[0]:
+            L.append(f"             both halves: {100*float(h[0]):.1f}% in 2018-21, "
+                     f"{100*float(h[1]):.1f}% in 2022-26")
     L.append(f"ADVICE       {m.get('advice', 'no reading')}")
+    L.append(f"HELD SINCE   {state.get('since')}")
     L.append("")
 
     L.append("-" * 72)
-    L.append(f"ADVERSE-MOVE PANEL   ({a.get('cell', '?')}, tier {a.get('tier', '?')})")
+    L.append(f"HOW THE CALL IS MADE   ({a.get('cell', '?')}, tier {a.get('tier', '?')})")
     L.append("-" * 72)
     L.append(f"  question   : {m.get('label', a.get('k_atr'))}")
-    L.append(f"  ranking    : {m.get('p', float('nan')):.3f}  "
-             f"(warn at {a.get('warn_at')}, release below {a.get('clear_at')})")
+    L.append(f"  ranking    : {m.get('p', float('nan')):.3f}   "
+             f"DOWN at >={a.get('down_at')} (hold >={a.get('down_release')})   "
+             f"UP at <={a.get('up_at')} (hold <={a.get('up_release')})")
+    L.append(f"  a reading between {a.get('up_at')} and {a.get('down_at')} is NEUTRAL: no "
+             f"measured edge either way")
     L.append(f"  bar        : {reading.get('asof')} closed "
              f"{reading.get('decision_time')}" if reading else "  bar        : none")
     L.append(f"  resolution : {100*float(a.get('resolved_frac', float('nan'))):.0f}% of "
@@ -172,15 +193,16 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     if market_closed:
         L.append("  Gold is not quoting. No H4 bar can close and no reading can change until")
         L.append("  the market reopens, so the state below is held for an EXPECTED reason.")
-        L.append(f"  quiet rule : while closed this card drops to ONE message a day. The")
-        L.append(f"               {QUIET_MINUTES}-minute rule resumes at the reopen.")
+        L.append("  quiet rule : one message a day while closed; a direction change still")
+        L.append("               sends immediately.")
     elif frozen:
         L.append("  The state above is FROZEN at the last good reading. It is not current.")
-        L.append(f"  quiet rule : more than {QUIET_MINUTES} minutes without a message means this")
-        L.append("               pipeline is down, NOT that the market is calm.")
+        L.append(f"  quiet rule : more than {QUIET_HOURS}h without any message means this")
+        L.append("               pipeline is down, NOT that the direction is steady.")
     else:
-        L.append(f"  quiet rule : more than {QUIET_MINUTES} minutes without a message means this")
-        L.append("               pipeline is down, NOT that the market is calm.")
+        L.append("  You are emailed when the DIRECTION CHANGES, plus once a day either way.")
+        L.append(f"  quiet rule : more than {QUIET_HOURS}h without any message means this")
+        L.append("               pipeline is down, NOT that the direction is steady.")
     L.append(f"  held since : {state.get('since')}")
     L.append("")
 
@@ -193,42 +215,35 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     L.append("  this model was fitted on one broker's quotes and is served on another's; the")
     L.append("  warning RATE transfers (11.2% vs 11.1%) but only 71.9% of individual warnings")
     L.append("  survive the change (V5_FINDINGS 3ba)")
-    L.append("  it may warn about downside. It will never tell you to go the other way, and a")
-    L.append("  low reading means NO SIGNAL, not an all-clear.")
+    L.append("  a DOWN call is a reason to trim, never a reason to reverse: the short leg lost")
+    L.append("  on 10 of 10 signals (§3ab) while trimming to flat captured ~71% of the prize.")
     L.append(f"  model {meta.get('model_id')} trained {meta.get('trained_on')} — "
              f"{meta.get('findings')}")
     body = "\n".join(L)
 
     # ------------------------------------------------------------------ trigger
-    if market_closed and health == "ok":
-        # Once a day, not once an hour. A weekend at hourly cadence is ~48 identical emails,
-        # which is exactly how a real alert gets trained into background noise -- the same
-        # mistake `book-ftmo.service` was making by failing every weekend pass.
-        trigger = "closed"
-        day = now.strftime("%Y-%m-%d")
-        # A flip INTO the warning still goes out immediately even with the market shut: the
-        # reading is real, and the user may well hold a position over the close.
-        should = seen.get("closed_day") != day or seen.get("state") != name
-        new_seen = {**seen, "closed_day": day, "health": health, "state": name}
-    elif frozen or health != "ok":
+    day = now.strftime("%Y-%m-%d")
+    if frozen or health != "ok":
         trigger = "health"
-        should = seen.get("health_hour") != hk or seen.get("health") != health
-        new_seen = {**seen, "health_hour": hk, "health": health}
-    elif prev != name:
+        should = seen.get("health_day") != day or seen.get("health") != health
+        new_seen = {**seen, "health_day": day, "health": health}
+    elif flipped:
+        # The whole point of the product. Sent immediately, including with the market shut: the
+        # reading is real and a position may well be held over the close.
         trigger, should = "change", True
-        new_seen = {**seen, "state": name, "hour": hk, "health": health}
+        new_seen = {**seen, "state": name, "day": day, "health": health}
     else:
-        trigger = "heartbeat"
-        should = seen.get("hour") != hk
-        new_seen = {**seen, "state": name, "hour": hk, "health": health}
+        trigger = "daily"
+        should = seen.get("day") != day
+        new_seen = {**seen, "state": name, "day": day, "health": health}
     new_seen["observed"] = observed
     new_seen["p"] = m.get("p")
 
-    # A transition out of UNKNOWN is initialisation, not news.
-    if trigger == "change" and prev is None and name == "CLEAR":
-        trigger, should = "heartbeat", seen.get("hour") != hk
+    # A first reading resolving UNKNOWN is initialisation, not a direction change.
+    if trigger == "change" and prev is None:
+        trigger, should = "daily", seen.get("day") != day
 
-    assert not any(b in subject.lower() for b in BANNED), f"banned word in subject: {subject}"
+    assert not any(b in subject.lower() for b in BANNED), f"banned phrase in subject: {subject}"
     return dict(subject=subject, body=body, should_send=bool(should), trigger=trigger,
                 seen=new_seen)
 

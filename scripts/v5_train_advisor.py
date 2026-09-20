@@ -73,8 +73,20 @@ DIR = dict(h=2, arm="BASE")
 # CI [0.530,0.596] against a 0.490 base, 10.6% coverage). 0.60 gives 0.563 on less coverage --
 # no better, and on fewer events. Chosen from the operating curve, which is the statistic the
 # product consumes (§3az's own lesson about picking within a qualified family).
-ADV_WARN = 0.55
-ADV_CLEAR = 0.50         # release below this: a 5pp dead-band, and still above the 0.490 base
+# THE THRESHOLDS ARE THE RELIABILITY BUCKET EDGES, which is a correction. An earlier version
+# warned at 0.55, read off the operating-point curve. That was wrong: the [0.55, 0.60) bucket has
+# NO first-half observations, so a 0.55 threshold rests part of its headline on a band that
+# cannot be checked across halves. Anchoring each state to a bucket measured in BOTH halves means
+# the number shown to the user IS that bucket's observed frequency.
+#
+# 1.0/9/BASE is the only one of 16 clean-feed cells whose TOP and BOTTOM buckets both clear the
+# base rate in both halves, which is what makes a two-sided UP/DOWN call honest here:
+#     p <= 0.40  n 363   P(up-first)   0.603  halves 0.677/0.562  vs base 0.510
+#     p >= 0.60  n 404   P(down-first) 0.562  halves 0.596/0.536  vs base 0.490
+ADV_DOWN_AT = 0.60
+ADV_DOWN_RELEASE = 0.55
+ADV_UP_AT = 0.40
+ADV_UP_RELEASE = 0.45
 CLEAN_FEED = True        # rebuild H4 from M15 so the label and the features are one broker
 
 
@@ -109,12 +121,27 @@ def _fit_final(X: pd.DataFrame, y: np.ndarray, purge: int) -> dict:
                                        if len(cal) else yv[np.concatenate([fit, sel])]))
 
 
-def _shipped_observed(m: dict) -> float:
-    """The measured frequency at the threshold actually shipped."""
-    for o in m.get("operating_points", []):
-        if abs(float(o["threshold"]) - ADV_WARN) < 1e-9:
-            return float(o["observed"])
-    return float("nan")
+def _tail_note(m: dict, side: str) -> str:
+    """What the shipped bucket for one direction actually did, per half — computed, never
+    asserted. The first version of these strings hardcoded mixed-feed numbers and survived a
+    change of dataset without complaint, which is the staleness the artifact-carries-the-verdict
+    design exists to prevent."""
+    rel = sorted(m.get("reliability", []), key=lambda r: float(r["lo"]))
+    if not rel:
+        return f"{side}: no reliability table available"
+    row = rel[-1] if side == "down" else rel[0]
+    base = float(m.get("base_rate", float("nan")))
+    flip = side == "up"
+    conv = lambda x: (1.0 - float(x)) if x is not None and x == x else None
+    obs = conv(row["observed"]) if flip else float(row["observed"])
+    h1 = conv(row.get("obs_first_half")) if flip else row.get("obs_first_half")
+    h2 = conv(row.get("obs_second_half")) if flip else row.get("obs_second_half")
+    b = (1.0 - base) if flip else base
+    f = lambda x: f"{float(x):.3f}" if x is not None and x == x else "no data"
+    miss = 1.0 - (obs if obs is not None and obs == obs else float("nan"))
+    return (f"{side.upper()} (p {float(row['lo']):.2f}-{float(row['hi']):.2f}, n {int(row['n'])}): "
+            f"measured {f(obs)} against a {b:.3f} base rate, halves {f(h1)} / {f(h2)} — so about "
+            f"{miss*10:.0f} in 10 of these calls still resolve the other way")
 
 
 def _bottom_tail_note(m: dict) -> str:
@@ -239,24 +266,34 @@ def main() -> None:
             "tier": "B_plus_top_tail",
             "usable": "tails_only",
             "direction_of_label": "y=1 means the DOWN (-k*ATR) barrier is touched first",
-            "warn_at": ADV_WARN, "clear_at": ADV_CLEAR,
+            "down_at": ADV_DOWN_AT, "down_release": ADV_DOWN_RELEASE,
+            "up_at": ADV_UP_AT, "up_release": ADV_UP_RELEASE,
             "resolved_frac": rr["resolved_frac"],
             "base_rate_measured": m_adv.get("base_rate"),
             "measured": m_adv,
-            "advice_warn": ("elevated risk of an adverse move in the next ~4h — "
-                            "consider trimming or exiting longs"),
-            "advice_clear": "no elevated adverse-move risk measured",
-            "must_never_say": ["low risk", "go short", "sell", "safe"],
+            "advice_down": (f"gold is more likely to fall {ADV['k_atr']} ATR before rising "
+                            f"{ADV['k_atr']} ATR over the next ~{ADV['hours']}h — consider "
+                            "trimming or exiting longs"),
+            "advice_up": (f"gold is more likely to rise {ADV['k_atr']} ATR before falling "
+                          f"{ADV['k_atr']} ATR over the next ~{ADV['hours']}h — a long is on "
+                          "the measured side of this reading"),
+            "advice_neutral": "no directional edge measured at this reading",
+            # "low risk" is no longer on this list, and that is a deliberate change: the low
+            # end used to be untrustworthy and is now the UP state, the better-measured of the
+            # two sides (0.603 vs 0.562). What stays banned is any wording that turns a 6-in-10
+            # directional reading into a safety guarantee or a reason to reverse.
+            "must_never_say": ["go short", "sell short", "guaranteed", "risk-free", "safe",
+                               "no risk", "certain"],
+            "both_tails_validated": True,
             "limits": [
                 f"speaks for only the {rr['resolved_frac']*100:.0f}% of {ADV['hours']}h windows "
                 f"that resolve "
                 f"+/-{ADV['k_atr']} ATR; the rest end inside the band and are not forecast",
-                f"at p>={ADV_WARN} the measured adverse rate is "
-                f"{[o for o in m_adv['operating_points'] if abs(o['threshold']-ADV_WARN)<1e-9][0]['observed']:.3f} "
-                f"against a base rate of {m_adv.get('base_rate'):.3f} — so roughly "
-                f"{(1 - _shipped_observed(m_adv))*10:.0f} in 10 of these warnings still resolve "
-                f"the other way",
-                _bottom_tail_note(m_adv),
+                _tail_note(m_adv, "down"),
+                _tail_note(m_adv, "up"),
+                "a LOW reading is now a call in its own right, not an all-clear: it is the UP "
+                "state above, and it is the only one of 16 clean-feed cells where both ends "
+                "survive a both-halves check (V5_FINDINGS §3ba/§3bb)",
                 f"Brier skill {m_adv.get('bss'):+.4f} with a CI spanning 0 — the RANKING is "
                 "informative, the per-bar number is the measured bucket frequency",
                 f"only {m_adv.get('years_drift')} years beat the base-rate rule",
@@ -295,9 +332,13 @@ def main() -> None:
     print(f"         measured AUC {m_adv.get('auc'):.4f}  BSS {m_adv.get('bss'):+.4f}  "
           f"base {m_adv.get('base_rate'):.4f}  resolved {rr['resolved_frac']:.3f}")
     for o in m_adv["operating_points"]:
-        star = "  <== shipped" if abs(o["threshold"] - ADV_WARN) < 1e-9 else ""
+        star = "  <== DOWN state" if abs(o["threshold"] - ADV_DOWN_AT) < 1e-9 else ""
         print(f"           p>={o['threshold']:.2f}  cov {o['coverage']*100:5.2f}%  "
               f"n {int(o['n']):5d}  observed {o['observed']:.4f}{star}")
+    print(f"  STATES   DOWN at p>={ADV_DOWN_AT} (release <{ADV_DOWN_RELEASE})   "
+          f"UP at p<={ADV_UP_AT} (release >{ADV_UP_RELEASE})   base {m_adv.get('base_rate'):.3f}")
+    for side in ("down", "up"):
+        print(f"    {_tail_note(m_adv, side)}")
     print(f"DIRECTION {dir_cell}: {dr['model_class']}/{dr['calibrator_kind']}  "
           f"prior {dr['train_prior']:.4f}  -> usable: false (tier B)")
     print(f"h4 last bar {h4.index[-1]}   m15 last bar {m15.index[-1]}")

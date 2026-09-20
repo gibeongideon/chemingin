@@ -63,30 +63,31 @@ def main() -> None:
         reading = None
         if s.get("p") is not None and not s.get("broken"):
             adv = meta["adverse"]
+            name = s.get("state", {}).get("name", "NEUTRAL")
+            # The compute step already oriented these to the STATE (an UP call quotes
+            # 1 - observed). Re-deriving them here is how the two halves of a split service
+            # drift apart, so they are read, not recomputed.
             reading = {"asof": s.get("state", {}).get("asof"),
                        "decision_time": s.get("state", {}).get("asof"),
-                       "adverse": {"p": s["p"], "observed": s.get("observed"),
-                                   "observed_n": None, "observed_ci": None,
-                                   "base_rate": adv["measured"]["base_rate"],
-                                   "label": ("probability that gold touches "
-                                             f"-{adv['k_atr']}xATR before +{adv['k_atr']}xATR "
+                       "adverse": {"p": s["p"],
+                                   "observed": s.get("observed"),
+                                   "observed_n": s.get("observed_n"),
+                                   "observed_halves": s.get("observed_halves"),
+                                   "observed_ci": None,
+                                   "base_rate": (s.get("observed_base")
+                                                 if s.get("observed_base") is not None
+                                                 else adv["measured"]["base_rate"]),
+                                   "label": (f"which side gold touches first, "
+                                             f"-{adv['k_atr']}xATR or +{adv['k_atr']}xATR, "
                                              f"within {adv['hours']}h"),
-                                   "advice": (adv["advice_warn"]
-                                              if s["p"] >= adv["warn_at"]
-                                              else adv["advice_clear"])},
+                                   "advice": (adv["advice_down"] if name == "DOWN"
+                                              else adv["advice_up"] if name == "UP"
+                                              else adv["advice_neutral"])},
                        "direction": {"p_up": None}}
-            # fill n / CI from the frozen bucket this reading lands in
-            from src.v5.xau_advisor_model import bucket_for
-            b = bucket_for(s["p"], adv["measured"]["reliability"])
-            if b:
-                reading["adverse"].update(observed=float(b["observed"]),
-                                          observed_n=int(b["n"]),
-                                          observed_ci=[b.get("ci_lo"), b.get("ci_hi")])
         broken = s.get("broken")
         if age_h > STALE_ALERT_H and not broken and not s.get("market_closed"):
             broken = (f"The newest advisor state is {age_h:.0f}h old (computed "
-                      f"{s['computed_utc']}). A CLEAR reading this old is not evidence of a "
-                      f"calm market.")
+                      f"{s['computed_utc']}). A direction this old is not a current call.")
         m = build(s.get("state", {}), reading, meta, seen, now=now,
                   market=s.get("market"), broken=broken,
                   market_closed=bool(s.get("market_closed")))
@@ -101,7 +102,7 @@ def main() -> None:
         if not a.dry:
             save_seen(SEEN, m["seen"])
     else:
-        print("(nothing sent — no state change and this hour's heartbeat already went)")
+        print("(nothing sent — direction unchanged and today's message already went)")
 
 
 if __name__ == "__main__":

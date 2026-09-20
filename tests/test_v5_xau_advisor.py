@@ -99,20 +99,27 @@ def meta():
     return json.loads(ART.read_text())
 
 
-def _reading(p, meta, observed=0.57):
+def _state_for(p, meta):
     a = meta["adverse"]
+    return "DOWN" if p >= a["down_at"] else "UP" if p <= a["up_at"] else "NEUTRAL"
+
+
+def _reading(p, meta, observed=0.562):
+    a = meta["adverse"]
+    nm = _state_for(p, meta)
     return {"asof": "2026-09-18T20:00:00", "decision_time": "2026-09-19T00:00:00",
-            "adverse": {"p": p, "observed": observed, "observed_n": 820,
-                        "observed_ci": [0.530, 0.596],
+            "adverse": {"p": p, "observed": observed, "observed_n": 404,
+                        "observed_halves": [0.596, 0.536], "observed_ci": None,
                         "base_rate": a["measured"]["base_rate"], "label": "lbl",
-                        "advice": a["advice_warn"] if p >= a["warn_at"] else a["advice_clear"],
+                        "advice": (a["advice_down"] if nm == "DOWN"
+                                   else a["advice_up"] if nm == "UP" else a["advice_neutral"]),
                         "limits": a["limits"]},
             "direction": {"p_up": 0.52}}
 
 
 def test_no_banned_word_in_subject_or_advice(meta):
     for p in (0.05, 0.30, 0.50, 0.56, 0.75, 0.99):
-        for nm in ("CLEAR", "ELEVATED", "UNKNOWN"):
+        for nm in ("DOWN", "NEUTRAL", "UP", "UNKNOWN"):
             m = build({"name": nm, "health": "ok", "since": str(NOW)},
                       _reading(p, meta), meta, {}, now=NOW)
             low = m["subject"].lower()
@@ -120,13 +127,13 @@ def test_no_banned_word_in_subject_or_advice(meta):
                 assert b not in low, f"{b!r} in subject {m['subject']!r}"
             advice = [ln for ln in m["body"].splitlines() if ln.startswith("ADVICE")]
             for ln in advice:
-                for b in ("short", "sell", "low risk", "safe"):
+                for b in ("go short", "sell short", "reverse"):
                     assert b not in ln.lower(), f"{b!r} in {ln!r}"
 
 
 def test_body_always_states_the_base_rate_and_the_resolution_rate(meta):
-    m = build({"name": "ELEVATED", "health": "ok", "since": str(NOW)},
-              _reading(0.60, meta), meta, {}, now=NOW)
+    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+              _reading(0.72, meta), meta, {}, now=NOW)
     assert "base rate" in m["body"].lower()
     assert "resolve" in m["body"].lower()
     assert "NOT USABLE" in m["body"], "the direction panel must be labelled unusable"
@@ -134,7 +141,7 @@ def test_body_always_states_the_base_rate_and_the_resolution_rate(meta):
 
 
 def test_frozen_state_is_never_presented_as_current(meta):
-    m = build({"name": "ELEVATED", "health": "stale_feed", "frozen": True, "since": str(NOW),
+    m = build({"name": "DOWN", "health": "stale_feed", "frozen": True, "since": str(NOW),
                "asof": "2026-09-10T00:00:00"}, None, meta, {}, now=NOW)
     assert "HELD" in m["subject"]
     assert "not current" in m["body"].lower() or "FROZEN" in m["body"]
@@ -150,32 +157,61 @@ def test_broken_pipeline_sends_once_per_hour(meta):
     assert m3["should_send"], "broken alert must repeat the next hour"
 
 
-def test_state_change_absorbs_that_hours_heartbeat(meta):
-    seen = {"state": "CLEAR", "hour": "2026-09-19T11"}
-    m = build({"name": "ELEVATED", "health": "ok", "since": str(NOW)},
-              _reading(0.60, meta), meta, seen, now=NOW)
-    assert m["trigger"] == "change" and m["should_send"]
-    assert m["seen"]["hour"] == "2026-09-19T12"
-    again = build({"name": "ELEVATED", "health": "ok", "since": str(NOW)},
-                  _reading(0.60, meta), meta, m["seen"], now=NOW)
-    assert not again["should_send"], "heartbeat fired in the same hour as the change alert"
+def test_both_tails_are_declared_validated(meta):
+    """Two-sided calls are only legitimate because 1.0/9/BASE is the one cell of 16 whose top
+    AND bottom buckets clear the base rate in both halves."""
+    assert meta["adverse"]["both_tails_validated"] is True
+    assert meta["adverse"]["up_at"] < meta["adverse"]["measured"]["base_rate"] \
+        < meta["adverse"]["down_at"]
 
 
-def test_heartbeat_fires_once_an_hour_when_nothing_changes(meta):
-    seen = {"state": "CLEAR", "hour": "2026-09-19T11"}
-    m = build({"name": "CLEAR", "health": "ok", "since": str(NOW)},
+def test_direction_change_sends_immediately_and_names_both_states(meta):
+    """The user's ask: tell me when the direction changes."""
+    seen = {"state": "UP", "day": "2026-09-19"}     # today's message already went
+    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+              _reading(0.72, meta), meta, seen, now=NOW)
+    assert m["trigger"] == "change" and m["should_send"], "a flip must send even after the daily"
+    assert "DOWN" in m["subject"] and "was UP" in m["subject"]
+    assert "CHANGED from UP" in m["body"]
+    again = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+                  _reading(0.72, meta), meta, m["seen"], now=NOW)
+    assert not again["should_send"], "the same direction must not resend"
+
+
+def test_a_flip_sends_even_with_the_market_closed(meta):
+    seen = {"state": "NEUTRAL", "day": "2026-09-19"}
+    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+              _reading(0.72, meta), meta, seen, now=NOW, market_closed=True)
+    assert m["should_send"] and m["trigger"] == "change"
+
+
+def test_unchanged_direction_sends_once_a_day(meta):
+    seen = {"state": "UP", "day": "2026-09-18"}
+    m = build({"name": "UP", "health": "ok", "since": str(NOW)},
               _reading(0.20, meta), meta, seen, now=NOW)
-    assert m["trigger"] == "heartbeat" and m["should_send"]
-    m2 = build({"name": "CLEAR", "health": "ok", "since": str(NOW)},
+    assert m["trigger"] == "daily" and m["should_send"]
+    m2 = build({"name": "UP", "health": "ok", "since": str(NOW)},
                _reading(0.20, meta), meta, m["seen"], now=NOW)
     assert not m2["should_send"]
+    m3 = build({"name": "UP", "health": "ok", "since": str(NOW)},
+               _reading(0.20, meta), meta, m["seen"], now=NOW + timedelta(days=1))
+    assert m3["should_send"], "the daily liveness message must resume the next day"
 
 
-def test_first_run_does_not_announce_a_state_change(meta):
-    m = build({"name": "CLEAR", "health": "ok", "since": str(NOW)},
-              _reading(0.20, meta), meta, {}, now=NOW)
-    assert m["trigger"] == "heartbeat", "UNKNOWN->CLEAR is initialisation, not news"
-    assert "[was" not in m["subject"]
+def test_first_run_does_not_announce_a_direction_change(meta):
+    m = build({"name": "NEUTRAL", "health": "ok", "since": str(NOW)},
+              _reading(0.50, meta), meta, {}, now=NOW)
+    assert m["trigger"] == "daily", "UNKNOWN->first state is initialisation, not news"
+    assert "was" not in m["subject"]
+
+
+def test_up_state_shows_the_up_oriented_number(meta):
+    """An UP card quoting 40% when the measurement says 60% would be the single worst bug
+    available here, so it is asserted on the rendered body."""
+    m = build({"name": "UP", "health": "ok", "since": str(NOW)},
+              _reading(0.20, meta, observed=0.603), meta, {}, now=NOW)
+    assert "60%" in m["body"] or "60.3" in m["body"]
+    assert "rise 1 ATR before falling 1 ATR" in m["body"]
 
 
 # --------------------------------------------------------------------------- artifact contract
@@ -187,13 +223,15 @@ def test_artifact_is_honest_about_what_it_is(meta):
     assert meta["serve_needs_m15"] is False
     assert "CLEAN" in meta["feed"]
     assert len(meta["adverse"]["limits"]) >= 4
-    for banned in ("low risk", "go short"):
+    for banned in ("go short", "safe", "guaranteed"):
         assert banned in meta["adverse"]["must_never_say"]
+    # "low risk" is deliberately NOT banned any more: the low end is now the UP state and the
+    # better-measured of the two sides (0.603 vs 0.562), so calling it is honest. What stays
+    # banned is wording that turns a 6-in-10 directional reading into a safety guarantee.
+    assert "low risk" not in meta["adverse"]["must_never_say"]
 
 
 def test_thresholds_in_the_artifact_are_margins_around_the_base_rate(meta):
     a = meta["adverse"]
-    th = Thresholds(warn_at=a["warn_at"], clear_at=a["clear_at"],
-                    base_rate=a["measured"]["base_rate"])
-    th.validate()
-    assert a["warn_at"] > a["measured"]["base_rate"]
+    Thresholds(down_at=a["down_at"], down_release=a["down_release"], up_at=a["up_at"],
+               up_release=a["up_release"], base_rate=a["measured"]["base_rate"]).validate()

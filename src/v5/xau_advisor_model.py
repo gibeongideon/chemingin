@@ -149,7 +149,8 @@ def advise(h4: pd.DataFrame, m15: pd.DataFrame, path: Path | str = ARTIFACT) -> 
         "p": p_adv,
         "usable": a["usable"], "tier": a["tier"],
         "cell": a["cell"], "k_atr": a["k_atr"], "hours": a["hours"],
-        "warn_at": a["warn_at"], "clear_at": a["clear_at"],
+        "down_at": a["down_at"], "down_release": a["down_release"],
+        "up_at": a["up_at"], "up_release": a["up_release"],
         "base_rate": a["measured"]["base_rate"],
         "resolved_frac": a["resolved_frac"],
         "observed": None if b is None else float(b["observed"]),
@@ -158,7 +159,11 @@ def advise(h4: pd.DataFrame, m15: pd.DataFrame, path: Path | str = ARTIFACT) -> 
         "bucket": None if b is None else [float(b["lo"]), float(b["hi"])],
         "label": ("probability that gold touches "
                   f"-{a['k_atr']}xATR before +{a['k_atr']}xATR within {a['hours']}h"),
-        "advice": a["advice_warn"] if p_adv >= a["warn_at"] else a["advice_clear"],
+        "advice": (a["advice_down"] if p_adv >= a["down_at"]
+                   else a["advice_up"] if p_adv <= a["up_at"]
+                   else a["advice_neutral"]),
+        "implied_state": ("DOWN" if p_adv >= a["down_at"]
+                          else "UP" if p_adv <= a["up_at"] else "NEUTRAL"),
         "limits": a["limits"],
         "auc": a["measured"].get("auc"), "bss": a["measured"].get("bss"),
     }

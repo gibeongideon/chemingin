@@ -36,7 +36,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.v5.xau_advisor_model import AdvisorUnavailable, advise, health_of, load  # noqa: E402
 from src.v5.xau_advisor_state import (  # noqa: E402
-    AdvisorState, Thresholds, describe, from_dict, step, to_dict, utcnow,
+    AdvisorState, Thresholds, describe, from_dict, observed_for, step, to_dict, utcnow,
 )
 
 STATE = ROOT / "data" / "v5_runs" / "xau_advisor_state.json"
@@ -98,7 +98,8 @@ def main() -> None:
     art = load()
     meta = art["meta"]
     adv = meta["adverse"]
-    th = Thresholds(warn_at=float(adv["warn_at"]), clear_at=float(adv["clear_at"]),
+    th = Thresholds(down_at=float(adv["down_at"]), down_release=float(adv["down_release"]),
+                    up_at=float(adv["up_at"]), up_release=float(adv["up_release"]),
                     base_rate=float(adv["measured"]["base_rate"]),
                     min_dwell_h=float(adv.get("hours", 9)))
     th.validate()
@@ -160,9 +161,17 @@ def main() -> None:
     elif health != "ok":
         state = step(state, None, None, th, now, health=health)
 
-    obs = (reading or {}).get("adverse", {}).get("observed")
+    # The displayed figure is oriented to the STATE, not to the label: an UP state must quote
+    # P(up-first) = 1 - observed, or the card shows 40% where the measurement says 60%.
+    od = (observed_for(state.name, p, adv["measured"]["reliability"],
+                       float(adv["measured"]["base_rate"]))
+          if (reading is not None and p is not None) else {})
+    obs = od.get("pct")
     out.update(state=to_dict(state), health=health, stepped=stepped, broken=broken,
                market=market, market_closed=closed, p=p, observed=obs,
+               observed_n=od.get("n"), observed_base=od.get("base"),
+               observed_halves=list(od.get("halves", (None, None))),
+               observed_bucket=list(od.get("bucket") or []),
                headline=describe(state, th, now, observed=obs))
     if not a.dry:
         _atomic(STATE, out)
@@ -171,7 +180,10 @@ def main() -> None:
     if broken:
         print(f"BROKEN: {broken}")
     else:
-        print(f"p {p:.4f}  observed {obs}  health {health}  stepped {stepped}")
+        print(f"p {p:.4f}  state {state.name}  displayed "
+              f"{'n/a' if obs is None else f'{obs:.4f}'} (base "
+              f"{'n/a' if od.get('base') is None else f'{od["base"]:.3f}'})  "
+              f"health {health}  stepped {stepped}")
         print(f"STATE: {out['headline']}")
         if state.last_transition:
             print(f"  transition {state.last_transition[0]} -> {state.last_transition[1]}")
