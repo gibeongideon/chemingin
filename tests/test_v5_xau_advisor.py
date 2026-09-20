@@ -21,6 +21,8 @@ from scripts.v5_xau_advisor_message import BANNED, build  # noqa: E402
 from src.v5.xau_advisor_state import AdvisorState, Thresholds  # noqa: E402
 
 ART = ROOT / "data" / "models" / "xau_advisor.json"
+# The VPS that serves this runs 3.10 while the desktop runs 3.13; see the grammar test below.
+SERVING_PYTHON = (3, 10)
 NOW = datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc)
 
 ENTRY = ["scripts/v5_xau_advisor.py", "scripts/v5_xau_advisor_notify.py",
@@ -235,3 +237,30 @@ def test_thresholds_in_the_artifact_are_margins_around_the_base_rate(meta):
     a = meta["adverse"]
     Thresholds(down_at=a["down_at"], down_release=a["down_release"], up_at=a["up_at"],
                up_release=a["up_release"], base_rate=a["measured"]["base_rate"]).validate()
+
+
+# --------------------------------------------------------------------------- target grammar
+def test_every_advisor_module_parses_under_the_serving_pythons_grammar():
+    """The VPS runs Python 3.10; this desktop runs 3.13.
+
+    Quote reuse inside an f-string (`f"{d["k"]}"`) is PEP 701 and parses only from 3.12, so a
+    local `ast.parse` check passes while the serving host raises SyntaxError. That is exactly
+    what happened: the compute step died on the VPS and the notifier correctly emailed
+    "NO READING — pipeline broken". The alerting worked; the deploy check did not. Pinning
+    `feature_version` here makes the desktop refuse code the server cannot run.
+    """
+    targets = (sorted(ROOT.glob("scripts/v5_xau_advisor*.py"))
+               + sorted(ROOT.glob("src/v5/xau_advisor*.py"))
+               + sorted(ROOT.glob("src/v5/advisor_*.py"))
+               + [ROOT / "scripts/v5_train_advisor.py", ROOT / "scripts/v5_feed_audit.py",
+                  ROOT / "scripts/v5_advisor_feedcheck.py", ROOT / "scripts/v5_advisor_measure.py"])
+    bad = []
+    for f in targets:
+        if not f.exists():
+            continue
+        try:
+            ast.parse(f.read_text(), feature_version=SERVING_PYTHON)
+        except SyntaxError as e:
+            bad.append(f"{f.relative_to(ROOT)}:{e.lineno} {e.msg}")
+    assert not bad, ("these modules will not parse on the serving host "
+                     f"(Python {'.'.join(map(str, SERVING_PYTHON))}):\n  " + "\n  ".join(bad))

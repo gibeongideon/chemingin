@@ -180,9 +180,13 @@ def main() -> None:
     if broken:
         print(f"BROKEN: {broken}")
     else:
-        print(f"p {p:.4f}  state {state.name}  displayed "
-              f"{'n/a' if obs is None else f'{obs:.4f}'} (base "
-              f"{'n/a' if od.get('base') is None else f'{od["base"]:.3f}'})  "
+        # Built with plain concatenation, NOT nested f-strings: quote-reuse inside an
+        # f-string is PEP 701 and only parses on Python 3.12+. The serving host runs 3.10,
+        # so it was a SyntaxError there while the local ast.parse check passed happily.
+        shown = "n/a" if obs is None else f"{obs:.4f}"
+        ob = od.get("base")
+        shown_base = "n/a" if ob is None else f"{ob:.3f}"
+        print(f"p {p:.4f}  state {state.name}  displayed {shown} (base {shown_base})  "
               f"health {health}  stepped {stepped}")
         print(f"STATE: {out['headline']}")
         if state.last_transition:
