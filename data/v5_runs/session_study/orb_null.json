@@ -1,0 +1,11 @@
+{
+  "cells": 54,
+  "draws": 400,
+  "observed_best_cell": "LONDON_60_FADE_ALL",
+  "observed_max_t": 5.626259093485642,
+  "null_p50": 2.5841506245381622,
+  "null_p95": 3.6780213632672814,
+  "null_p99": 4.220546558647133,
+  "null_max": 5.432074475519428,
+  "p_value": 0.0
+}

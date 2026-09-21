@@ -4007,4 +4007,112 @@ and the risk is bounded by a monthly one-line swap check. The open item is no lo
 it is a single observed overnight settlement, which under the no-EA rule must be a MANUAL
 0.01-lot position (~$4,364 notional, $0.55 spread), or a written confirmation from Maven.
 
-_Last updated 2026-09-20._
+
+### 3be. Session-open behaviour on XAUUSD: the opening-range BREAKOUT direction is real (19/27 cells, mirror negative) but worth ~1-2bp against a 2.34bp round trip — a genuine behavioural fact, not a tradeable trigger (2026-09-21, `scripts/v5_session_profile.py`, `v5_session_orb.py`)
+
+User asked for one signal with an edge firing about twice a week, built from session-open
+behaviour — Asian/London/New York opens, the first few minutes — and explicitly not a
+whole-period strategy. §3ak had already searched 21,300 conditional triggers on XAU H4 and found
+its best indistinguishable from a no-edge dataset, but it coded `session` as a TERCILE ON H4
+BARS, which cannot represent "the first fifteen minutes of the London open". That gap is real and
+M15 has 270,458 clean bars back to 2015.
+
+#### THE CLOCK, MEASURED — AND A CORRECTION TO AN EXISTING PRIMITIVE
+
+Everything in a session study depends on the anchor being right, so it was calibrated rather
+than assumed:
+
+- **server clock = UTC.** The single most volatile 15-minute slot in the whole sample is
+  **13:30 at 13.04bp** mean |return| — the US 08:30 ET release.
+- **the seasonal shift is ONE hour, not two**: peak hour 13h in Apr-Oct, 14h in Nov-Mar.
+
+That **corrects `ict_primitives.session_windows`**, whose docstring asserts a *measured* 2-hour
+seasonal shift ("13:00 UTC in Jun-Aug and 15:00 UTC in Dec-Feb") and hard-codes a 2h offset. It
+was calibrated 2026-08-19, before §3bb established that `XAUUSD_H4_long.csv` splices two brokers.
+**Every ICT concept built on that primitive was session-aligned up to an hour wrong.** They all
+failed anyway so no verdict changes, but the primitive is wrong and now known to be. Session
+anchors here come from real exchange local time via `zoneinfo`, not a fixed offset.
+
+#### THE BACKDROP: NO SESSION HAS A TRADEABLE DRIFT OF ITS OWN
+
+| session | window | n days | range | mean \|ret\| | mean ret | t | up% |
+|---|---|---|---|---|---|---|---|
+| ASIA (09:00 JST) | 7.0h | 2,953 | 61.4bp | 30.8bp | **+1.68bp** | +1.96 | 51.5% |
+| LONDON (08:00 local) | 5.0h | 2,953 | 57.1bp | 28.4bp | +0.47bp | +0.58 | 52.3% |
+| NY (09:30 ET) | 6.5h | 2,951 | 85.8bp | 41.8bp | −0.17bp | −0.16 | 49.5% |
+
+ASIA's +1.68bp at t +1.96 is the only one near significance and it is **below the 2.34bp round
+trip** — the time-of-day drift does not pay for itself. NY has the widest range (85.8bp), so it
+has the most room for a range rule; the ORACLE for a perfect session-direction call is the
+mean |ret| column, 28-42bp.
+
+#### THE GRID WAS DECLARED BEFORE IT RAN, AND KEPT TO 54 CELLS
+
+§3ak's lesson is that searching harder raises the bar faster than the statistic — its null's
+MEDIAN max |z| was 9.34 over 21,300 tests. So: 3 sessions × 3 opening ranges (15/30/60 min) ×
+2 rules (breakout/fade) × 3 width filters (all / narrow 30% / wide 30% of the trailing 60-session
+range width) = **54**, one exit convention (session close, because §3ab already exhausted 64 exit
+cells), no tuning. The max-statistic null was then run over exactly 54.
+
+#### THE DIRECTION IS REAL
+
+| | mean gross | positive cells |
+|---|---|---|
+| **BREAKOUT** (follow the break) | **+0.720bp** | **19 / 27** |
+| FADE (the exact mirror) | −0.720bp | 8 / 27 |
+
+A consistent sign across 27 cells with the mirror negative rules out a sign-flip artifact. **Gold's
+session opening ranges break with continuation.** That is the behavioural answer to the question
+asked, and it is a fact worth having.
+
+#### AND IT IS TOO SMALL TO COLLECT
+
+Only **3 of 54** cells are net positive, and the entry convention matters because the edge is the
+same size as the spread. Entering at the break bar's CLOSE (conservative) versus at the
+opening-range LEVEL (what a resting stop gets, before slippage):
+
+| cell | n | /week | gross | net @close | net @level | t @level | years+ |
+|---|---|---|---|---|---|---|---|
+| **ASIA_15_BREAKOUT_WIDE** | 824 | 1.42 | +3.28bp | +0.94 | **+2.13** | **+0.98** | 7/12 |
+| ASIA_30_BREAKOUT_WIDE | 897 | 1.54 | +2.86bp | +0.52 | **+2.15** | +1.13 | 5/12 |
+| NY_60_BREAKOUT_WIDE | 827 | 1.42 | +2.39bp | +0.05 | +1.27 | +0.73 | 3/12 |
+
+The truth sits between the two entry columns, because a breakout stop slips adversely by
+construction — call it **+1.5bp**. Against the null:
+
+| | |
+|---|---|
+| best positive cell's \|t\| | **+0.44** (close) to **+1.13** (level) |
+| max-stat null over the declared 54 | p50 **2.584**, p95 3.678, p99 4.221 |
+
+**A t of 1 is below the MEDIAN of what a no-edge dataset hands you over this grid.** The one cell
+that does clear the null is `LONDON_60_FADE_ALL` at |t| 5.63 — significantly **negative**, net
+−3.53bp, 0/12 years positive, which is simply the mirror confirming the breakout sign.
+
+Expectancy, which is the number that ends it:
+
+| cell | net × rate | per year of notional traded |
+|---|---|---|
+| ASIA_15_BREAKOUT_WIDE | +2.13bp × 1.42/wk | **+1.57%/yr** |
+| ASIA_30_BREAKOUT_WIDE | +2.15bp × 1.54/wk | +1.72%/yr |
+
+against the champion book's **+11.16%/yr net**, at a t that does not distinguish it from zero.
+
+#### VERDICT
+
+**The requested cadence was never the problem** — the width filter delivers 1.42-1.58 fires/week
+against a target of 2. The problem is that the available move at a session open, conditioned any
+way inside a declared grid, is 1-3bp gross and the round trip is 2.34bp. §3ay's breakeven table
+said this in advance: intraday needs a 0.587 hit rate against 0.510 at daily, and the measured hit
+rates here are 46-51%.
+
+> **What this closes:** opening-range breakout/fade on XAUUSD at 15/30/60 minutes, on all three
+> session opens, filtered by range width, at a session-close exit. Do not re-run it. The
+> behavioural fact (breakouts continue, mirror confirms) is worth keeping; the trigger is not.
+
+> **What it does NOT close:** the effect is real and sub-cost, so it becomes tradeable only if
+> the round trip falls below roughly **$0.72 one-way on ASIA_15** ($0.51 live at Maven, which is
+> why that cell is marginally positive at all) AND the t improves — and the t is the binding
+> problem, not the spread. A venue change alone will not fix a t of 1.
+
+_Last updated 2026-09-21._
