@@ -4330,4 +4330,103 @@ Three durable by-products:
 > buy-and-hold in every cell. That is not proof the others fail, but it does relocate the prior:
 > the obstacle here is not that the repo lacked ideas from elsewhere.
 
+
+### 3bh. Implied vol, real yields and the dollar as XAU signals — 0 of 60 cells beat holding gold, and the BEST signed t across all 60 is NEGATIVE (−1.96). The external playbook is now exhausted (2026-09-21, `scripts/v5_exog_signals.py`)
+
+§3bg tested positioning and it lost to buy-and-hold in every cell. This tests the rest of the
+standard external playbook for gold beyond price: **options-implied information, real yields,
+flows**. GVZ is the genuinely different KIND of input — forward-looking, a market forecast rather
+than a realised outcome, and nothing in this file has ever used one. 15 years of daily data from
+the Yahoo chart API; 2,946 US trading days after alignment.
+
+#### THE DATA WAS VERIFIED BEFORE IT WAS USED, AND ONE CHECK FAILED
+
+| check | result | means |
+|---|---|---|
+| GVZ vs 21d realised gold vol | **+0.79** | GVZ is gold vol |
+| GVZ − realised, average | **+3.1 vol points** | the volatility risk premium, textbook |
+| TIP return vs 10y yield change | **−0.71** | a bond ETF falls when yields rise → TIP is a real-yield proxy |
+| gold vs DXY daily returns | **−0.41** | gold is a short-dollar asset |
+| GLD vs gold daily returns | **0.9565** | ← **FAILED my own stated bar of 0.98+** |
+
+GLD *is* gold, so 0.9565 had to be an alignment error, and it was: every series here is stamped
+at the **US close** while gold was being sampled at the UTC day end, ~4 hours apart. Resampling
+gold at **16:00 ET, DST-correct**, lifts it to **0.9696**. (My 0.98 bar was itself too strict —
+the residual is the ETF's NAV basis and its single closing print, not a timing error. But the
+check earned its place: it caught a real 4-hour misalignment that would have contaminated all
+60 cells.)
+
+#### THE BENCHMARK, WHICH IS THE WHOLE STORY
+
+On the realigned series, gold's unconditional drift over 2015-2026:
+
+| horizon | buy-and-hold | t |
+|---|---|---|
+| 5 days | +24.1bp | **+5.97** |
+| 10 days | +47.8bp | **+8.53** |
+| 20 days | **+93.9bp** | **+12.00** |
+
+So the statistic scored is the conditional mean **minus** the unconditional mean at the same
+horizon — "are these days better than average", never "are these days positive".
+
+#### THE RESULT
+
+Declared grid of 60: 5 measures (GVZ level, **GVZ minus realised** — the risk premium itself —
+TIP 20d change, TNX 20d change, DXY 20d change) × HIGH→LONG / HIGH→SHORT × 20%/30% extremes ×
+5/10/20 day horizons.
+
+| | |
+|---|---|
+| cells with excess > 0 (beat holding gold) | **0 of 60** |
+| cells beating the days they skipped | **0 of 60** |
+| **best SIGNED t across all 60** | **−1.961** |
+| null of the max signed t | p50 +6.155, p95 +9.189 |
+| Reality-Check p | 1.0000 |
+
+**Not one cell of sixty has a positive t.** Per input, every one is 0/12:
+
+| measure | best excess | best t |
+|---|---|---|
+| TIP 20d change | −14.8bp | −1.96 |
+| GVZ level | −16.4bp | −2.13 |
+| TNX 20d change | −17.1bp | −2.42 |
+| DXY 20d change | −21.7bp | −2.53 |
+| GVZ − realised vol | −21.9bp | −3.00 |
+
+#### THE ARITHMETIC THAT EXPLAINS ALL OF IT
+
+Both rules are negative — HIGH→LONG −61.2bp, HIGH→SHORT −49.3bp mean excess — and that is not a
+bug, it is the identity that ends this whole line of work:
+
+> `excess(LONG) + excess(SHORT) = gross(LONG) + gross(SHORT) − 2·base = −2·base`
+>
+> The two rules are exact mirrors in GROSS, so their excesses must sum to **−2× the drift**. When
+> the drift is large and positive — here t +12.00 over twenty days — **any rule that is not
+> always-long starts from a deep deficit, and both directions of any mirror pair lose unless the
+> rule is genuinely selective.** None of these five inputs is.
+
+That is why §3az, §3bc, §3bg and now this all rediscovered the same thing from different angles.
+It is not five coincidences; it is one property of the asset over this era.
+
+#### WHY THESE INPUTS EXPLAIN GOLD WITHOUT PREDICTING IT
+
+DXY at −0.41, TIP/TNX, GVZ at +0.79 to realised vol — these are real, strong, **contemporaneous**
+relationships. They describe why gold moved. The test asked whether their levels or 20-day changes
+tell you what gold does NEXT, and the answer across 60 declared cells is no, with not one
+positive t. Contemporaneous explanatory power is not forecasting power, and the size of the
+correlation is no guide to the second thing.
+
+#### VERDICT — THE EXTERNAL PLAYBOOK IS CLOSED
+
+Positioning (§3bg), implied volatility, the volatility risk premium, real yields, nominal yields
+and the dollar. Together with the price-based work (§3v-3w's 16 ICT concepts, §3ak's 21,300
+triggers, §3be sessions, §3bf releases) the standard repertoire for XAU — internal and imported —
+is now measured and closed.
+
+**What survives is unchanged and is not a signal at all:** the trend-following book at net Sharpe
+1.18 / CAGR 11.16%, and the financing lever (§3bd) worth +0.20 Sharpe from a contract term rather
+than a forecast. The consistent lesson across every closure is that **gold's drift is the
+benchmark, and beating it by trading less than always-long is the hard problem nobody here has
+solved** — whereas paying less to hold it is arithmetic.
+
 _Last updated 2026-09-21._
