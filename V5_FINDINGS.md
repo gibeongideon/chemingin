@@ -4232,4 +4232,102 @@ The one thing that would reopen it is a **real economic calendar** (release iden
 surprise-versus-consensus), which is a different data type, not a different rule — the same
 conclusion §3ao reached about needing new data rather than new models.
 
+
+### 3bg. CFTC positioning (Managed Money) on XAUUSD — a genuinely NEW data type, and it loses to buy-and-hold in 0 of 36 cells; also measures the publication lookahead at only +3.6bp (2026-09-21, `scripts/v5_cot_positioning.py`, pre-registered in `COT_PREREGISTRATION.md`)
+
+User asked for approaches learned outside this project. §3ao, §3be and §3bf had each ended with
+the same conclusion in different words — the limit is the DATA TYPE, not the model — so the
+answer was to bring in the canonical non-price gold input: **regulator-published positioning**.
+Nothing in this file has ever used it. Downloaded from the CFTC disaggregated futures archive,
+13 years, **663 weekly reports 2014-01-07 to 2026-09-15**, gold OI 383k → 410k contracts.
+
+It also escaped the cost wall for the first time in this line of work: gold moves ~150bp in a
+week, so the 2.34bp round trip is **1.5% of the signal instead of ~100%** of it. Whatever killed
+this, it was not the spread.
+
+#### THE PUBLICATION LAG, HANDLED AND THEN MEASURED
+
+COT is surveyed **Tuesday close** and published **Friday 15:30 ET**. Using Tuesday's positioning
+to trade Tuesday's close reads a number that will not exist for three more days, and in published
+critiques that lookahead is worth about the whole reported effect. The pre-registration declared
+signals aligned to the **following Monday's open**, strictly later than the release, with an
+unlagged arm run deliberately as a diagnostic.
+
+**The lookahead turns out to be worth almost nothing here:** best cell +66.2bp lagged vs +69.8bp
+unlagged, t +1.895 vs +1.990. **+3.6bp and +0.1 of t.** Positioning is slow-moving, so three days
+of staleness costs little — which is a useful thing to know about every COT study ever published,
+and it cuts the other way from the usual worry: those studies are not mainly wrong because they
+cheated on the lag. They are wrong for the reason below.
+
+#### THE MIRROR SAYS MOMENTUM, NOT CONTRARIAN — AGAINST THE FOLKLORE
+
+| | mean gross (lagged) | positive cells |
+|---|---|---|
+| MOMENTUM (follow the managed money) | **+10.44bp** | 9/18 |
+| CONTRARIAN (fade the crowd) | −10.44bp | 9/18 |
+
+Unlagged the split widens to 12/18 vs 6/18 for momentum. So **"fade the crowded COT extreme",
+the standard retail reading, is the wrong sign on gold.** Following the trend-followers is
+better — which is unsurprising once said aloud, because managed money IS the trend-following
+cohort and this repo's own champion is a trend follower.
+
+#### AND IT STILL FAILS, THREE WAYS
+
+**1. The null.** Best signed t across the declared 36 cells is **+1.895**
+(`net_oi_MOMENTUM_30pct_4w`, 163 fires, gross +66.2bp) against a null of the maximum at
+p50 **+2.895**, p95 +4.365 → **p 0.950, does not survive.** Below the median of what a no-edge
+dataset hands you, exactly as in §3be and §3bf.
+
+**2. The base rate (control #8), which is decisive.** Gold's unconditional drift over this
+sample is enormous — 2014-2026 contains the 2024-26 bull run:
+
+| horizon | buy-and-hold | t | up% |
+|---|---|---|---|
+| 1 week | +28.6bp | **+2.92** | 55.3% |
+| 2 weeks | +56.9bp | **+4.28** | 56.8% |
+| 4 weeks | **+115.8bp** | **+6.28** | 58.7% |
+
+The best COT cell returns +66.2bp at a 4-week horizon against a **+115.8bp** buy-and-hold at the
+same horizon. **0 of 36 cells beat buy-and-hold.** And note the t columns: passive gold has
+t +6.28, the best positioning cell has t +1.895. The signal is a worse version of holding gold —
+the same inversion §3az found when §3r's direction model beat persistence and lost to "gold
+rises".
+
+**3. The skipped sample.** Per `measure-the-skipped-sample`, what did a passive long earn on the
+weeks the trigger did NOT fire?
+
+| cell | on fires | on the weeks it sat out |
+|---|---|---|
+| `net_oi_MOMENTUM_30pct_4w` | +66.2bp | **+76.1bp** |
+| `net_oi_MOMENTUM_20pct_4w` | +60.2bp | **+100.3bp** |
+| `z156_MOMENTUM_20pct_4w` | +33.4bp | **+130.7bp** |
+
+**0 of 36 cells beat the weeks they sat out.** The trigger systematically selects the WORSE
+weeks. It is not a signal; it is a filter pointed the wrong way, and the control built in §3bc
+catches it immediately.
+
+#### VERDICT
+
+**Closed.** CFTC Managed-Money positioning on XAUUSD, in three normalisations
+(net/OI, 3-year z-score, COT index), contrarian and momentum, at 20% and 30% extremes, over 1/2/4
+week horizons, with the publication lag handled correctly. Cadence was 0.38-0.59 fires/week
+against the requested ~2 — inherently capped by a weekly data source, which is worth stating
+separately from the failure.
+
+Three durable by-products:
+
+1. **The COT publication lag is worth ~+3.6bp and +0.1 t on gold.** Slow-moving data tolerates
+   staleness; the lag is not where COT studies go wrong.
+2. **The contrarian reading of COT extremes is the wrong sign** on gold. Momentum is better.
+3. **Gold's unconditional drift is the benchmark that kills things**, and over 2014-2026 it is at
+   t +6.28 over four weeks. Any XAU study whose comparison is "versus zero" rather than "versus
+   holding gold" will look good and be wrong. That is now the third independent time this file
+   has recorded it (§3az's drift-vs-persistence, §3bc's skipped sample, here).
+
+> **On the broader question of importing outside methods:** the standard external playbook for
+> gold beyond price is positioning, real yields, ETF flows and implied vol. This tested the first
+> and best-documented of them on 13 years of regulator data with the lag right, and it lost to
+> buy-and-hold in every cell. That is not proof the others fail, but it does relocate the prior:
+> the obstacle here is not that the repo lacked ideas from elsewhere.
+
 _Last updated 2026-09-21._
