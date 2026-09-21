@@ -4082,12 +4082,20 @@ construction — call it **+1.5bp**. Against the null:
 
 | | |
 |---|---|
-| best positive cell's \|t\| | **+0.44** (close) to **+1.13** (level) |
-| max-stat null over the declared 54 | p50 **2.584**, p95 3.678, p99 4.221 |
+| best SIGNED gross t of the 54 | **+1.897** (`LONDON_60_BREAKOUT_ALL`) |
+| null of the max signed t | p50 **+2.361**, p95 +3.130, p99 +3.651 |
+| **Reality-Check p** | **0.865 — DOES NOT SURVIVE** |
 
-**A t of 1 is below the MEDIAN of what a no-edge dataset hands you over this grid.** The one cell
-that does clear the null is `LONDON_60_FADE_ALL` at |t| 5.63 — significantly **negative**, net
-−3.53bp, 0/12 years positive, which is simply the mirror confirming the breakout sign.
+**The best positive cell is below the MEDIAN of what a no-edge dataset hands you over this grid.**
+
+> **CORRECTION to this section's first run.** It reported the null on the NET series and found
+> `LONDON_60_FADE_ALL` at |t| 5.63 "SURVIVES, p 0.0000". That was an artifact of my own null
+> design: the net series carries a **deterministic −2.34bp cost offset**, so bootstrapping it
+> under a zero-mean null makes any cell with enough observations "significant" purely because the
+> spread is reliably paid. That cell's GROSS mean is −1.19bp at t −1.90, not −3.53bp at t −5.63.
+> The statistic under test is the market effect, so the null belongs on GROSS and the cost is a
+> deterministic hurdle applied to the point estimate afterwards. Re-run correctly, nothing
+> survives. See §3bf for the rule.
 
 Expectancy, which is the number that ends it:
 
@@ -4114,5 +4122,114 @@ rates here are 46-51%.
 > the round trip falls below roughly **$0.72 one-way on ASIA_15** ($0.51 live at Maven, which is
 > why that cell is marginally positive at all) AND the t improves — and the t is the binding
 > problem, not the spread. A venue change alone will not fix a t of 1.
+
+
+### 3bf. Scheduled-release trigger on XAUUSD — the 08:30 ET reaction is 2.3x a normal bar and carries NO forecastable direction: 0 of 72 cells clear the spread, best signed t +1.39 against a null median of +2.32; and a null must be run on GROSS, not net (2026-09-21, `scripts/v5_release_trigger.py`)
+
+§3be closed opening-range breakouts and named one untested branch: the **scheduled release**. The
+13:30 UTC slot runs 13.04bp mean |return| against a ~6bp all-day baseline, and unlike a session
+open it has a known calendar. This is that test.
+
+#### WHAT THE CLOCK CALIBRATION HAD ALREADY REVEALED
+
+§3be's finding that server = UTC with a **one-hour** seasonal shift means the 13:30 UTC peak is
+**two different events by season**:
+
+| | 12:30 UTC | 13:30 UTC | 14:30 UTC |
+|---|---|---|---|
+| Apr-Oct (EDT) | **08:30 ET release** | 09:30 ET equity open | — |
+| Nov-Mar (EST) | — | **08:30 ET release** | 09:30 ET equity open |
+
+Pooled in UTC they overlap, which is precisely why 13:30 looked like the single biggest slot in
+the sample. Anchoring in `America/New_York` separates them. 09:30 ET is deliberately excluded
+here — that is the equity open and §3be already tested it as a session.
+
+**No economic calendar was available**, which bounds the claim: this cannot say CPI days differ
+from PPI days. It anchors on the RELEASE CLOCK and conditions on the size of the initial reaction,
+which is observable. The question is therefore "does the first 15-30 minutes after a release
+window predict the next few hours", which needs no calendar.
+
+#### THE REACTION IS REAL AND LARGE
+
+| anchor | first 15min \|move\| | first 30min |
+|---|---|---|
+| **08:30 ET** (BLS/BEA) | **14.09bp** | 17.27bp |
+| 10:00 ET (ISM, confidence) | 13.16bp | 16.76bp |
+| 14:00 ET (FOMC hour) | 6.74bp | 8.66bp |
+
+Against a ~6bp all-day M15 baseline, the 08:30 window moves **2.3x** a normal bar. The volatility
+is not in doubt.
+
+#### IT CARRIES NO FORECASTABLE DIRECTION
+
+Declared grid, before running: 3 anchors × 2 initial windows (15/30 min) × 2 rules
+(CONTINUE / FADE) × 2 holds (1h/3h) × 3 size filters (all / big / small, trailing-60-day
+percentile of the initial move) = **72 cells**, one entry convention, no tuning.
+
+| | mean gross | positive cells |
+|---|---|---|
+| CONTINUE | **+0.265bp** | 23 / 36 |
+| FADE (exact mirror) | −0.265bp | 13 / 36 |
+
+The sign is the same as §3be's — continuation, not reversal, so **"the first move after the news
+is the fake move" is backwards on XAU** — but it is weaker still (+0.265bp against §3be's
++0.720bp) and:
+
+| | |
+|---|---|
+| best GROSS of all 72 | **+1.769bp** |
+| round trip | **2.340bp** |
+| cells with gross > cost | **0 of 72** |
+| cells with net > 0 | **0 of 72** |
+| best SIGNED gross t | **+1.385** (`1000ET_15_CONTINUE_1h_SMALL`) |
+| null of the max signed t | p50 **+2.320**, p95 +3.153 |
+| **Reality-Check p** | **0.995 — DOES NOT SURVIVE** |
+
+And the decisive cross-anchor comparison: the 08:30 window has **more than double** the initial
+reaction of the 14:00 window (14.09 vs 6.74bp) and converts it into **no more** directional edge
+(CONTINUE gross +0.527 vs +0.034bp, best net −0.60 vs −0.57bp). **Bigger reactions do not mean
+more predictable ones** — the extra movement is symmetric.
+
+#### THE METHOD ERROR THIS RUN EXPOSED, IN MY OWN CODE, TWICE
+
+Both this run and §3be first reported their max-statistic null as **"SURVIVES, p 0.0000"**. Both
+were wrong, the same way.
+
+The null was bootstrapped on the **NET** series under a zero-mean hypothesis. But net carries a
+**deterministic −2.34bp cost offset**, so the statistic being priced was partly "is the spread
+reliably paid", and the answer to that is always yes. The larger the cell, the more
+"significant" it looks. Worked example — the cell that supposedly survived here:
+
+| `1400ET_30_CONTINUE_1h_ALL` | |
+|---|---|
+| net mean | −2.481bp, t **−6.676** |
+| GROSS mean | **−0.141bp**, t **−0.38** |
+| n | 2,823 |
+
+The entire statistic was the cost. Re-run on gross, the best SIGNED t across 72 cells is +1.385
+against a null median of +2.320 (p 0.995), and §3be's is +1.897 against +2.361 (p 0.865).
+
+> **RULE. Run the null on the statistic under test, which is the market effect — GROSS. Costs are
+> a deterministic hurdle applied to the point estimate, never a random quantity inside the
+> bootstrap.** A net-of-cost series under a zero-mean null manufactures significance in
+> proportion to sample size, and the sign it manufactures is always negative, which makes it easy
+> to mistake for "the mirror confirming the effect".
+>
+> **And price the SIGNED maximum, not the absolute one.** A deployable trigger has to beat the
+> best POSITIVE cell a no-edge dataset would hand you; ranking on |t| lets a significantly
+> negative cell pose as a survivor.
+
+#### VERDICT
+
+**Closed.** Release-time continuation and fade on XAUUSD, at 08:30 / 10:00 / 14:00 ET, at 15 and
+30 minute initial windows, 1h and 3h holds, filtered by reaction size. Combined with §3be, the
+whole session/release trigger family is now closed on XAU: the moves are real and large, the
+directional information in them is 0.3-3bp gross, and the round trip is 2.34bp. §3ay's breakeven
+table called this before either run — intraday needs a 0.587 hit rate against 0.510 at daily, and
+the measured hit rates across both studies are **43-51%**.
+
+The one thing that would reopen it is a **real economic calendar** (release identity and
+surprise-versus-consensus), which is a different data type, not a different rule — the same
+conclusion §3ao reached about needing new data rather than new models.
 
 _Last updated 2026-09-21._
