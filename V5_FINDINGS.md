@@ -4429,4 +4429,99 @@ than a forecast. The consistent lesson across every closure is that **gold's dri
 benchmark, and beating it by trading less than always-long is the hard problem nobody here has
 solved** — whereas paying less to hold it is arithmetic.
 
-_Last updated 2026-09-21._
+
+### 3bi. The user's twelve setups — four already closed, eight tested; NR7 looked like the best candidate of the session and died on cross-asset replication because the trend filter does nothing (2026-09-30, `scripts/v5_twelve_ideas.py`, pre-registered)
+
+User supplied twelve named setups and asked for them tested. **Four were already closed** and
+were not re-run: fade-the-spike-after-data is §3bf verbatim (and "the first move is the fake move"
+is the WRONG SIGN on XAU); the overnight effect is measured in §3be at ASIA +1.68bp / t +1.96 —
+real in sign but below the 2.34bp round trip, and its index version was verified dead on the
+broker's own symbols at −4.65; seasonality and the gold/silver ratio closed earlier.
+
+The remaining eight got **one declared cell each, no parameter sweep** — the ideas tested as
+stated. Four of them are genuinely novel mechanisms for this repo: a specific auction time
+(LBMA PM fix), a price-LEVEL effect (round numbers), an expiry-calendar effect (COMEX pinning)
+and a volume-weighted anchor (anchored VWAP — nothing here had ever used a volume-weighted price).
+
+#### RESULT
+
+| idea | n | /yr | gross | net | t | years+ |
+|---|---|---|---|---|---|---|
+| **11 NR7 breakout, trend-filtered** | 260 | 23 | **+11.58** | **+9.24** | **+2.00** | 7/12 |
+| 9 COMEX expiry pinning | 543 | 48 | +3.76 | +1.42 | +0.43 | 3/12 |
+| 7 Monday gap fill | 341 | 30 | +0.59 | −1.75 | −0.82 | 2/12 |
+| 5 gold vs DXY+yields divergence | 387 | 34 | −10.11 | −12.45 | −1.03 | 6/12 |
+| 6 round-number stop runs | 4,223 | 370 | −0.69 | −3.03 | −2.60 | 4/12 |
+| 10 anchored-VWAP reversion | 2,944 | 257 | +0.54 | −1.80 | −3.03 | 1/12 |
+| 1 Asian range sweep/reversal | 2,095 | 183 | −0.61 | −2.95 | −4.39 | 0/12 |
+| 3 LBMA PM fix reversal | 2,946 | 257 | −0.29 | −2.63 | −6.17 | 0/12 |
+
+2 of 8 net positive; best signed gross t **+2.512** against an 8-cell null at p50 +1.548 / p95
++3.075 → **p 0.135, does not survive.** Note the two most-cited retail mechanisms here, the
+Asian-range sweep and the round-number stop run, are the two most *negative* cells.
+
+#### A SAME-BAR CIRCULARITY I INTRODUCED AND CAUGHT
+
+Anchored-VWAP reversion first printed **t +61.83 on a 99.2% hit rate**. Cause: the exit was
+`vwap[j]` — the VWAP of the very bar the trade was entered on — so the "return" was mechanically
+the deviation that had just been selected for being large. Not a lookahead into the future but a
+restatement of the entry condition. Fixed to exit at the first LATER bar that touches VWAP, else
+the session close: **t +61.83 → −3.03.** The bug was worth about 65 t-units, and the tell was a
+hit rate no trading rule can have.
+
+#### NR7 SURVIVED EVERY GOLD-ONLY CHECK
+
+It was the best candidate anything produced in this session, and on XAU alone it passed the tests
+that killed COT (§3bg) and the exogenous inputs (§3bh):
+
+| variant | n | net | t | vs buy-and-hold |
+|---|---|---|---|---|
+| **break WITH the weekly trend** | 260 | **+9.24bp** | +2.00 | **+5.19bp** |
+| break AGAINST the trend | 266 | −5.76bp | −1.27 | −9.81bp |
+| any break, no filter | 319 | +5.24bp | +1.15 | +1.19bp |
+
+A clean mirror, an excess over holding gold, and — uniquely in this file — **the short side worked
+too: long +10.00bp (t +1.53), short +8.30bp (t +1.28).** Every prior signal here has had its edge
+collapse onto the long side (`xau-longonly-champion`: kill-the-shorts is THE lever; §3ab: shorts
+lost on 10/10). Cost was also not the wall for once: +11.58bp gross against 2.34bp.
+
+#### AND CROSS-ASSET REPLICATION KILLED IT
+
+51 assets, D1 OHLC only (the `fx-d1-forward-stamped-leak` was in derived `clpos`/`upwick` fields,
+not the bars):
+
+| | mean net |
+|---|---|
+| break WITH the weekly trend | **+21.66bp** |
+| break AGAINST the weekly trend | **+25.31bp** |
+
+**The AGAINST variant is BETTER.** On gold the two were +9.24 and −5.76 — a textbook mirror; across
+51 assets both are positive and the supposedly-wrong side wins. So the trend filter is not the
+mechanism, and gold's asymmetry was noise in a 260-trade sample. The sign test on the WITH variant
+is 31/51 positive, **p 0.0804** — and that is the weaker variant.
+
+**What IS real is non-directional.** Both sides profit because an NR7 day is followed by a day that
+CLOSES OUTSIDE the narrow range — volatility expansion after compression, which is a genuine and
+long-documented effect. But it tells you the range breaks, not which way, and nothing in the
+declared grid picks the side: the trend filter is no better than its own opposite.
+
+**One flaw in the replication, named rather than buried:** a single gold-derived 2.34bp cost was
+applied to all 51 assets, which is wrong — ETH's spread is ~9bp and EURUSD's ~0.8bp — and it
+explains the asset-class split (high-vol crypto/energy positive, low-vol FX negative). That
+confound cannot rescue the finding, because the decisive comparison, WITH versus AGAINST, pays the
+**same cost on both sides** and still says the filter is worthless.
+
+#### VERDICT
+
+**Closed.** All twelve setups. The compression-then-expansion effect behind NR7 is real and worth
+knowing — it is the one mechanism in this list with genuine content — but it is a VOLATILITY
+statement, not a directional one, and this repo already monetises volatility through vol-targeted
+position sizing rather than through breakout direction.
+
+> **The transferable lesson:** gold-only significance at t +2.0 on 260 trades with a clean mirror
+> looked like the real thing and was not. The cross-asset panel took one run and inverted the
+> conclusion. When a mechanism is claimed to be general (compression precedes expansion; trends
+> persist), test it where it should also hold — a mirror that holds on one asset and inverts on
+> fifty was never a mechanism.
+
+_Last updated 2026-09-30._
