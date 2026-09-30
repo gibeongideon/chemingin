@@ -4524,4 +4524,84 @@ position sizing rather than through breakout direction.
 > persist), test it where it should also hold — a mirror that holds on one asset and inverts on
 > fifty was never a mechanism.
 
+
+### 3bj. NR7 backtested properly — Sharpe +0.43 against a non-NR7 control of +0.47, so the narrow range is not the mechanism; and three separate bugs in the daily version had inflated it to +8.23 (2026-09-30, `scripts/v5_nr7_backtest.py`, `v5_nr7_m15_backtest.py`)
+
+§3bi closed the DIRECTIONAL NR7 claim on cross-asset replication. What survived was the
+non-directional statement — an NR7 day is followed by a day closing outside the narrow range —
+so the only honest structure left is the one that does not predict direction: rest a buy-stop at
+the NR7 high and a sell-stop at the low, first fill wins, cancel the other, exit at the close.
+This is that backtest.
+
+#### THE DAILY-BAR VERSION IS NOT BACKTESTABLE, AND IT TOOK THREE BUGS TO LEARN WHY
+
+The first run reported **portfolio Sharpe +8.23**, SILVER Sharpe +6.32 on an 81.8% hit rate, and
+SPX firing 10,744 signals with a **−89.2% drawdown alongside Sharpe +7.14** — internally
+contradictory, which is what prompted the hunt.
+
+**Bug 1 — unusable data in two files.** SPX carries **8,547 zero-range days (34.5%)** and SILVER
+**1,752 (27%)**, because pre-1962 daily history has no intraday high or low, so
+`high == low == close`. The NR7 test then fires on **44.8%** and **34.8%** of days instead of
+~14%, and a zero-range day makes the next day break BOTH levels trivially, degenerating the trade
+into "buy the direction of the opening gap, entered at yesterday's close". Both files excluded.
+
+**Bug 2 — the unresolvable convention was doing the work.** A first-break strategy must know
+which of two levels was touched first, and daily bars do not say. Assigning outside days by "the
+level nearer the open triggered first" gave portfolio Sharpe **+7.58**; its exact opposite gave
+**+8.23**. A choice the data cannot settle was worth 0.65 Sharpe, which means it was driving the
+result rather than resolving an edge case.
+
+**Bug 3 — dropping the ambiguous days is worse, and it is survivorship on the outcome.**
+Excluding outside days instead produced Sharpe 2.1–5.5 with hit rates to 87%. Conditioning on
+"the high broke AND the low did not" selects days that closed strongly in the break direction: it
+**deletes precisely the cases where the breakout failed and reversed through the other side.**
+Not a timestamp lookahead — a selection on the realised path. The tell was the control:
+
+| asset | NR7 Sharpe | non-NR7 control | NR7 edge |
+|---|---|---|---|
+| GOLD | +4.02 | **+5.46** | −1.44 |
+| NDX | +3.94 | **+4.95** | −1.01 |
+| DJI | +3.40 | +3.56 | −0.17 |
+| DAX | +2.08 | **+2.86** | −0.78 |
+
+The control scoring HIGHER on four of six assets says the narrow range contributes nothing and
+the "edge" belongs to a broken mechanic.
+
+#### ON M15 THE FIRST BREAK IS OBSERVABLE, SO NO ASSUMPTION IS NEEDED
+
+Walk each day's M15 bars in order; the first bar to trade through a level sets the position, the
+other order is cancelled; every NR7 day is included, winners and losers alike. Ambiguity — both
+levels inside one 15-minute bar — collapses to **0.9%**.
+
+| | signals | gross | net/trade | hit | **Sharpe** | CAGR | maxDD | OOS Sharpe |
+|---|---|---|---|---|---|---|---|---|
+| **NR7 days** | 315 (28/yr) | +7.79bp | **+4.74bp** | 52.4% | **+0.43** | +1.28% | −6.1% | +0.73 |
+| **control: non-NR7** | 2,430 (213/yr) | +4.13bp | +2.06bp | 48.7% | **+0.47** | +4.05% | −17.7% | +0.40 |
+
+**Difference in means: t +0.76.** NR7 days do carry a larger per-trade edge (+4.74 vs +2.06bp) but
+on 315 trades against 2,430 that difference is indistinguishable from noise, and the control's
+Sharpe is marginally HIGHER. **The narrow-range condition is not the mechanism.**
+
+#### WHAT IS ACTUALLY THERE, STATED HONESTLY
+
+A small, real, generic intraday breakout edge on gold: enter at the prior day's high or low
+whichever breaks first, exit at the close, **+2.06bp net per trade over 2,430 trades at
+Sharpe +0.47**. That is Crabel's opening-range family, it is not NR7-specific, and at Sharpe 0.47
+with a −17.7% drawdown it is well below the champion book's **1.18** — so it is a measurement,
+not a candidate.
+
+#### VERDICT
+
+**Closed.** NR7 in every form: directional (§3bi, died cross-asset), non-directional on daily bars
+(not backtestable — three bugs, all flattering), and non-directional on M15 (honest, Sharpe +0.43,
+indistinguishable from its own control).
+
+> **The transferable rule: when a strategy depends on the ORDER of two events, the data must
+> record that order.** Daily bars do not, and every substitute — a convention, or dropping the
+> ambiguous cases — biases the result upward: the convention because it is free to be chosen, and
+> the dropping because outside days are disproportionately failed breakouts. Sharpe went +8.23 →
+> +0.43 on the same idea once the order was observed instead of assumed. The inflation factor was
+> ~19x, and the only reason it was caught is that Sharpe 8 with an 89% drawdown cannot both be
+> true.
+
 _Last updated 2026-09-30._
