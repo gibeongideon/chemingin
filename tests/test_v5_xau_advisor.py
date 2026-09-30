@@ -264,3 +264,47 @@ def test_every_advisor_module_parses_under_the_serving_pythons_grammar():
             bad.append(f"{f.relative_to(ROOT)}:{e.lineno} {e.msg}")
     assert not bad, ("these modules will not parse on the serving host "
                      f"(Python {'.'.join(map(str, SERVING_PYTHON))}):\n  " + "\n  ".join(bad))
+
+
+# --------------------------------------------------------------------------- outage back-off
+def test_a_persistent_fault_backs_off_instead_of_nagging(meta):
+    """Measured 2026-09-30: the FTMO bridge lost authorisation on 09-26 and the notifier sent
+    47 IDENTICAL hourly emails over four days. That trains the reader to filter the channel.
+    An unchanging fault carries no new information; its AGE does."""
+    st = {"name": "NEUTRAL", "health": "model_unavailable", "asof": "2026-09-26T10:00:00"}
+    fault = "AdvisorUnavailable: bridge 18814 init failed: (-6, 'Terminal: Authorization failed')"
+    t0, seen, sent = NOW, {}, 0
+    for i in range(4 * 24 * 12):                      # four days at the real 5-minute cadence
+        m = build(st, None, meta, seen, now=t0 + timedelta(minutes=5 * i), broken=fault)
+        seen = m["seen"]
+        sent += bool(m["should_send"])
+    assert sent <= 12, f"still nagging: {sent} emails over four days"
+    assert sent >= 4, f"backed off too far, a 4-day outage must still be audible: {sent}"
+
+
+def test_the_outage_email_states_its_age_and_the_actual_remedy(meta):
+    st = {"name": "NEUTRAL", "health": "model_unavailable", "asof": "2026-09-26T10:00:00"}
+    fault = "bridge 18814 init failed: (-6, 'Terminal: Authorization failed')"
+    seen = {"broken_since": (NOW - timedelta(days=4)).isoformat()}
+    m = build(st, None, meta, seen, now=NOW, broken=fault)
+    assert "4.0 days" in m["subject"], m["subject"]
+    # an auth fault has a specific fix; a generic runbook would be useless here
+    assert "AUTHORISE" in m["body"] or "authoris" in m["body"].lower()
+    assert "mt5-terminal-ftmo.service" in m["body"]
+    assert "never restart the bare mt5-terminal.service" in m["body"], \
+        "the destructive-ExecStop warning must travel with the remedy"
+
+
+def test_a_recovered_reading_clears_the_outage_age(meta):
+    """Otherwise the NEXT unrelated outage reports itself as days old on its first message —
+    a false alarm indistinguishable from a real one."""
+    fault = "bridge 18814 init failed"
+    st = {"name": "NEUTRAL", "health": "model_unavailable", "asof": "2026-09-26T10:00:00"}
+    seen = build(st, None, meta, {}, now=NOW - timedelta(days=3), broken=fault)["seen"]
+    assert "broken_since" in seen
+    good = {"name": "NEUTRAL", "health": "ok", "since": str(NOW), "asof": str(NOW)}
+    r = build(good, _reading(0.50, meta), meta, seen, now=NOW)
+    assert not [k for k in r["seen"] if "broken" in k], r["seen"]
+    # and a fresh fault afterwards must start its clock from zero, not from three days ago
+    again = build(st, None, meta, r["seen"], now=NOW + timedelta(minutes=5), broken=fault)
+    assert "0 min" in again["subject"] or "min" in again["subject"], again["subject"]

@@ -43,6 +43,19 @@ from pathlib import Path
 BANNED = ("go short", "sell short", "guaranteed", "risk-free")
 QUIET_HOURS = 26                 # a daily heartbeat plus slack for a missed slot
 
+# A PERSISTENT FAULT MUST ESCALATE ONCE, THEN BACK OFF. Measured failure, 2026-09-30: the FTMO
+# bridge lost its authorisation on 2026-09-26 and this notifier sent **47 identical "NO READING"
+# emails**, hourly, for four days. That is not alerting, it is training the reader to filter the
+# channel -- the same mistake as the weekend false alarm in `book-ftmo.sh`, one level up. An
+# unchanging fault carries no new information after the first message; what DOES carry
+# information is how long it has been broken, so the age goes in the subject line and the repeat
+# rate decays.
+#
+#   first 3 hours   hourly   -- you may be mid-deploy and want to see it clear
+#   to 24 hours     every 6h -- it is real; you know
+#   beyond 24h      daily    -- it needs a human and nagging will not summon one
+BROKEN_BACKOFF = ((3, 1), (24, 6), (10**6, 24))
+
 
 def load_seen(path: Path) -> dict:
     try:
@@ -81,17 +94,73 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
 
     # ------------------------------------------------------------------ pipeline is broken
     if broken:
-        body = (f"THE ADVISOR PRODUCED NO READING.\n\n{broken}\n\n"
-                "No reading means NO INSTRUCTION. This is not a quiet market; it is an absent\n"
-                "model, and the last state below is frozen at its own age.\n\n"
-                f"  last state : {state.get('name', 'UNKNOWN')} "
-                f"(asof {state.get('asof')})\n"
-                f"  health     : {state.get('health')}\n\n"
-                "  systemctl --user status xau-advisor.timer\n"
-                "  tail -40 ~/MT5/data/v5_runs/xau-advisor.log\n")
-        return dict(subject="[xau-advisor] NO READING — pipeline broken", body=body,
-                    should_send=seen.get("broken_hour") != hk, trigger="broken",
-                    seen={**seen, "broken_hour": hk})
+        # `broken_since` is the FIRST time this fault was seen, so the age is real rather than
+        # "since the last time I happened to email you".
+        since = seen.get("broken_since")
+        since_dt = None
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since)
+            except ValueError:
+                since_dt = None
+        if since_dt is None:
+            since_dt, since = now, now.isoformat()
+        age_h = (now - since_dt).total_seconds() / 3600
+        every = next(h for lim, h in BROKEN_BACKOFF if age_h < lim)
+        last = seen.get("broken_sent")
+        last_dt = None
+        if last:
+            try:
+                last_dt = datetime.fromisoformat(last)
+            except ValueError:
+                last_dt = None
+        due = last_dt is None or (now - last_dt).total_seconds() / 3600 >= every
+        age_s = (f"{age_h*60:.0f} min" if age_h < 1 else
+                 f"{age_h:.0f}h" if age_h < 48 else f"{age_h/24:.1f} days")
+
+        # Name the remedy for THIS fault rather than printing a generic runbook. A bridge
+        # authorisation failure is an infrastructure problem with a specific fix, and it is not
+        # the same as a model that will not load.
+        bl = str(broken).lower()
+        if "authorization" in bl or "init failed" in bl:
+            cause = ("The MT5 bridge will not AUTHORISE. The terminal process is usually running "
+                     "and the port listening, so this is a credential problem, not a crash: a "
+                     "demo account that has expired, a reset password, or a changed server.")
+            remedy = ["  1. open the FTMO terminal and check the account is still valid",
+                      "  2. if the demo expired, create a new one and update "
+                      "~/.mt5c/drive_c/mt5_login.ini",
+                      "  3. systemctl --user restart mt5-terminal-ftmo.service   "
+                      "(prefix-scoped, safe)",
+                      "  NOTE: never restart the bare mt5-terminal.service -- its ExecStop "
+                      "kills every terminal."]
+        else:
+            cause = "The advisor could not produce a reading."
+            remedy = ["  systemctl --user status xau-advisor.timer",
+                      "  tail -40 ~/MT5/data/v5_runs/xau-advisor.log"]
+
+        body = "\n".join([
+            f"NO READING for {age_s} — since {since_dt:%Y-%m-%d %H:%M} UTC.",
+            "",
+            cause,
+            "",
+            f"  reported fault : {broken}",
+            f"  last good state: {state.get('name', 'UNKNOWN')} (asof {state.get('asof')})",
+            "",
+            "No reading means NO INSTRUCTION. This is not a quiet market; it is an absent model,",
+            "and the state above is frozen at its own age.",
+            "",
+            "TO FIX:",
+            *remedy,
+            "",
+            f"This alert now repeats every {every}h, not hourly — a fault that has not changed",
+            f"carries no new information. It has sent {int(seen.get('broken_count', 0)) + 1} "
+            f"message(s) for this outage.",
+        ])
+        return dict(subject=f"[xau-advisor] NO READING for {age_s} — bridge/model down",
+                    body=body, should_send=due, trigger="broken",
+                    seen={**seen, "broken_since": since,
+                          "broken_sent": now.isoformat() if due else last,
+                          "broken_count": int(seen.get("broken_count", 0)) + (1 if due else 0)})
 
     name = state.get("name", "UNKNOWN")
     frozen = bool(state.get("frozen"))
@@ -223,6 +292,11 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
 
     # ------------------------------------------------------------------ trigger
     day = now.strftime("%Y-%m-%d")
+    # A real reading ENDS the outage. Without this the age would be measured from the first
+    # fault ever seen, so a later unrelated outage would report itself as days old on its
+    # first message -- a false alarm that reads exactly like a real one.
+    seen = {k: v for k, v in seen.items()
+            if k not in ("broken_since", "broken_sent", "broken_count")}
     if frozen or health != "ok":
         trigger = "health"
         should = seen.get("health_day") != day or seen.get("health") != health
