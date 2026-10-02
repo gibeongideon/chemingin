@@ -219,14 +219,33 @@ def to_dict(state: AdvisorState) -> dict:
 
 
 def from_dict(d: dict) -> AdvisorState:
+    """Rebuild from the persisted state.
+
+    EVERY FIELD MUST TOLERATE null. A run that could not produce a reading persists `p: null`,
+    and `float(None)` raises TypeError — which meant that once an outage wrote a broken state,
+    the advisor could never start again EVEN AFTER the fault was fixed. The failure state
+    poisoned its own recovery path, and it stayed wedged for the whole 2026-09-26 to 10-02
+    bridge outage. A deserialiser for crash state has to read what a crash actually writes.
+    """
     def ts(x):
-        return datetime.fromisoformat(x) if x else None
+        try:
+            return datetime.fromisoformat(x) if x else None
+        except (TypeError, ValueError):
+            return None
+
+    def num(x):
+        try:
+            return float(x) if x is not None else float("nan")
+        except (TypeError, ValueError):
+            return float("nan")
+
+    lt = d.get("last_transition")
     return AdvisorState(
-        name=d.get("name", UNKNOWN), p=float(d.get("p", float("nan"))),
+        name=d.get("name") or UNKNOWN, p=num(d.get("p")),
         since=ts(d.get("since")), asof=ts(d.get("asof")),
-        health=d.get("health", HEALTH_OK), frozen=bool(d.get("frozen", False)),
-        changes=[ts(x) for x in d.get("changes", []) if x],
-        last_transition=tuple(d["last_transition"]) if d.get("last_transition") else None)
+        health=d.get("health") or HEALTH_OK, frozen=bool(d.get("frozen", False)),
+        changes=[t for t in (ts(x) for x in (d.get("changes") or [])) if t is not None],
+        last_transition=tuple(lt) if lt else None)
 
 
 def utcnow() -> datetime:

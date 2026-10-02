@@ -1,0 +1,11 @@
+# XAUUSD intraday level card -- SIGNAL ONLY, no order path.
+[Unit]
+Description=XAUUSD intraday OCO level card (signal only, measured Sharpe 0.47)
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-intraday.sh
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xau-intraday

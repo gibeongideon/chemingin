@@ -1,0 +1,11 @@
+# 23:30 UTC daily: after the broker's day roll (~21:00-22:00 UTC) so yesterday's bar is
+# closed, and before 00:00 when the next day's first break becomes possible.
+# Persistent=true so a missed slot still delivers the levels -- they stay valid all day.
+[Unit]
+Description=Timer for the XAUUSD intraday level card (daily 23:30 UTC)
+[Timer]
+OnCalendar=*-*-* 23:30:00
+Persistent=true
+Unit=xau-intraday.service
+[Install]
+WantedBy=timers.target

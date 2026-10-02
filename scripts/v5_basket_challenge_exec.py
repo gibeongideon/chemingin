@@ -95,11 +95,51 @@ def log_row(path, row) -> None:
         w.writerow(row)
 
 
-def load_state(path: Path, acct) -> dict:
+def account_start_balance(conn, acct) -> float:
+    """The account's OWN starting balance, from its DEAL_TYPE_BALANCE credit.
+
+    Better than today's balance because an account may already have been traded before the bot
+    was pointed at it. Falls back to the live balance if the history is unavailable.
+    """
+    try:
+        from datetime import datetime, timedelta, timezone
+        deals = conn.history_deals_get(datetime(2015, 1, 1, tzinfo=timezone.utc),
+                                       datetime.now(timezone.utc) + timedelta(days=1))
+        credits = [d.profit for d in (deals or []) if getattr(d, "type", None) == 2]
+        if credits:
+            return float(credits[0])
+    except Exception:
+        pass
+    return float(acct.balance)
+
+
+def load_state(path: Path, acct, conn=None) -> dict:
+    """Load the guard state, RE-ANCHORING if the account has changed.
+
+    *** WHY THE ACCOUNT CHECK EXISTS. *** The guards (daily lock, overall halt, phase target)
+    are all fractions of `initial_balance`. Pointing the bot at a new account without clearing
+    the state leaves them anchored to the OLD account's balance, silently. Measured 2026-10-02:
+    after switching to FTMO 1514735296 the state still carried `initial_balance 99564.82` from
+    the expired account, which put the 8% halt at 91,600 instead of 92,000 -- i.e. it permitted
+    ~$400 MORE loss than intended, eating into FTMO's own max-loss buffer. Nothing in the log
+    looked wrong; the only tell was a "+2.86% progress" on an account that had made +2.41%.
+    """
     if path.exists():
-        return json.loads(path.read_text())
-    st = cg.init_state(float(acct.balance), float(acct.equity))
-    print(f"  state INIT: initial_balance {st['initial_balance']:,.2f}  "
+        st = json.loads(path.read_text())
+        prev = st.get("account")
+        if prev is not None and int(prev) != int(acct.login):
+            start = account_start_balance(conn, acct) if conn is not None else float(acct.balance)
+            st = cg.init_state(start, float(acct.equity))
+            st["account"] = int(acct.login)
+            print(f"  *** ACCOUNT CHANGED {prev} -> {acct.login}: guard state RE-ANCHORED to "
+                  f"{start:,.2f} (was carrying the previous account's baseline) ***")
+            return st
+        st.setdefault("account", int(acct.login))
+        return st
+    start = account_start_balance(conn, acct) if conn is not None else float(acct.balance)
+    st = cg.init_state(start, float(acct.equity))
+    st["account"] = int(acct.login)
+    print(f"  state INIT: account {acct.login}  initial_balance {st['initial_balance']:,.2f}  "
           f"phase 1 target +{cg.PHASE_TARGETS[1]*100:.0f}%")
     return st
 

@@ -225,3 +225,22 @@ def test_first_reading_resolves_unknown_and_is_not_dwell_blocked():
     s = step(AdvisorState(), 0.20, asof=T0, th=TH, now=T0)
     assert s.name == UP, "a first reading must not be blocked by an unserved dwell"
     assert s.last_transition == (UNKNOWN, UP)
+
+
+def test_a_broken_state_can_still_be_reloaded():
+    """Measured 2026-10-02: a run that produced no reading persists `p: null`, and
+    `float(None)` raised TypeError in from_dict — so once an outage wrote that state the
+    advisor could never start again, even after the fault was fixed. It stayed wedged for the
+    whole 2026-09-26..10-02 bridge outage. A deserialiser for crash state must read what a
+    crash actually writes."""
+    broken = {"name": "UNKNOWN", "p": None, "since": None, "asof": None,
+              "health": "model_unavailable", "frozen": True, "changes": [],
+              "last_transition": None}
+    s = from_dict(broken)                       # must not raise
+    assert s.name == UNKNOWN and s.p != s.p     # NaN
+    # and it must then be able to take a fresh reading and move on
+    nxt = step(s, 0.72, asof=T0, th=TH, now=T0)
+    assert nxt.name == DOWN, nxt
+    for junk in ({}, {"name": None, "health": None, "changes": None},
+                 {"p": "not-a-number", "since": "garbage", "changes": [None, "x"]}):
+        from_dict(junk)                          # none of these may raise either
