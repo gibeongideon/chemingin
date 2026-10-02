@@ -101,15 +101,27 @@ def account_start_balance(conn, acct) -> float:
     Better than today's balance because an account may already have been traded before the bot
     was pointed at it. Falls back to the live balance if the history is unavailable.
     """
+    # MT5Connector has no history_deals_get; the raw module is on `_mt5`. Reaching for a
+    # method the wrapper does not have, under a bare `except Exception`, is exactly how an
+    # AttributeError once got swallowed here and printed a confident wrong answer -- so the
+    # failure is NAMED rather than silently falling through.
+    raw = getattr(conn, "_mt5", None)
+    if raw is None or not hasattr(raw, "history_deals_get"):
+        print(f"  (no deal history available; anchoring to the live balance "
+              f"{float(acct.balance):,.2f})")
+        return float(acct.balance)
     try:
         from datetime import datetime, timedelta, timezone
-        deals = conn.history_deals_get(datetime(2015, 1, 1, tzinfo=timezone.utc),
-                                       datetime.now(timezone.utc) + timedelta(days=1))
+        deals = raw.history_deals_get(datetime(2015, 1, 1, tzinfo=timezone.utc),
+                                      datetime.now(timezone.utc) + timedelta(days=1))
         credits = [d.profit for d in (deals or []) if getattr(d, "type", None) == 2]
         if credits:
+            print(f"  anchor from the account's own balance deal: {float(credits[0]):,.2f}")
             return float(credits[0])
-    except Exception:
-        pass
+        print("  (no DEAL_TYPE_BALANCE credit found; anchoring to the live balance)")
+    except Exception as e:
+        print(f"  (deal history unreadable: {type(e).__name__}: {e}; "
+              f"anchoring to the live balance)")
     return float(acct.balance)
 
 
@@ -353,7 +365,7 @@ def main() -> None:
         is_demo = "demo" in str(getattr(acct, "server", "")).lower()
         send = args.execute and (is_demo or args.live)
 
-        state = load_state(state_path, acct)
+        state = load_state(state_path, acct, conn)
         if args.advance_phase:
             state = cg.advance_phase(state, balance)
             save_state(state_path, state)
