@@ -1,0 +1,13 @@
+# EVERY MINUTE. "Actively monitoring P/L is key" -- a dollar target on a 4-asset book can be
+# crossed and lost inside a single 5-minute bar, and the 20:45Z flatten is a compliance
+# deadline rather than a preference.
+# Persistent=false: a missed minute is worthless by the time it would fire.
+[Unit]
+Description=Timer for the PnL-managed FTMO book (every minute)
+[Timer]
+OnCalendar=*-*-* *:*:15
+Persistent=false
+AccuracySec=5s
+Unit=book-pnl.service
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+# PnL-managed FTMO book: live P/L monitoring, dollar take-profit, mandatory overnight flatten.
+[Unit]
+Description=FTMO book, PnL-managed variant (monitors P/L, flattens before the night)
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/book-pnl.sh
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=book-pnl

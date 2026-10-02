@@ -4604,4 +4604,92 @@ indistinguishable from its own control).
 > ~19x, and the only reason it was caught is that Sharpe 8 with an 89% drawdown cannot both be
 > true.
 
-_Last updated 2026-09-30._
+
+### 3bk. PnL-managed book variant: a dollar take-profit costs 0.26 Sharpe, and the overnight ban costs 0.27 more — but NOT for the reason the repo recorded (2026-10-02, `scripts/v5_pnl_overlay_backtest.py`, `v5_ftmo_pnl_managed.py`)
+
+User asked for a live variant that monitors combined P/L, closes everything at **+$200**, harvests
+at **+$50** inside the last 5 hours, re-enters only on a signal, emails every action — and, stated
+after the build began, **may not hold overnight.** Measured before deploying, then deployed as
+asked on the trial account.
+
+#### THE DOLLAR TARGET
+
+Champion's gold sleeve, M15 path, identical sizing and costs, 2015-2026:
+
+| variant | Sharpe | CAGR | maxDD |
+|---|---|---|---|
+| **champion, no overlay** | **+0.71** | **+7.09%** | −25.3% |
+| +$200 target, re-enter on a signal | +0.45 | +2.98% | −22.7% |
+| +$200 target, re-enter immediately | +0.54 | +5.14% | −31.8% |
+
+It fires constantly — **975 take-profits and 133 harvests, cutting the position on 31% of all
+days.** On $102k, +$200 is **+0.195%** of equity against a ~2.7% daily range: the target sits
+inside a fifth of one average day, on a trend follower whose edge is the right tail.
+
+**Waiting for a "right entry" is WORSE than re-entering at once** (+0.45 vs +0.54) — the wait
+misses the continuation. That is the opposite of the intuition behind the request, and
+`--reenter immediate` is wired to the better-measured arm.
+
+**The fair test, because a de-risking overlay must be judged at matched risk**
+(`xau-champion-five-lifts-fail`): the overlay does cut drawdown, −25.3% → −22.7%. But scaling the
+plain champion to **0.89x** reaches the same −22.7% and returns **+6.32%** against the overlay's
+**+2.98%**. The overlay gives up **3.33pp of CAGR for a drawdown reduction position sizing
+provides free**, which is what a Sharpe of 0.45 against 0.71 already says.
+
+#### THE OVERNIGHT BAN, AND A CORRECTION TO §3d
+
+| variant | Sharpe | CAGR | maxDD |
+|---|---|---|---|
+| holds overnight | **+0.77** | **+7.90%** | **−22.1%** |
+| **flat every night** | **+0.50** | +4.75% | **−35.5%** |
+| holds nights, flat over weekends | +0.77 | +7.89% | −22.1% |
+
+**Flat-every-night is worse on BOTH axes** — less return AND a 13pp deeper drawdown. And the
+weekend is worth essentially nothing on its own (+0.03% over 581 weekends), so the entire cost is
+the nightly flatten.
+
+**§3d attributed this to missed overnight drift** — "for indices/gold essentially all long-run
+drift happens overnight (close→open)". **That is not true for XAUUSD.** Decomposed here:
+
+| | contribution to the gross move captured |
+|---|---|
+| overnight GAPS | **+2.32%** |
+| in-session move | **+113.27%** |
+
+The gap is **2%** of it, because gold trades ~23 hours a day — there is barely a gap to miss. The
+damage is **TURNOVER: 21 units of crossings becomes 2,832, a 132x cost increase.** §3d's number
+was right for the cash-index sleeves it was measured on and its *mechanism* does not transfer to
+gold. Same verdict, different reason — and the distinction matters, because a venue with a tighter
+spread would materially reduce a turnover cost while doing nothing about a missed gap.
+
+#### WHAT WAS DEPLOYED
+
+`book-pnl.timer`, **every minute**, replacing `book-ftmo` (same magic 360591, so it adopts the
+existing positions; book-ftmo.timer disabled so the two can never both trade). Precedence, with
+compliance outranking profit:
+
+1. **past 20:45 UTC → HARD FLATTEN regardless of P/L.** Overnight holding is not permitted, and a
+   breach costs more than any target is worth. `--flatten HH:MM` exists so this path can be proven
+   on demand rather than waited for — it was, before enabling.
+2. combined P/L ≥ +$200 → close all
+3. inside the last 5h and P/L ≥ +$50 → close all
+4. flat and within 30 min of the cutoff, or Friday afternoon → do not open
+5. flat, market open, not locked, forecast strengthening → open the book's normal targets
+
+Every action emails the per-position breakdown **and the measured table above**, so the live
+result can be read against the backtest rather than against hope.
+
+#### VERDICT
+
+Deployed as requested on a trial account, and expected to underperform the plain book by roughly
+**0.26 Sharpe from the target and 0.27 from the overnight ban**, with the ban also deepening
+drawdown. §3x closed "cash out on first reasonable profit" (48/48 cells negative, walk-forward
+−0.76 vs buy-and-hold +0.79) and §3ab's exit sweep had 0 of 64 cells clearing +0.50; this is the
+same family measured once more, on the live configuration, with the numbers attached to every
+message it sends.
+
+> **If the overnight ban is immovable, the champion is the wrong engine for this account.** Forced
+> intraday it scores +0.50, and §3bj's measured intraday OCO breakout scores +0.47 — the same
+> place, reached without fighting a multi-week trend follower's own holding period.
+
+_Last updated 2026-10-02._
