@@ -307,16 +307,16 @@ asymmetric bracket, `P* = (sl + cost)/(tp + sl)`, was added in §3bl.
 
 ## What all seven have in common
 
-**Two of the five made money, and neither came from predicting the market.** Both came from
+**Two of the seven made money, and neither came from predicting the market.** Both came from
 measuring what a position *costs* — a swap table and a correlation matrix. Costs are published,
 contractual and deterministic; they need no out-of-sample validation.
 
-**Two of the seven made money; five are measurements.** 80% precision, a +2.12pp accuracy edge
-with a bootstrap CI clear of zero, a raw-window information ceiling, a +9.24bp setup that
-replicated backwards, and a cost table that forbids the whole intraday family — and between them,
-roughly 130 pre-registered trade structures that all failed.
+**The other five are genuine, statistically careful measurements that produce no P&L.** 80%
+precision, a +2.12pp accuracy edge with a bootstrap CI clear of zero, a raw-window information
+ceiling, a +9.24bp setup that replicated backwards, and a cost table that forbids the whole
+intraday family — and between them, roughly 130 pre-registered trade structures that all failed.
 
-**Two of the five nulls are worth more than most positives**, because they close families rather
+**Two of those five nulls are worth more than most positives**, because they close families rather
 than single ideas: #5 retires every alternative representation at one multiple-testing penalty,
 and #7 retires intraday structures before they are built.
 
