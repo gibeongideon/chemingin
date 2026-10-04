@@ -1,0 +1,127 @@
+{
+  "utc": "2026-10-04T13:16:40.300093+00:00",
+  "checks": {
+    "feed_h1_vs_m15": {
+      "per_year": {
+        "2015": {
+          "n": 179,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2016": {
+          "n": 244,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2017": {
+          "n": 230,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2018": {
+          "n": 261,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2019": {
+          "n": 261,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2020": {
+          "n": 262,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2021": {
+          "n": 259,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2022": {
+          "n": 260,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2023": {
+          "n": 257,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2024": {
+          "n": 263,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2025": {
+          "n": 260,
+          "frac": 1.0,
+          "median_abs": 0.0
+        },
+        "2026": {
+          "n": 116,
+          "frac": 1.0,
+          "median_abs": 0.0
+        }
+      },
+      "worst_year_frac": 1.0,
+      "n": 2852
+    },
+    "intrabar_leak": {
+      "H1": 0.0191,
+      "M15": 0.0166
+    },
+    "lookahead_probe": {
+      "ok": true,
+      "detail": "LookaheadVerdict(ok=True, reason=None, n_compared=96330, max_abs_diff=0.0, offending_columns=())"
+    },
+    "purge_sweep": {
+      "4": {
+        "auc": 0.7589,
+        "n_train": 54044,
+        "n_test": 13512
+      },
+      "8": {
+        "auc": 0.7589,
+        "n_train": 54040,
+        "n_test": 13512
+      },
+      "12": {
+        "auc": 0.7582,
+        "n_train": 54036,
+        "n_test": 13512
+      },
+      "24": {
+        "auc": 0.7587,
+        "n_train": 54024,
+        "n_test": 13512
+      }
+    },
+    "purge_4_minus_8": 0.0,
+    "staleness_days": 110
+  },
+  "failures": [],
+  "frames": {
+    "H1": {
+      "rows": 67747,
+      "first": "2015-01-01 23:00:00",
+      "last": "2026-06-15 18:00:00"
+    },
+    "M15": {
+      "rows": 270458,
+      "first": "2015-01-01 23:00:00",
+      "last": "2026-06-15 18:45:00"
+    }
+  },
+  "env": {
+    "python": "3.10.18",
+    "executable": "/home/rock/anaconda3/envs/envmt5/bin/python",
+    "sklearn": "1.1.1",
+    "numpy": "1.26.4",
+    "pandas": "2.2.3",
+    "xgboost": "3.2.0",
+    "lightgbm": "4.6.0",
+    "catboost": "1.2.10"
+  },
+  "pass": true
+}

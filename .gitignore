@@ -28,3 +28,8 @@ data/*.csv
 screenshots/
 .env.mail
 .env.notify
+
+# ZigZag ATR round: regenerable intermediates (v5_zigzag_atr_bracket.py rebuilds in ~10 min)
+data/v5_runs/zigzag_atr/_*.npy
+data/v5_runs/zigzag_atr/_*.csv
+data/v5_runs/zigzag_atr/_catboost/

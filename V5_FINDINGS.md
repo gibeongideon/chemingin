@@ -4693,3 +4693,168 @@ message it sends.
 > place, reached without fighting a multi-week trend follower's own holding period.
 
 _Last updated 2026-10-02._
+
+### 3bl. The ZigZag ATR-scaled bracket — queue #29 closed, and the premise was wrong (2026-10-04, `scripts/v5_zigzag_atr_bracket.py`)
+
+Pre-registered at `data/v5_runs/zigzag_atr/PREREGISTRATION.md`, **committed before the first fit**
+(94c4be9). §3ay named this the one open, actionable item in the log; it is now closed.
+
+**The hypothesis.** §3x killed the zigzag as a trade using 48 **fixed-percentage** bracket cells
+(walk-forward −0.76, 0/8 years, DSR 0.000). §3ax then found gold's mean daily range went from
+1.34% of price in 2015 to **2.73% in 2026**, making the deployed +0.60%/−0.50% bracket "0.23 and
+0.18 of one day's travel", with 96% of sessions ranging more than TP+SL combined. If both
+barriers sit inside one session's noise, which resolves first is near coin-flip *regardless of
+whether the detector was right* — so §3x might have measured the bracket, not the detector.
+Changing the bracket changes the trade STRUCTURE, so CONTROL #8's scope clause exempts it.
+
+#### The premise is false, and the error is reusable
+
+**The deployed bracket is 2.57 ATR at H1 — it was never tight.** §3ax measured it against the
+**daily** range, but the trade is an H1 entry with a 48-bar hold; its operative scale is the H1
+ATR. On that scale +0.60%/−0.50% is already a *wide* bracket, and widening further makes things
+monotonically worse (Sharpe −0.044 at the live cell → **−0.249** at 3.0 ATR).
+
+> **METHOD RULE. Scale a bracket against the ATR of the timeframe the trade is held on, never
+> against a coarser frame's range.** The same bracket is "0.23 of a day" and "2.57 H1 ATRs"; only
+> the second governs a 48-hour trade. Comparing to the wrong frame made a wide bracket look tight
+> and generated a whole research arm.
+
+#### Z2 — the breakeven wall, unconditional, before any signal
+
+`p* = (sl + cost)/(tp + sl)` — the generalisation of §3ay's symmetric form to an asymmetric bracket.
+
+| cell | tp/ATR | base hit | breakeven p* | **base − p\*** | resolve | ambiguous |
+|---|---|---|---|---|---|---|
+| ATR 1.0/1.0 | 1.00 | 0.5111 | 0.5626 | **−0.0515** | 1.000 | 0.38% |
+| ATR 2.0/1.5 | 2.00 | 0.4469 | 0.4644 | −0.0175 | 0.997 | 0.35% |
+| ATR 3.0/1.5 | 3.00 | 0.3522 | 0.3612 | **−0.0089** | 0.980 | 0.27% |
+| **LIVE 0.60/0.50** | **2.57** | 0.4827 | 0.4794 | **+0.0033** | 0.969 | 0.11% |
+
+Widening *does* shrink the cost drag monotonically (−0.0515 → −0.0089) — the breakeven arithmetic
+works exactly as §3ay says. It never reaches zero inside 3 ATR, and **the deployed cell is the
+only one already past its own breakeven**. Ambiguity is 0.1–0.4%, so the §3bj convention question
+costs essentially nothing here (it was worth 0.65 Sharpe on daily bars; on M15 it is noise).
+
+#### Z0/Z1 pass. Z3, Z4, Z5, Z6, Z7 all fail.
+
+**Z0 answerability (#7): PASS.** 3,726 fires at threshold 0.60, **698 non-overlapping** against a
+bar of 400; fire rate 7.80% of bars (56.9/month); resolution 98–100%, so no censoring.
+
+**Z1 oracle (#5): PASSES BY 160×.** Firing at the *true* pivot earns **+20.5 to +33.8 bp per
+fire** net, Sharpe **+5.8 to +11.1**, skill +0.26 to +0.38. The prize is real and much larger than
+§3p's "+0.017 / −0.675", which measured a different structure (a vol-targeted always-long engine,
+not a bracketed trade).
+
+> **But every oracle cell has a NEGATIVE `EV − hold` (−0.94 to −1.43 bp): with PERFECT hindsight
+> of the pivot, the bracket earns LESS than simply holding to the same exit time.** A bracket on a
+> long-only signal in a drifting asset truncates the winners that pay for it. All of the oracle's
+> +33 bp is timing; the bracket is a −1 bp drag on top. That is a structural argument against
+> bracketing this family at all, and it is independent of detector quality.
+
+**Z3 EV/fire vs the displaced drift (#8): FAIL — the pre-registered kill.**
+
+| cell | hit | base | **skill** | EV/fire | EV − any bar | Sharpe |
+|---|---|---|---|---|---|---|
+| ATR 1.0/1.0 | 0.5134 | 0.5111 | **+0.0023** | −1.87 bp | **+0.04 bp** | −0.556 |
+| LIVE 0.60/0.50 | 0.4747 | 0.4827 | −0.0080 | +0.03 bp | −0.80 bp | −0.044 |
+| ATR 3.0/1.5 | 0.3347 | 0.3522 | **−0.0175** | −2.46 bp | −2.91 bp | −0.067 |
+
+**Oracle +33.33 bp, best honest detector +0.04 bp.** The detector supplies no skill over a
+*random entry with the same bracket* — skill is within ±0.018 of zero in all seven cells.
+
+**Z4/Z6: FAIL.** Buy-and-hold gold over the same window is **+0.832 Sharpe / +13.21% CAGR**. Every
+cell is negative (−0.021 to −0.556), paired t vs buy-and-hold **−2.89 to −3.62**, **0–1 of 9 years
+better**. Halves: every cell negative in 2018–21 and mildly positive in 2022–26 — rule 1.3.8's
+post-2022 signature.
+
+**Z5 max-statistic null, GROSS, signed maximum: FAIL, and this is the cleanest number in the run.**
+All six gross excesses are **negative** (−0.06 to −3.02 bp) *before any cost is applied*, so this
+is not a spread problem — there is no gross edge to tax.
+
+| | |
+|---|---|
+| observed signed max t | **−0.098** |
+| null of the maximum | p50 **+0.925** · p95 +3.056 · p99 +4.077 |
+| Reality-Check p | **0.8200** |
+
+**The best of six declared cells is worse than the MEDIAN cell a no-edge dataset hands you.**
+
+**Z7: FAIL.** PBO **0.425** against a <0.30 bar. And the apparent peak in the specificity sweep
+(threshold 0.75, +3.01 bp) is noise: on non-overlapping events it is **+1.47 bp at t +0.58**
+(0.70 → t +1.08; 0.80 → t −0.23), non-monotone, exactly the shape §3am warns about.
+
+#### The H1 detector is ANTICIPATORY, not a confirmation detector — and it still does not pay
+
+Fire-weighted nearest-pivot offset at H1 is **−1.065 bars** (64.5% of fires within ±3 of a pivot),
+against §3as's **+0.967** at D1. So the thing CONTROL #8 identified as the mechanism at D1 —
+"it recognises bottoms a day after they happen" — **does not hold at H1**, and the economics are
+dead anyway. That is a stronger closure than §3as's, not a weaker one: §3au already showed that
+fixing the offset makes the economics *monotonically worse*, and here the offset is already on the
+"right" side and buys nothing.
+
+#### ARM 2 — XGBoost, LightGBM and CatBoost on this label. K = 6, one fixed config each, no grids.
+
+CatBoost had never been fitted on XAU in this repo. Identical walk-forward schedule for every
+class; no early stopping against a test-side `eval_set`.
+
+| model | AUC | **ΔAUC** | skill | EV − any bar | Δ mean offset |
+|---|---|---|---|---|---|
+| **histgb (incumbent)** | 0.7370 | — | +0.0049 | +0.16 bp | — |
+| xgboost | 0.7383 | **+0.0013** | +0.0030 | +0.12 bp | −0.082 |
+| catboost | 0.7378 | **+0.0008** | +0.0042 | +0.24 bp | −0.128 |
+| lightgbm | 0.7324 | −0.0046 | +0.0006 | −0.10 bp | −0.095 |
+| logreg | 0.7235 | **−0.0135** | +0.0010 | **+0.49 bp** | −0.702 |
+
+**Best-of-K pure-noise AUC floor at SE 0.0025: K=2 +0.0014, K=6 +0.0032, K=20 +0.0047.**
+XGBoost (+0.0013) and CatBoost (+0.0008) **both land below the free best-of-6 floor** — neither
+beats what a six-way search hands you on noise. And the model with the **best economics is the one
+with the worst AUC** (logreg, ΔAUC −0.0135, ΔEV +0.33 bp): CONTROL #8 demonstrated inside a single
+table.
+
+> **This converts §3r's informal "tested across 5 model implementations; none reliably beat the
+> plain regime block" into a measured statement with a priced search, and closes queue Tier 5
+> (#19–27) with numbers rather than by inference.** Model class is not the binding variable on
+> this instrument.
+
+#### ARM 3 — the live signal-only record transfers fine
+
+`zigzag-obs` has run hourly on the FTMO demo since 2026-09-16 with trading disabled. **315 live
+readings over 23 days** (2026-09-09 → 10-02): fire rate at 0.60 is **8.89% of bars (64.9/month)**
+against the backtest's **7.80% (56.9/month)**, mean P 0.372, max 0.754. The serve-time transfer
+that §3ba measured as lossy on the advisor is **not** a problem here — the detector fires live at
+the rate the backtest says it should. **Transfer was never what was wrong with it.**
+
+#### Gate 0, which also settled a live-path question nobody had asked
+
+`scripts/v5_zigzag_gate0.py` — H1 vs M15 agree at **1.000 in all 12 years**, so unlike the
+advisor's H4 (FTMO-spliced from 2023-06-28) the zigzag has always run on a genuine single-broker
+series. `intrabar_leak` H1 0.0191 / M15 0.0166 against a 0.15 bar; lookahead probe clean on 96,330
+comparisons. And: `v5_zigzag_signal.py:145` hard-codes `purge = TOL + 1 = 4`, while
+`label_near(tol=3)` plus `argrelextrema(order=5)` reaches **8** bars forward. Measured at
+purge 4/8/12/24 the OOS AUC is **0.7589 / 0.7589 / 0.7582 / 0.7587** — **the shipped purge is
+harmless**, confirming the argument `v5_pooled_bottom_detector.py:180-185` makes but never tested
+on the live path. Clean frames end 2026-06-15 (110 days stale); the backtest window ends there by
+choice, because `refresh_xau_h4.py` would deepen the splice.
+
+#### VERDICT — queue #29 CLOSED. The zigzag is closed permanently.
+
+The pre-registered kill fired on **Z3**, and Z4, Z5, Z6 and Z7 fired behind it. §3x's disproof was
+**not** an artifact of the bracket: re-run across six ATR-scaled cells the conclusion is the same
+or worse, and the gross excess is negative before costs in every cell. The deployed fixed-%
+bracket turns out to be the *best* of the seven, which is the opposite of the hypothesis.
+
+Per the decision taken before the run: the verdict is recorded, queue #29 is marked done,
+**`zigzag-obs` keeps running signal-only** so the live record keeps accumulating, and no further
+zigzag research sessions are held. No timers changed; the order path was never touched
+(`v5_zigzag_ftmo.py:203` requires `--live --execute`, which the wrapper does not pass).
+
+**What is reusable from this round, in order of value:**
+1. **Scale a bracket against the ATR of the frame it is held on**, never a coarser frame's range.
+2. **A bracket on a long-only signal in a drifting asset is value-destroying even on a perfect
+   signal** — all seven oracle cells earn less than holding to the same exit (−0.94 to −1.43 bp).
+3. **A measured best-of-K AUC floor for this label**: SE 0.0025 → +0.0014 (K=2), +0.0032 (K=6),
+   +0.0047 (K=20). Every future sweep on an H1 gold classifier can quote it.
+4. The H1 detector is **anticipatory** (offset −1.065), not the confirmation detector §3as
+   measured at D1 — and it is dead regardless, which strengthens #8 rather than qualifying it.
+
+_Last updated 2026-10-04._

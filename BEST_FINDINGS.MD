@@ -84,18 +84,41 @@ A walk-forward HistGradientBoosting detector on causal ZigZag swing lows (±3 ba
 PR-AUC **0.60**. Top features: 5-bar ATR-momentum, rank-in-window, z-score, RSI7. Hand-written
 rules cap out around 62%, so the model is genuinely adding something.
 
-**Why it is not tradeable, in two independent ways.** Traded as "enter on the flag, exit at the
-first reasonable profit", **all 48 grid cells are negative full-sample** (best −0.44) and
-walk-forward gives **−0.76** against buy-and-hold's +0.79 — paired t −3.72, **0 of 8 years
-better**, DSR 0.000. And more fundamentally, the **oracle ceiling** says the target was
-worthless before any detector existed: perfect foresight of gold's bottoms is worth
-**dSharpe +0.017**, and **−0.675 standalone**. The champion is long-only and near-always-in, so
-it is *already long at bottoms*. All the value was in TOPS (+0.26) and in trimming before bad
-windows (+0.70 to +4.04) — the opposite side from the one five studies chased.
+**Why it is not tradeable — three independent reasons, and the third closes the family.**
+
+1. **As a trade.** "Enter on the flag, exit at the first reasonable profit": **all 48 grid cells
+   negative full-sample** (best −0.44), walk-forward **−0.76** against buy-and-hold's +0.79,
+   paired t −3.72, **0 of 8 years better**, DSR 0.000. *(§3x)*
+2. **The oracle ceiling says the target was worthless before any detector existed.** Perfect
+   foresight of gold's bottoms is worth **dSharpe +0.017**, and **−0.675 standalone**. The
+   champion is long-only and near-always-in, so it is *already long at bottoms*. The value was in
+   TOPS (+0.26) and in trimming before bad windows (+0.70 to +4.04) — the opposite side from the
+   one five studies chased. *(§3p)*
+3. **The mechanism, measured.** The fire-weighted mean true-positive offset is **+0.967**: the
+   detector fires 28% of the time one bar *after* the low and 5% one bar before. It is a
+   **CONFIRMATION detector, not an anticipation detector**. So **EV per fire is +0.05% per 5 days
+   against +0.15% for simply being long** — one third of what holding earns, paired t **−3.64**.
+   *(§3as, which became MANDATORY CONTROL #8)*
+
+**Label engineering does not rescue it, and that is what closes the family.** Offset-aware labels
+worked *mechanically* (mean offset +0.967 → −0.489, capture 51% → 62%, AUC up to 0.8839) and got
+**monotonically worse economically**. The same held on the top side: oracle trim **+1.252** panel
+against a best honest detector of **+0.090** — a **14× oracle-to-achievable gap**, the largest in
+this repo. Fire early and you buy falling knives (FP −3.43%); fire late and the move is gone.
+*"A pivot is only identifiable once it has resolved, and the bars where it has not yet resolved
+are, by construction, the bars that look like continuation."* *(§3as, §3au)*
+
+**It was traded live, and it lost.** Five orders placed 2026-09-10..16 took the FTMO demo from
+**$100,000.00 to $99,564.82**. §3ax gives an independent mechanical explanation: gold's mean
+daily range went from **1.34% of price in 2015 to 2.73% in 2026**, which makes the harness's
+fixed +0.60%/−0.50% bracket **0.23 and 0.18 of a single day's travel**, with 96% of sessions
+ranging more than TP+SL combined. Both barriers sit inside one session's noise. Trading was
+disabled 2026-09-16; the harness still runs signal-only.
 
 **Read the lift, not the headline.** Widening the tolerance window inflates absolute precision
 by raising the random base rate; the 2.1–2.4× lift is the honest statistic.
-*§3, §3p, §3x · `scripts/v5_xau_turning_ml.py`, `v5_xau_turning_scalp.py`*
+*§3, §3p, §3x, §3as, §3au, §3aw, §3ax · `scripts/v5_xau_turning_ml.py`, `v5_xau_turning_scalp.py`,
+`v5_pooled_bottom_detector.py`*
 
 ---
 
@@ -130,51 +153,50 @@ different data type."*
 
 ---
 
-## 5. M15 intrabar path — the newest finding, and the first input to beat a proper information null
+## 5. The representation CEILING — the result that closed a whole family of ideas
 
-**NOT TRADEABLE. Recorded 2026-09-09.**
+**NOT TRADEABLE. Recorded 2026-09-09; its headline was RETRACTED 2026-09-19 and this entry is
+the corrected version.**
 
-Testing whether *representation* was the bottleneck produced a by-product that was not on any
-candidate list: the **interior of each H4 bar**, computed from completed M15 bars only —
-realised vol inside the bar, max adverse and favourable excursion, path efficiency
-(|net| ÷ path length), direction changes, and where in the bar the extreme occurred.
+> **CORRECTION.** This entry previously led with "M15 intrabar path — the first input to beat a
+> proper information null (+0.0142 bits, above its alignment null's p99)". **§3ba withdrew that
+> on 2026-09-19.** `data/XAUUSD_H4_long.csv` carries FTMO's quotes from 2023-06-28 while
+> `XAUUSD_M15_long.csv` never did — median |Δ| **$13.61** by 2026 — so the SOURCE arm held
+> privileged information about its own label's resolution path. On a provenance-clean single
+> feed SOURCE **loses to BASE 8 times out of 8**. The M15-intrabar finding is withdrawn.
+> What follows is what survived the feed rebuild.
 
-| arm | incremental information | years better | AUC |
-|---|---|---|---|
-| CEILING (raw 64-bar window, 128 features) | **−0.0099 bits/event** | 3/9 | 0.557 |
-| **SOURCE (BASE + M15 intrabar path)** | **+0.0142 bits/event** | **7/9** | **0.603** |
+Testing whether *representation* was the bottleneck: give a model the **raw 64-bar window**
+(128 features — vol-normalised log returns and normalised ranges) and see whether it extracts
+more than the incumbent 21-feature regime block, measured in **bits per independent event**.
 
-**+0.0142 sits above its alignment null's 99th percentile (+0.0112).** Precision beats both the
-0.427 base rate and the 0.5097 breakeven at every operating point: **0.579 / 0.593 / 0.600** at
-recall 0.10 / 0.15 / 0.20. It misses the pre-registered 0.607 bar by **0.007** — real, and
-recorded as *just under the bar* rather than rounded up.
+| arm | features | incremental information | years better | AUC |
+|---|---|---|---|---|
+| BASE (regime + price block) | 21 | — | — | 0.592 |
+| **CEILING (raw 64-bar window)** | **128** | **−0.0099 bits/event** | **3/9** | **0.557** |
 
-**Then it failed to monetise.** As a champion trim overlay — the application with the largest
-oracle (dSharpe +2.869) — **12 of 16 cells clear t@matched ≥ +1.50**, one reaches **+2.39**, and
-the best raw Sharpe is **+1.379 against the champion's +1.098**. Still disproven: **every cell
-is negative in 2018-21 and positive in 2022-26**, monotone in trim strength. PBO **0.687**
-against a <0.30 bar. 0 of 16 pass.
+**The raw window carries nothing over the incumbent block** — and it landed *below its synthetic
+null's median* (+0.0090), with dI known to be positively biased toward the higher-capacity arm.
 
-**Why it still ranks:** it vindicated §3r's own prediction that only a materially different data
-*type* changes the answer, and it is the **seventh** demonstration that accuracy ≠ edge — the
-first for an input that passed an *information* test rather than merely a classification test.
-That makes it the strongest version of the project's central lesson, not the weakest.
+**Why that one measurement is worth more than most positives.** Every candidate representation is
+a function of the same trailing window, so `I(Y; R(W)) ≤ I(Y; W)`. One ceiling therefore closes
+**fracdiff, directional change / intrinsic time, entropy and complexity measures, recurrence and
+visibility graphs, matrix profile, path signatures, SAX, and range/Renko bars — at a single
+multiple-testing penalty**, without testing one of them individually. It also bounds LSTM,
+transformer and autoencoder latents on H4 price alone.
 
-**Closed at book level too (§3aq).** The one remaining combination — the same signal applied to
-the whole book rather than the gold sleeve — went **0/32**, and the two variants failed in
-opposite ways: trimming the sleeve is strong but regime-dependent (best t +1.91, every cell
-negative in 2018-21), while scaling the whole book is regime-robust but weak (best t +1.03, the
-only cells anywhere to clear both halves). That quantifies §3ac's dilution lesson, and the
-half-split *flipping* between variants shows the sleeve version was reading gold's 2022-26
-behaviour rather than downside generally.
+**The lesson that generalises:** this project's binding constraint is not model capacity or
+feature representation. It is the conversion step — forecast to net-of-cost position surviving a
+regime split.
 
-The same experiment also closed the entire representation question at a single multiple-testing
-penalty: since every candidate representation is a function of the same trailing window, and the
-raw window carries no information over the incumbent block, **fracdiff, directional
-change/intrinsic time, entropy and complexity measures, recurrence and visibility graphs, matrix
-profile, path signatures, SAX and range/Renko bars are all closed** without testing one
-individually.
-*§3ao, §3ap · `scripts/v5_repr_ceiling.py`, `v5_m15_trim_overlay.py`*
+*Two methodological corrections also live here and are load-bearing:* `walk_forward_ll`
+(`v5_repr_ceiling.py:219-232`) **selects the model class on the test fold**, worth ≈ +0.006 bits
+and larger for the higher-capacity arm; and the single-draw synthetic control **fired a false
+positive** at +0.0319 bits with 7/9 years on pure Gaussian noise — a result that would have
+passed its own pre-registered bar.
+
+*§3ao, §3ap, §3aq, corrected by §3ba · `scripts/v5_repr_ceiling.py`, `v5_m15_trim_overlay.py`,
+`src/v5/mtf_frames.py`*
 
 ---
 
@@ -225,4 +247,6 @@ and should measure what they pay before optimising what they predict.
 *Companion documents: `V5_FINDINGS.md` (the full ledger, §-numbered), `RESEARCH-REGIMES.md`
 (prop-firm-constrained vs unconstrained findings), `README.MD` (current state),
 `BlogPOST-ZeroCarry.html` and `BlogPOST-SMC.html` (public write-ups).
-Last updated 2026-09-09.*
+Last updated 2026-10-04. Entries #3 and #5 were corrected on that date: #5's headline was
+retracted by §3ba (the two-broker splice) and #3 gained its mechanism closure (§3as/§3au) and
+its live result (§3ax).*

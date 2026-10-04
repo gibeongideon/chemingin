@@ -77,7 +77,7 @@ last.
 | # | approach | why |
 |---|---|---|
 | 28 | **Structural exit** — hold to the next confirmed ZigZag pivot instead of a fixed TP. | Every prior exit grid used fixed %, R-multiples or time caps. A structural exit matches the label's own logic and has never been tested. |
-| 29 | **ATR-scaled TP/SL** instead of fixed percentages. | Fixed % ignores the vol regime; the grid was 0.15–0.6% flat. |
+| ~~29~~ | ~~**ATR-scaled TP/SL** instead of fixed percentages.~~ | **DONE 2026-10-04, §3bl — CLOSED.** The premise was false: the deployed 0.60%/0.50% bracket is **2.57 ATR at H1**, not tight; §3ax measured it against the DAILY range. All 6 ATR cells have NEGATIVE gross excess before costs; signed max t −0.098 vs a null-of-the-max median of +0.925 (Reality-Check p 0.820); PBO 0.425. Oracle +33.33bp vs best detector +0.04bp. |
 | 30 | **Limit entry on a pullback** rather than market entry. | Improves the entry price on a mean-reverting label; never tested. |
 | 31 | **Champion-alignment gate** — trade the bottom only when the champion is already long. | |
 | 32 | **Probability-proportional sizing** (continuous), not a gate. | §3r gated; it never *sized*. |
@@ -128,7 +128,9 @@ including the boring ones, so a future session does not re-run them.
 | **TOPS** (not queued) | pooled **TOP** detector — the side the repo's own oracle says the money is on, never once used | **ORACLE +1.252 panel / +1.491 gold, t +6.7, 15/15** — the largest oracle prize in repo history (6x the gate). Best honest detector **+0.090 at t +0.84** across 20 fire-rate-matched cells | **DISQUALIFIED.** 14x oracle-to-achievable gap. §3au |
 | **TOPS-early** | offset-aware TOP labels (ANT / EARLY) | offset flipped +1.323 -> -0.300 / -1.26, so label engineering WORKS. Economics got monotonically WORSE: POOLED-EARLY **-0.751 at t -3.04** | **REFUTED MY OWN MECHANISM PREDICTION.** Early tops = strong uptrends; trimming them forfeits the drift that IS the edge. |
 | **35** | champ-meta at D1, pooled | ORACLE **+2.534** (t +17.16, 15/15). Appeared to give panel **+0.261, t +8.54, 14/15, block-p 0.0000**, all TIMING (XS-ONLY +0.000), 38/50 legs positive p 0.000153, shuffle/vol-tilt/trailing-Sharpe controls all clean. **RETRACTED** — the real 4-sleeve book gives **-0.009 (t -0.24)** and all 18 t>+2 legs are FX pairs leaking the next bar | **DISQUALIFIED + NEW DATA HAZARD.** 18 FX D1 files are forward-stamped; `clpos`/`upwick`/`lowick` carry ret[t+1] at corr 0.42-0.53. Screen with `intrabar_leak()` > 0.15. §3av |
-| 36-37 | time-to-target, drawdown-first on pivots | not run | remain open for a future session |
+| 36-37 | time-to-target, drawdown-first on pivots | not run | **moot** — the pivot family is closed (§3as/§3au/§3bl); #37 conditions on pivots and is unimplementable without hindsight |
+| **29** | ATR-scaled TP/SL | **CLOSED §3bl** | premise false (bracket was already 2.57 ATR); 0/6 cells, RC p 0.820, PBO 0.425 |
+| **Tier 5 (19-27)** | models & ensembling | **CLOSED §3bl with numbers** | XGBoost ΔAUC +0.0013 and CatBoost +0.0008 both below the free best-of-6 noise floor of +0.0032; best economics belongs to the WORST AUC (logreg) |
 
 ### Errors made and corrected during this run
 
