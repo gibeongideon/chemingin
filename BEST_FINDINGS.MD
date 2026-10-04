@@ -1,7 +1,7 @@
 # BEST FINDINGS — the strongest results this project has produced
 
-The top five, ranked by **strength of evidence**, not by whether they made money. Three of the
-five are not tradeable and are here because the measurement itself is solid — that distinction
+The top seven, ranked by **strength of evidence**, not by whether they made money. Five of the
+seven are not tradeable and are here because the measurement itself is solid — that distinction
 is the single most important thing this project has learned, so it is recorded rather than
 hidden.
 
@@ -197,6 +197,91 @@ passed its own pre-registered bar.
 
 *§3ao, §3ap, §3aq, corrected by §3ba · `scripts/v5_repr_ceiling.py`, `v5_m15_trim_overlay.py`,
 `src/v5/mtf_frames.py`*
+---
+
+## 6. NR7 — the narrow-range breakout, and three bugs worth 19×
+
+**NOT TRADEABLE. The most instructive failure in the log, because of *how* it failed.**
+
+An **NR7** day is one whose high−low range is the narrowest of the last seven. The claim is
+compression → expansion: the next day breaks out of that range. Traded as a first-break —
+buy-stop at the NR7 high, sell-stop at the low, first fill wins, cancel the other, exit at the
+close — it is flat overnight by construction.
+
+**On gold alone it survived every check and looked like the best candidate of its session:**
++11.58bp gross, **+9.24bp net per trade, t +2.00**, 7 of 12 years, working on **both** long and
+short sides.
+
+**It died twice, in two different ways.**
+
+1. **Cross-asset replication (§3bi).** The trend filter that was supposed to be the mechanism does
+   nothing: across 51 assets, taking the break **against** the trend returned **+25.31bp** versus
+   **+21.66bp** with it. What is real is *non-directional* — an NR7 day is followed by a day that
+   closes outside the narrow range — which is a volatility statement, not a direction one.
+2. **Backtested properly on M15 (§3bj), where the order of two events is observable:**
+
+| | signals | net/trade | hit | **Sharpe** | maxDD |
+|---|---|---|---|---|---|
+| **NR7 days** | 315 (28/yr) | +4.74bp | 52.4% | **+0.43** | −6.1% |
+| **control: non-NR7 days** | 2,430 (213/yr) | +2.06bp | 48.7% | **+0.47** | −17.7% |
+
+**Difference in means t +0.76 — and the control's Sharpe is marginally HIGHER. The narrow range
+is not the mechanism.**
+
+**The three bugs, which had inflated the daily version to Sharpe +8.23 — a 19× overstatement:**
+
+- **Unusable data.** SPX carries 8,547 **zero-range days (34.5%)** and SILVER 1,752 (27%) —
+  pre-1962 history has no intraday high or low, so `high == low == close`. NR7 then fired on 44.8%
+  of days instead of ~14%, and a zero-range day makes the next day break *both* levels trivially.
+- **An unresolvable convention was doing the work.** A first-break strategy must know which level
+  was touched first and **daily bars do not record that**. One assignment rule gave +7.58, its
+  exact opposite gave +8.23 — a choice the data cannot settle was worth **0.65 Sharpe**.
+- **Dropping the ambiguous days is survivorship on the outcome.** Conditioning on "the high broke
+  AND the low did not" deletes precisely the cases where the breakout failed and reversed.
+
+> **The rule this produced: when a strategy depends on the ORDER of two events, the data must
+> record that order.** Daily bars do not. Resolve on M15 or do not resolve.
+
+**What honestly survives** is not NR7 but the generic version of it: enter at the **prior day's**
+high or low, whichever breaks first, exit at the close — **+2.06bp net over 2,430 trades at
+Sharpe +0.47**. That is Crabel's opening-range family. It is the only fully-costed day-horizon
+object in this repo, and at 0.47 against the book's 1.18 it is a measurement, not a candidate.
+*§3bi, §3bj · `scripts/v5_twelve_ideas.py`, `v5_nr7_backtest.py`, `v5_nr7_m15_backtest.py`*
+
+---
+
+## 7. The intraday cost wall — the constraint that governs every day-trading idea here
+
+**NOT TRADEABLE — it is a design constraint, and the most decision-relevant one in the file.**
+
+Breakeven hit rate for a `±k·ATR` bracket, `P* = 0.5 + cost/(2·k·ATR)` at a floored 1.5bp one-way:
+
+| timeframe | k=1 ATR | k=2 | k=3 |
+|---|---|---|---|
+| **M15** | **0.5868** | — | — |
+| **H1** | 0.5494 | 0.5250 | 0.5170 |
+| **D1** | 0.5095 | 0.5054 | 0.5037 |
+
+**The barrier shrinks with the timeframe; the spread does not.** M15 needs **58.7%** directional
+accuracy against D1's 51.0% — and the best honest AUC this project has ever reached on any gold
+label is ~0.59, with measured hit rates of **43–51%**.
+
+**And it is not only cost.** Net Sharpe by timeframe **at a best-case $0.12 spread**:
+
+| | ultra | vfast | fast | med | slow | maxDD |
+|---|---|---|---|---|---|---|
+| M30 | 0.68 | 0.88 | 0.93 | 0.87 | 0.87 | −27 to −45% |
+| H1 | 0.59 | 0.65 | 0.82 | 0.94 | 0.98 | −21 to −33% |
+| **H4** | 0.59 | 1.03 | 1.09 | **1.27** | 1.05 | **−9 to −15%** |
+
+**H4 beats M30 and H1 even at $0.12, with one third the drawdown — so intraday is not merely
+cost-limited, the signal itself is worse. Tight spreads do not rescue intraday trend.**
+
+Six independent attempts agree: the fade (§1), §3c, §3l's intraday RR grid ("M15 edge −3 to
+−4.4pts, flat P&L −40% to −104%"), §3n's LLM analyst, §3o's SMC-H1, and §3ay's 12 zero-skill
+cells. **Check this table before building any intraday structure.** The generalised form for an
+asymmetric bracket, `P* = (sl + cost)/(tp + sl)`, was added in §3bl.
+*§3ay, §3f, §3l, §3bl · `scripts/v5_range_multitf.py`*
 
 ---
 
@@ -220,16 +305,20 @@ passed its own pre-registered bar.
 
 ---
 
-## What all five have in common
+## What all seven have in common
 
 **Two of the five made money, and neither came from predicting the market.** Both came from
 measuring what a position *costs* — a swap table and a correlation matrix. Costs are published,
 contractual and deterministic; they need no out-of-sample validation.
 
-**Three of the five are genuine, statistically careful positives that produce no P&L.** 80%
-precision, a +2.12pp accuracy edge with a bootstrap CI clear of zero, and incremental
-information above a p99 null — and between them, roughly 130 pre-registered trade structures
-that all failed.
+**Two of the seven made money; five are measurements.** 80% precision, a +2.12pp accuracy edge
+with a bootstrap CI clear of zero, a raw-window information ceiling, a +9.24bp setup that
+replicated backwards, and a cost table that forbids the whole intraday family — and between them,
+roughly 130 pre-registered trade structures that all failed.
+
+**Two of the five nulls are worth more than most positives**, because they close families rather
+than single ideas: #5 retires every alternative representation at one multiple-testing penalty,
+and #7 retires intraday structures before they are built.
 
 One more thing worth stating: **combination is not the missing ingredient.** Five independent
 refutations now exist — ICT confluence 0/4, the 6-component stack 0/29, feature-block stacking
@@ -247,6 +336,7 @@ and should measure what they pay before optimising what they predict.
 *Companion documents: `V5_FINDINGS.md` (the full ledger, §-numbered), `RESEARCH-REGIMES.md`
 (prop-firm-constrained vs unconstrained findings), `README.MD` (current state),
 `BlogPOST-ZeroCarry.html` and `BlogPOST-SMC.html` (public write-ups).
-Last updated 2026-10-04. Entries #3 and #5 were corrected on that date: #5's headline was
+Last updated 2026-10-04. Entries #6 (NR7) and #7 (the intraday cost wall) were added that
+day, and entries #3 and #5 were corrected: #5's headline was
 retracted by §3ba (the two-broker splice) and #3 gained its mechanism closure (§3as/§3au) and
 its live result (§3ax).*
