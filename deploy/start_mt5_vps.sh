@@ -25,7 +25,12 @@ term_running() {
 }
 
 if ! term_running; then
-  wine "$TERM_EXE" "C:\\mt5_login.ini" >/dev/null 2>&1 &
+  # /config: IS REQUIRED. Passed as a BARE argument the ini is silently ignored and the
+  # terminal auto-resumes whatever account config/common.ini cached -- or, once that cache
+  # is cleared, sits forever on a Login dialog with no error in any log. Measured
+  # 2026-10-08 on the FTMO switch: the bare form gave "MetaTrader 5 started" and nothing
+  # else, while /config: logs `successfully initialized from start config`.
+  wine "$TERM_EXE" "/config:C:\\mt5_login.ini" >/dev/null 2>&1 &
   sleep 25
 fi
 if ! ss -tlnp 2>/dev/null | grep -q "127.0.0.1:$PORT"; then
