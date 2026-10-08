@@ -70,6 +70,73 @@ def open_restriction(info, want_long: bool) -> str | None:
     return TRADE_MODES.get(mode, str(mode))
 
 
+# ---------------------------------------------------------------- evening session gate
+# "Do not open new positions after 5PM if I close manually, but reopen as the market opens
+# at night." Blocks every INCREASE in exposure inside the evening window; reductions, closes
+# and compliance-SL maintenance are always permitted, so the gate is a ONE-WAY VALVE and can
+# never trap the book in a position it wants out of.
+#
+# WHY THE TIMES ARE WHAT THEY ARE (measured off this broker's own M1 gaps, 2026-10-08):
+#     XAUUSD     break 23:49 -> 01:05   (12 of 12 days)
+#     US100.cash break 23:49 -> 01:05   (12 of 12 days)
+#     UKOIL.cash break 23:49 -> 03:05   (13 of 13 days)
+#     BTCUSD     break 23:54 -> 00:05   (12 of 12 days)
+# The window therefore ENDS at 01:05, when gold reopens. The book's own 4-hourly timer next
+# fires at 03:40 server, by which point UKOIL has reopened too, so the whole book comes back
+# in one pass rather than running a narrow 3-sleeve book overnight (BRENT is the sleeve that
+# took daily-limit breaches from 13.9% to 0%, so a partial book is a real risk change).
+NO_INCREASE_FROM = (17, 0)        # 17:00 server == 17:00 EAT, the user's 5PM
+NO_INCREASE_UNTIL = (1, 5)        # gold's measured reopen
+
+
+def server_now(conn, ref_symbol: str = "XAUUSD"):
+    """The BROKER's wall clock, read from its own tick, never a hard-coded UTC offset.
+
+    FTMO-Demo runs UTC+3 today and shifts with US DST. A fixed offset would silently move the
+    5PM cutoff by an hour twice a year with nothing failing visibly -- the same class of error
+    as the session_windows 2h-DST claim that 3be had to correct to 1h. Returns None if no tick
+    is available, and the caller then FAILS CLOSED (treats the window as active).
+    """
+    from datetime import datetime as _dt
+    try:
+        # MT5Connector exposes get_tick(); the raw module's symbol_info_tick() is NOT on it,
+        # and calling the wrong name raised, hit the except, and failed the gate CLOSED --
+        # which blocked every sleeve all day while printing a confident reason. Same class of
+        # error as conn.history_deals_get in 687ea6f: the connector is a wrapper, not the
+        # module. Fall back to the raw module rather than assuming either exists.
+        tick = None
+        if hasattr(conn, "get_tick"):
+            tick = conn.get_tick(ref_symbol)
+        elif hasattr(conn, "_mt5"):
+            tick = conn._mt5.symbol_info_tick(ref_symbol)
+        else:
+            print("  session gate: connector exposes neither get_tick nor _mt5")
+            return None
+        ts = int(getattr(tick, "time", 0) or 0)
+    except Exception as exc:                      # noqa: BLE001 -- named, never swallowed
+        print(f"  session gate: could not read {ref_symbol} tick ({exc})")
+        return None
+    if ts <= 0:
+        print(f"  session gate: {ref_symbol} tick has no timestamp")
+        return None
+    return _dt.utcfromtimestamp(ts)               # the epoch IS server-stamped
+
+
+def no_increase_reason(srv, frm=NO_INCREASE_FROM, until=NO_INCREASE_UNTIL) -> str | None:
+    """Reason increases are blocked right now, or None. The window WRAPS MIDNIGHT."""
+    if srv is None:
+        return (f"server time unknown — failing closed, no increases "
+                f"(window {frm[0]:02d}:{frm[1]:02d}-{until[0]:02d}:{until[1]:02d} server)")
+    hm = srv.hour * 60 + srv.minute
+    a = frm[0] * 60 + frm[1]
+    b = until[0] * 60 + until[1]
+    inside = (hm >= a or hm < b) if a > b else (a <= hm < b)
+    if not inside:
+        return None
+    return (f"{srv:%H:%M} server is inside the evening no-increase window "
+            f"{frm[0]:02d}:{frm[1]:02d}-{until[0]:02d}:{until[1]:02d}")
+
+
 def apply_model_to_guards(cfg) -> None:
     """Override challenge_guards module constants from config (model-correct)."""
     g = cfg["guards"]
@@ -429,6 +496,20 @@ def main() -> None:
         # absent, the engine keeps its historical equal-risk behaviour.
         targets = target_leverage(model, cfg.get("classes"), cfg.get("class_weights"))
         plans, n_mapped, blocked = [], 0, []
+
+        # Evening gate, evaluated ONCE so every sleeve in this pass sees one clock.
+        sess = cfg.get("session", {})
+        _frm = tuple(sess.get("no_increase_from", NO_INCREASE_FROM))
+        _unt = tuple(sess.get("no_increase_until", NO_INCREASE_UNTIL))
+        srv = server_now(conn, cfg.get("session_ref_symbol", "XAUUSD"))
+        sess_blk = None if sess.get("disabled") else no_increase_reason(srv, _frm, _unt)
+        if sess_blk:
+            print(f"  EVENING GATE ACTIVE — {sess_blk}. No sleeve may ADD exposure; "
+                  f"reductions, closes and SL maintenance still run.")
+        elif srv is not None:
+            print(f"  session: {srv:%H:%M} server — outside the no-increase window "
+                  f"{_frm[0]:02d}:{_frm[1]:02d}-{_unt[0]:02d}:{_unt[1]:02d}, increases allowed")
+        sess_skipped = []
         print(f"  {'symbol':9s} {'tgt lev':>8s} {'held lot':>9s} {'tgt lot':>9s}  action")
         for esym, lev in sorted(targets.items()):
             meta = symmap.get(esym, {})
@@ -452,6 +533,16 @@ def main() -> None:
             # Broker restriction check BEFORE sending: only increases can be
             # blocked, and a blocked sleeve must be loud — it silently halves
             # the book's diversification otherwise.
+            # The evening gate sits BESIDE the broker restriction because it has identical
+            # semantics: only increases can be blocked, and a blocked sleeve must be loud.
+            if act != "hold" and tl > hl and sess_blk:
+                sess_skipped.append(bsym)
+                kind = "re-open" if hl == 0 else f"add {tl - hl:+.2f} lot to"
+                print(f"    -- EVENING GATE: will not {kind} {bsym}. Stays as-is until the "
+                      f"market reopens; the {_unt[0]:02d}:{_unt[1]:02d} lift means the next "
+                      f"scheduled pass restores the book.")
+                continue
+
             if act != "hold" and tl > hl:
                 restr = open_restriction(conn.symbol_info(bsym), want_long=True)
                 if restr:
@@ -531,6 +622,10 @@ def main() -> None:
                                        or "cannot" in note) else "    "
                     print(f"{flag}{note}")
 
+        if sess_skipped:
+            print(f"  EVENING GATE held {len(sess_skipped)} sleeve(s) flat/unchanged: "
+                  f"{', '.join(sess_skipped)} — by design, lifts at "
+                  f"{_unt[0]:02d}:{_unt[1]:02d} server")
         if blocked:
             print(f"  *** {len(blocked)} SLEEVE(S) BROKER-BLOCKED: "
                   f"{', '.join(blocked)} — book is running incomplete ***")
@@ -542,7 +637,7 @@ def main() -> None:
             print("  PLAN: in sync — nothing to do")
         row.update(n_mapped=n_mapped,
                    plan="; ".join(f"{s}:{h:.2f}->{t:.2f}" for s, h, t in plans) or "in_sync",
-                   blocked="; ".join(blocked))
+                   blocked="; ".join(blocked + [f"{s}:EVENING_GATE" for s in sess_skipped]))
         if not send and plans:
             print("  (dry plan — rerun with --live --execute to send)")
         if args.paper_csv:
