@@ -4858,3 +4858,64 @@ zigzag research sessions are held. No timers changed; the order path was never t
    measured at D1 — and it is dead regardless, which strengthens #8 rather than qualifying it.
 
 _Last updated 2026-10-04._
+
+### 3bm. "Wait for a bottom before re-entering" — measured, and it makes the entry WORSE (2026-10-13, `scripts/v5_entry_timing.py`)
+
+Asked directly: when the book is flat and about to buy, should it wait for the bottom detector
+to fire instead of buying at market? This is a **different question** from §3p/§3bl — those asked
+whether the detector is a *signal*; this asks whether it improves a fill the book is already
+committed to making. 9,000+ decision events on XAU H1 at the book's own 4-hourly passes,
+2018-05 onward, costs floored at the live $0.448.
+
+**Result: 18 of 18 cells negative. The detector does not get a better price — it gets a worse one.**
+
+| wait | arm | fill rate | **entry gain** | Δ vs market | t | base\|FILLED | base\|SKIPPED |
+|---|---|---|---|---|---|---|---|
+| 8h | DETECTOR p≥0.55 | 0.472 | **−2.14bp** | −2.16 | **−4.87** | −19.22 | **+24.94** |
+| 8h | DETECTOR p≥0.60 | 0.338 | **−2.42bp** | −2.43 | **−5.23** | −22.80 | **+17.85** |
+| 12h | DETECTOR p≥0.60 | 0.447 | **−3.60bp** | −3.62 | **−6.60** | −26.39 | **+28.74** |
+| 8h | ATR-LIMIT −0.25×ATR | 0.874 | −0.34bp | −0.34 | −1.46 | −3.22 | +55.16 |
+| 8h | **ORACLE (lowest low)** | 1.000 | **+41.07bp** | **+41.28** | — | — | — |
+
+`entry gain` is positive when you buy *cheaper*. **It is negative for every detector cell**, at
+every wait and every threshold: waiting for the fire costs 1.1–3.6bp of entry, against a 2.59bp
+round trip. The premise — that the detector finds a better price — is simply false here.
+
+#### The mechanism, in one column pair
+
+`base|FILLED` is what buying at market would have earned **on the events where the detector
+fired**; `base|SKIPPED` is what it earned where it did not.
+
+> **At p≥0.60 / 8h: FILLED −22.80bp, SKIPPED +17.85bp. A 40.65bp selection gap, t −5.23.**
+
+The detector fires on exactly the entries you do not want. That is not a calibration failure, it
+is the geometry: a "bottom" is a bar where price has already fallen, and on an asset with the
+positive drift this book is long, those bars have *worse* forward returns. Waiting for one
+selects them. **This independently reproduces §3bc's adverse-selection result** (base|FILLED
+−0.20% vs base|SKIPPED +0.22%, t −5.96) on a different signal, a different timeframe and a
+different decision, which promotes it from a finding to a law:
+
+> **Any rule of the form "wait for condition C before buying" must report what the unconditional
+> entry earned on the trades C SKIPPED. Across two independent studies the skipped sample is
+> worth MORE than the filled one, by 19–87bp. Conditioning on a dip conditions on bad forward
+> returns.**
+
+#### The prize is real and none of it is reachable
+
+The **oracle** — buying at the lowest low in the window — is worth **+28.5bp at 4h, +41.1bp at
+8h, +51.2bp at 12h**, far above the 2.59bp round trip, so CONTROL #5 passes by ~16×. Every honest
+arm captures none of it and goes backwards. Same shape as §3au's 14× gap and §3bl's oracle
++33.33bp against a detector of +0.04bp.
+
+**The flat ATR limit is the only arm that is not significantly harmful** (−0.25×ATR: −0.15bp at
+t −0.77, 82% fill) — i.e. a shallow resting limit is roughly free, but it does not help either,
+and §3bc's +0.25%/fill does not replicate as a net gain once the unfilled events are carried.
+
+#### VERDICT — do not build it
+
+The modified book is **not** worth having: it would pay 1–4bp more per entry and systematically
+buy the worse half of its opportunities. The incumbent behaviour — buy at market on the
+scheduled pass — is the best of the seven arms tested. **Keep the evening gate (§3bl deploy),
+which decides WHETHER to be in; do not add a rule about WHEN.**
+
+_Last updated 2026-10-13._

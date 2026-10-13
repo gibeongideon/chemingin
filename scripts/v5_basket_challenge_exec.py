@@ -34,6 +34,8 @@ import csv
 import json
 import sys
 from datetime import datetime, timezone
+
+import pandas as pd
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -135,6 +137,71 @@ def no_increase_reason(srv, frm=NO_INCREASE_FROM, until=NO_INCREASE_UNTIL) -> st
         return None
     return (f"{srv:%H:%M} server is inside the evening no-increase window "
             f"{frm[0]:02d}:{frm[1]:02d}-{until[0]:02d}:{until[1]:02d}")
+
+
+# ------------------------------------------------- re-entry gated on the bottom detector
+# USER REQUEST, 2026-10-13: "when i close a position, when opening use bottom detector."
+#
+# *** THIS IS MEASURED AS HARMFUL AND IS SHIPPED BECAUSE IT WAS ASKED FOR TWICE. ***
+# SS3bm, 9,000+ decision events on XAU H1: waiting for the detector makes the ENTRY PRICE WORSE
+# by 1.1-3.6bp against a 2.59bp round trip, and 18 of 18 cells are negative. The mechanism is
+# adverse selection, not calibration -- at p>=0.60 with an 8h wait, buying at market earned
+# -22.80bp on the events where the detector FIRED and +17.85bp where it did NOT, a 40.65bp gap
+# at t -5.23. A "bottom" is a bar where price has already fallen, and on a positive-drift asset
+# this book is long, those bars have worse forward returns. SS3bc found the same thing
+# independently (t -5.96).
+#
+# It is therefore OFF BY DEFAULT and switched on per-book in config, so turning it off is a
+# one-line change rather than a code edit.
+#
+# BOUNDED ON PURPOSE. The book only looks every 4h and the detector fires on roughly 8% of bars
+# at 0.60, so an ungated wait could leave a sleeve flat for days. Being flat costs far more than
+# 2.4bp of entry, so `max_wait_hours` forces a market entry once it expires. Without that this
+# feature's worst case is much worse than the thing it is trying to improve.
+BOTTOM_GATE_DEFAULTS = dict(enabled=False, threshold=0.60, max_wait_hours=24,
+                            train_bars=20000, h1_bars=24000)
+
+
+def _h1_frame(conn, symbol: str, bars: int):
+    """Closed H1 bars from the BROKER's own feed -- never the CSVs, which are a different feed
+    and months stale (SS3ba: a dataset from two brokers is a leak no timestamp control sees)."""
+    try:
+        r = conn.get_rates(symbol, "H1", bars)
+    except Exception as exc:                       # noqa: BLE001 -- named, never swallowed
+        print(f"    bottom gate: get_rates({symbol}) failed: {exc}")
+        return None
+    if r is None or len(r) < 5000:
+        print(f"    bottom gate: {symbol} returned "
+              f"{0 if r is None else len(r)} H1 bars, need >= 5000")
+        return None
+    d = pd.DataFrame(r)
+    if "time" in d.columns:
+        d["time"] = pd.to_datetime(d["time"], unit="s")
+        d = d.set_index("time")
+    return d.iloc[:-1]                             # drop the bar still forming
+
+
+def bottom_probability_for(conn, symbol: str, cfg_gate: dict):
+    """P(this bar is within TOL of a swing low) for ONE symbol, on its own H1 series.
+
+    Uses the deployed detector verbatim (scripts/v5_zigzag_signal.bottom_probability). SS3as
+    measured the bottom-pivot relationship as UNIVERSAL across instruments -- the TRANSFER arm,
+    trained without ever seeing gold, scored +0.0570 against POOLED's +0.0576 -- so scoring a
+    non-gold sleeve on its own bars is supported rather than improvised. Returns None if the
+    detector cannot be evaluated, and the caller then opens at market rather than stalling.
+    """
+    df = _h1_frame(conn, symbol, int(cfg_gate.get("h1_bars", 24000)))
+    if df is None:
+        return None
+    try:
+        from scripts.v5_zigzag_signal import bottom_probability
+        st = bottom_probability(df, float(cfg_gate.get("threshold", 0.60)),
+                                0.006, 0.005, 48,
+                                train_bars=int(cfg_gate.get("train_bars", 20000)))
+        return float(st.prob)
+    except Exception as exc:                       # noqa: BLE001
+        print(f"    bottom gate: scoring {symbol} failed: {exc}")
+        return None
 
 
 def apply_model_to_guards(cfg) -> None:
@@ -471,6 +538,12 @@ def main() -> None:
                         for p in (conn.get_positions(magic=magic) or []):
                             if p.symbol == bsym:
                                 conn.close_position(p)
+            # A guard flatten is the BOOK closing, not the user. Clearing book_lots here stops
+            # the next pass mistaking it for a manual close and waiting for a bottom to undo a
+            # risk action -- which would be the single worst failure this feature could have.
+            state["book_lots"] = {}
+            state["awaiting_bottom"] = {}
+            save_state(state_path, state)
             if action == "halt":
                 print("  *** PERMANENT HALT — risk line hit ***")
             elif action == "complete":
@@ -510,6 +583,19 @@ def main() -> None:
             print(f"  session: {srv:%H:%M} server — outside the no-increase window "
                   f"{_frm[0]:02d}:{_frm[1]:02d}-{_unt[0]:02d}:{_unt[1]:02d}, increases allowed")
         sess_skipped = []
+
+        # ---- re-entry gated on the bottom detector (OFF unless config asks for it; §3bm
+        # measures it as harmful, so it must never switch itself on).
+        bg = dict(BOTTOM_GATE_DEFAULTS); bg.update(cfg.get("bottom_gate", {}))
+        bg_on = bool(bg.get("enabled"))
+        book_lots = dict(state.get("book_lots") or {})
+        awaiting = dict(state.get("awaiting_bottom") or {})
+        now_iso = datetime.now(timezone.utc)
+        if bg_on:
+            print(f"  BOTTOM GATE on: after a manual close a sleeve waits for "
+                  f"P(bottom) >= {bg['threshold']} (max {bg['max_wait_hours']}h, then market). "
+                  f"§3bm measured this as -1.1 to -3.6bp of entry — enabled by request.")
+        bg_waiting, bg_fired, bg_timeout = [], [], []
         print(f"  {'symbol':9s} {'tgt lev':>8s} {'held lot':>9s} {'tgt lot':>9s}  action")
         for esym, lev in sorted(targets.items()):
             meta = symmap.get(esym, {})
@@ -542,6 +628,39 @@ def main() -> None:
                       f"market reopens; the {_unt[0]:02d}:{_unt[1]:02d} lift means the next "
                       f"scheduled pass restores the book.")
                 continue
+
+            # --- bottom-detector re-entry gate (only a brand-new position after a close the
+            # BOOK did not make; adds and reductions are untouched).
+            if bg_on and act != "hold" and tl > hl and hl == 0:
+                prev = float(book_lots.get(bsym) or 0.0)
+                if prev > 0 and bsym not in awaiting:
+                    awaiting[bsym] = now_iso.isoformat()
+                    print(f"    MANUAL CLOSE detected on {bsym} (book left {prev:.2f} lot, "
+                          f"holds 0.00) — re-entry now waits for a bottom")
+                if bsym in awaiting:
+                    since = datetime.fromisoformat(awaiting[bsym])
+                    waited = (now_iso - since).total_seconds() / 3600.0
+                    prob = bottom_probability_for(conn, bsym, bg)
+                    if prob is None:
+                        print(f"    bottom gate: {bsym} unscorable — opening at market "
+                              f"rather than stalling the sleeve")
+                        awaiting.pop(bsym, None)
+                    elif prob >= float(bg["threshold"]):
+                        print(f"    BOTTOM FIRED on {bsym}: P={prob:.3f} "
+                              f">= {bg['threshold']} after {waited:.1f}h — re-entering")
+                        bg_fired.append(bsym)
+                        awaiting.pop(bsym, None)
+                    elif waited >= float(bg["max_wait_hours"]):
+                        print(f"    bottom gate TIMEOUT on {bsym}: P={prob:.3f} after "
+                              f"{waited:.1f}h >= {bg['max_wait_hours']}h — opening at market. "
+                              f"Being flat costs more than the entry does.")
+                        bg_timeout.append(bsym)
+                        awaiting.pop(bsym, None)
+                    else:
+                        print(f"    -- BOTTOM GATE: {bsym} P={prob:.3f} < {bg['threshold']}, "
+                              f"waited {waited:.1f}h of {bg['max_wait_hours']}h — staying flat")
+                        bg_waiting.append(bsym)
+                        continue
 
             if act != "hold" and tl > hl:
                 restr = open_restriction(conn.symbol_info(bsym), want_long=True)
@@ -622,6 +741,22 @@ def main() -> None:
                                        or "cannot" in note) else "    "
                     print(f"{flag}{note}")
 
+        if bg_on:
+            for esym, meta in symmap.items():
+                b = meta.get("fp_symbol")
+                if b:
+                    book_lots[b] = round(held_lots(conn, b, magic), 2) if send else \
+                        book_lots.get(b, 0.0)
+            state["book_lots"] = book_lots
+            state["awaiting_bottom"] = awaiting
+            save_state(state_path, state)
+            if bg_waiting:
+                print(f"  BOTTOM GATE holding {len(bg_waiting)} sleeve(s) flat: "
+                      f"{', '.join(bg_waiting)}")
+            if bg_fired:
+                print(f"  BOTTOM GATE released on a fire: {', '.join(bg_fired)}")
+            if bg_timeout:
+                print(f"  BOTTOM GATE timed out (market entry): {', '.join(bg_timeout)}")
         if sess_skipped:
             print(f"  EVENING GATE held {len(sess_skipped)} sleeve(s) flat/unchanged: "
                   f"{', '.join(sess_skipped)} — by design, lifts at "

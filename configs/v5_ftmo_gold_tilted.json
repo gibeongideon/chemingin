@@ -102,5 +102,13 @@
   ],
   "disabled": false
  },
- "session_ref_symbol": "XAUUSD"
+ "session_ref_symbol": "XAUUSD",
+ "bottom_gate": {
+  "_note": "Requested 2026-10-13: after a MANUAL close, a sleeve waits for the bottom detector before re-entering. MEASURED AS HARMFUL in V5_FINDINGS 3bm -- waiting costs 1.1-3.6bp of entry against a 2.59bp round trip, 18/18 cells negative, and the mechanism is adverse selection: at p>=0.60/8h, buying at market earned -22.80bp where the detector FIRED and +17.85bp where it did NOT (gap 40.65bp, t -5.23). Enabled by explicit request. Set enabled=false to revert to market entry, which won the study. max_wait_hours is the failsafe: the book only looks every 4h and the detector fires on ~8% of bars, so an ungated wait could leave a sleeve flat for days, which costs far more than the entry does.",
+  "enabled": true,
+  "threshold": 0.6,
+  "max_wait_hours": 24,
+  "train_bars": 20000,
+  "h1_bars": 24000
+ }
 }
