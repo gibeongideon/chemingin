@@ -5099,3 +5099,81 @@ the peak.** `sl_atr` is flat on the original feed and stays the least-contradict
 tested against two independent broker feeds rather than one.
 
 _Last updated 2026-10-15._
+
+### 3bo. Lot-increase schemes on the live champion, and the probability of ruin (2026-10-16, `scripts/v5_lot_progression_ruin.py`)
+
+Asked for: add lot-increase sizing and measure the chance of ruin. Lot progressions have been
+tested three times here, but always on a *detector's* bet stream — never on the **champion**, the
+thing actually deployed on Maven magic 360571, and never with a ruin surface against the real
+walls. Four engines on 295 champion trades (2018-2026, H4 rebuilt from M15), block-bootstrapped
+2,500 paths, static walls at **8% ($92,000)** and **10% ($90,000)** from a $100,000 start.
+
+#### Stage 1 — the precondition, which decides everything else
+
+A progression can only beat flat sizing if outcomes **cluster**: martingale needs losses to
+cluster, pyramiding needs wins to. Measured on the champion for the first time:
+
+| | |
+|---|---|
+| trades / win rate / mean R | 295 · 45.4% · **+0.251R** |
+| **lag-1 autocorrelation of the win/loss SIGN** | **+0.0464** |
+| shuffled null (2,000 draws) | mean −0.0048, sd 0.0582 → **z = +0.88** |
+| longest loss streak | **10**, against an iid expectation of **9.4** |
+
+> **No clustering. Wins do not follow wins and losses do not follow losses, so every lot
+> progression on this strategy is PURE LEVERAGE** — it can only change the size of the bet, never
+> exploit a pattern in the sequence. Stage 2 then measures what that leverage costs.
+
+#### Stage 2 — the ruin frontier, read at MATCHED RETURN
+
+Median return is **not monotone in stake**: it rises, peaks, then collapses as ruin truncates
+paths at the wall. So each engine is swept across stakes and the comparison is interpolated along
+the **rising branch** at equal return. P(ruin) at a +100% median return:
+
+| engine | 10% wall | 8% wall | verdict |
+|---|---|---|---|
+| **flat** | **10.0%** | **15.8%** | the reference |
+| **pyramid K3** (up after a win) | 9.5% (**−0.5pp**) | 15.1% (**−0.7pp**) | **INDISTINGUISHABLE** |
+| double4 K6 (martingale) | 16.0% (+6.0pp) | 22.3% (+6.5pp) | **WORSE** |
+| double4 K4 | 16.2% (+6.2pp) | 23.4% (+7.6pp) | **WORSE** |
+| recover4 K6 | 12.4% (+2.4pp) | 18.1% (+2.3pp) | WORSE |
+| recover4 K3 (recover-all) | 21.2% (+11.2pp) | 32.7% (+16.9pp) | **MUCH WORSE** |
+| pyramid K4 | 22.2% (+12.2pp) | 34.6% (+18.8pp) | **MUCH WORSE** |
+
+Monte-Carlo SE on a ruin probability near 15% at 2,500 paths is **±0.71pp**, so anything within
+~1.4pp of flat is indistinguishable. **Pyramid K3's −0.5/−0.7pp is inside that band — it ties
+flat, exactly as Stage 1 predicted. Nothing beats flat; everything else buys ruin for nothing.**
+Deeper ladders are monotonically worse on both walls.
+
+#### The number that is actually actionable — flat sizing against a 10% wall
+
+| stake per trade | median return | **P(ruin)** |
+|---|---|---|
+| 0.25% | +18.4% | **0.00%** |
+| **0.50% (live)** | **+36.8%** | **0.20%** |
+| 1.0% | +73.1% | 3.96% |
+| 2.0% | +139.6% | **18.96%** |
+| 3.0% | +188.1% | 32.12% |
+| 5.0% | +189.3% | 48.48% |
+
+**1% → 2% buys 1.9× the return for 4.8× the ruin, and 3% → 5% buys nothing at all** (+188.1% vs
++189.3%) while taking ruin from 32% to 48% — past the hump the extra stake is pure donation. This
+independently confirms the `risk_frac` table's rule (memory: *use 0.5% under a 10% wall, never
+>1.5%*) and gives it a ruin probability rather than a drawdown proxy.
+
+#### VERDICT
+
+**Do not add a lot-increase scheme.** The best of them (pyramid K3) is statistically identical to
+simply raising the flat stake, and the rest — including every martingale variant — pay 2–19pp of
+extra ruin for the same return. This is the fourth independent confirmation of the governing law:
+*a martingale is an edge LEVER, not an edge CREATOR.* The new contribution is the mechanism
+measured on the deployed strategy: **the sequence carries no serial structure (z +0.88), so there
+is nothing for any progression to exploit.**
+
+**A method bug worth recording.** The first version solved for a matched stake by **bisection**,
+assuming median return rises monotonically with size. It does not — it humps — so the search ran
+to its 20% ceiling and returned an identical, *negative* −8.08% return for all ten cells. The tell
+was that `flat`, whose answer was already known, came back wrong too. **When you solve for a
+parameter, include a cell whose answer you already know; if that cell is wrong, the solver is.**
+
+_Last updated 2026-10-16._

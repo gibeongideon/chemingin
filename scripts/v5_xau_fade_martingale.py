@@ -100,6 +100,13 @@ def simulate(r: np.ndarray, engine: str, base: float, equity0: float,
         elif engine == "recover4":
             deficit = max(0.0, -ladder)
             stake = base if k == 0 else min((deficit + base) / w, cap * base)
+        elif engine == "pyramid":
+            # ANTI-martingale: increase the lot after a WIN, reset after a loss. Added
+            # 2026-10-16. It is the mirror of double4 and shares its precondition -- it can
+            # only beat flat if WINS CLUSTER. §3 measured win/loss lag-1 autocorrelation on the
+            # detector at +0.05 to -0.03, i.e. zero, which is why the earlier anti-martingale
+            # study found it merely levered (0.84 -> 0.30-0.53 at 2-3x the drawdown).
+            stake = min(base * mult, cap * base)
         else:
             raise ValueError(engine)
         stake = min(stake, max(0.0, eq - floor) / max(w, 1e-9))   # cant risk past bust
@@ -109,7 +116,15 @@ def simulate(r: np.ndarray, engine: str, base: float, equity0: float,
         curve[i] = eq; stakes[i] = stake
         # ---- ladder / reset logic ----
         won = ri > 0
-        if engine == "double4":
+        if engine == "pyramid":
+            if won:
+                k += 1
+                mult = 1.0 if k >= K else mult * 2.0      # give the ladder back after K wins
+                if k >= K:
+                    k = 0
+            else:
+                mult, k, ladder = 1.0, 0, 0.0             # a loss resets to the base lot
+        elif engine == "double4":
             if won:
                 mult, k, ladder = 1.0, 0, 0.0
             else:
