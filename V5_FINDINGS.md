@@ -5176,4 +5176,35 @@ to its 20% ceiling and returned an identical, *negative* −8.08% return for all
 was that `flat`, whose answer was already known, came back wrong too. **When you solve for a
 parameter, include a cell whose answer you already know; if that cell is wrong, the solver is.**
 
+#### ADDENDUM — the AGGRESSIVE uncapped recover-and-gain ladder, at a $10,000 drawdown wall
+
+§3bo capped the recovery ladder at K = 3/4/6 attempts. Asked for the **uncapped** form: after a
+loss, the next trade recovers it *and* earns the intended profit, and it never gives up. The only
+thing then standing between it and the wall is the maximum lot multiple. XAUUSD champion,
+$100,000 account, **$10,000 max drawdown (floor $90,000)**, base risk 0.5% = $500/trade,
+3.4 trades/month, 295 trades ≈ 7.2 years.
+
+| max lot | biggest single-trade risk | median P&L over 7.2y | chance of −$10,000 | **flat needs, for the same P&L** | typical death |
+|---|---|---|---|---|---|
+| 5× | $2,500 | +$97,800 | 20.2% | **9.5%** | 9 mo |
+| 10× | $5,000 | **+$119,200** | **34.4%** | **14.4%** | 8 mo |
+| 20× | $10,000 | +$115,600 | 45.5% | 13.6% | 10 mo |
+| 50× | $18,300 | **−$10,000** | **54.2%** | *median path ruins* | 12 mo |
+| 200× | $18,300 | **−$10,000** | **57.3%** | *median path ruins* | 13 mo |
+| **FLAT 0.5%** | **$500** | +$36,800 | **0.20%** | — | 35 mo |
+
+**It does make more money, and it is still strictly dominated.** At a 10× cap it earns $119,200
+with a 1-in-3 chance of losing $10,000 — but **flat sizing reaches the same $119,200 with a 14.4%
+chance**. The ladder pays **2.1× to 3.4× the ruin for money a plain stake increase buys more
+cheaply**. That is Stage 1's prediction in dollars: with no serial structure in the win/loss
+sequence (z +0.88), escalation cannot be anything but expensive leverage.
+
+**Past a 50× cap the MEDIAN path ruins.** More than half of all runs hit −$10,000, which is why
+median P&L reads exactly −$10,000 — those paths are pinned at the floor. The peak single-trade
+risk reaches **$18,300 median and $66,650 at the 95th percentile**: two thirds of the account on
+one XAUUSD trade, a lot size that also has to clear margin and the broker's own volume cap.
+
+**And it fails fast.** The median ruined path dies at **month 8–13**, against flat's month 35 —
+so on a funded account the ladder is not a long-run risk, it is a first-year one.
+
 _Last updated 2026-10-16._
