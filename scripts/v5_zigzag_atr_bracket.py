@@ -61,7 +61,17 @@ TP_MULTS = (1.0, 2.0, 3.0)
 SL_MULTS = (1.0, 1.5)
 MAX_HOLD_H1 = 48
 PATH_PER_H1 = 4                  # M15 bars per H1 bar
-COST_USD = 0.448                 # live FTMO round trip, CONTROL #1
+# COST, CORRECTED 2026-10-15 (Gate A3). $0.448 is the SPREAD, not the round trip:
+# V5_FINDINGS:2207 records "$0.448 (= 1.94bp one-way on median gold $1,733)" and
+# RESEARCH-REGIMES:79 gives one-way bp = 0.75 x spread_bp. So one-way is 1.944bp and the
+# ROUND TRIP is 1.5 x spread = $0.672. This file previously subtracted $0.448 once and called
+# it a round trip, i.e. it ran at TWO-THIRDS of its own stated honest cost.
+# §3bl's verdict is UNCHANGED by the correction -- every cell was already negative GROSS, before
+# any cost at all (signed max t -0.098, Reality-Check p 0.8200), so a larger hurdle only widens
+# a failure. The fix matters going forward because a ratcheting stop turns over far more than a
+# fixed bracket, so the understatement is not harmless there.
+SPREAD_USD = 0.448
+COST_USD = SPREAD_USD * 1.5      # round trip = 2 x 0.75 x spread, CONTROL #1
 LIVE_TP_PCT, LIVE_SL_PCT = 0.006, 0.005      # the deployed fixed bracket (control cell)
 THRESHOLD = 0.60
 MIN_NONOVERLAP = 400

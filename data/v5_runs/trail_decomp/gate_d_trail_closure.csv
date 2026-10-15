@@ -1,0 +1,7 @@
+arm,trail_atr,n,ev_trail_bp,ev_hold_bp,ev_minus_hold,stop_rate,ambiguous,med_bars
+ORACLE (true pivot),1.0,3243,18.1,19.42,-1.32,1.0,0.0558,15
+DETECTOR p>=0.60,1.0,3726,-4.15,-4.54,0.39,1.0,0.04,12
+ORACLE (true pivot),2.0,3243,30.07,30.61,-0.54,0.982,0.0194,46
+DETECTOR p>=0.60,2.0,3726,-2.31,-2.07,-0.24,0.974,0.0158,40
+ORACLE (true pivot),3.0,3243,34.63,34.94,-0.31,0.869,0.0151,83
+DETECTOR p>=0.60,3.0,3726,2.22,1.65,0.57,0.845,0.0105,77

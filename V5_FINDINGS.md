@@ -4919,3 +4919,132 @@ scheduled pass — is the best of the seven arms tested. **Keep the evening gate
 which decides WHETHER to be in; do not add a rule about WHEN.**
 
 _Last updated 2026-10-13._
+
+### 3bn. The trailing stop, decomposed — the live 3.0 survives, ratcheting beats not-ratcheting, and the lookback "sweet spot" does not exist (2026-10-15, `scripts/v5_trail_decomposition.py`)
+
+Pre-registered at `data/v5_runs/trail_decomp/PREREGISTRATION.md`, **committed before the first
+fit** (b99afb0). Asked for: detect tops/bottoms from recent range, find the best **lookback
+window**, and exit with a **trailing stop** whose distance is swept.
+
+#### Gate A — three numbers computed first, and two of them bite
+
+**A3. THE COST CONVENTION WAS WRONG, REPO-WIDE IN THIS FAMILY.** `V5_FINDINGS:2207` records
+"$0.448 (= **1.94bp one-way** on median gold $1,733)" and `RESEARCH-REGIMES:79` gives one-way bp
+= 0.75 × spread_bp. So **$0.448 is the SPREAD**: one-way 1.944bp, **round trip 3.888bp = $0.672**.
+`v5_zigzag_atr_bracket.net_ret` subtracted $0.448 once and called it a round trip — **§3bl ran at
+two-thirds of its own stated honest cost.** §3bl's verdict is unchanged (every cell was already
+negative *gross*), but a ratchet turns over far more than a fixed bracket, so it is fixed here.
+
+> Also: **the same $0.448 fell from 5.75bp (2015) to 1.43bp (2026)** as gold tripled while the
+> dollar spread did not. The wall relaxed by ~4bp. Recorded to **remove an excuse, not as a
+> licence** — delivered skill on this family is 0.000, so cost was never the binding constraint.
+
+**A1. §3ay's STANDARD ERROR WAS 3.0× TOO SMALL — a CONTROL #7 violation in a filed result.**
+§3ay computed Hanley-McNeil on *all labelled bars* at 16-fold overlap. CONTROL #7 says "count
+DECIDED, non-overlapping events, not bars". Honest counts on the detector's live window:
+
+| window | horizon | non-overlapping | SE(AUC) | best-of-5 floor |
+|---|---|---|---|---|
+| §3ay's | 16 | 2,985 | **0.0105** (filed 0.0035) | +0.0122 |
+| same-day | 24 | 1,990 | 0.0129 | +0.0150 |
+| 2 days | 48 | 995 | 0.0182 | +0.0212 |
+| 5 days | 120 | 398 | 0.0288 | +0.0335 |
+| 10 days | 240 | 199 | 0.0408 | **+0.0474** |
+| 20 days | 480 | 99 | 0.0580 | **+0.0674** |
+
+This makes §3ay's own verdict *more* secure and **killed the 10- and 20-day windows before they
+were written** — their free best-of-5 noise floor exceeds any effect this repo has delivered.
+
+**A2. The exit ceiling: 1.43 / 33.29 = 4.3%.** The most any exit change can recover on the
+bottom-detector family, from §3bl's own oracle table. Pre-registered so a 1bp gain could not be
+reported as a finding.
+
+#### Gate C1 — the window question, answered descriptively. FOUR-FOR-FOUR.
+
+P(this bar sits at the window's extreme), **split by the sign of that window's own return**:
+
+| window | at HIGH, up-window | at HIGH, down-window | ratio | at LOW, down | at LOW, up | ratio |
+|---|---|---|---|---|---|---|
+| same-day | 0.2886 | 0.0140 | **20.6×** | 0.2507 | 0.0135 | 18.6× |
+| 2 days | 0.2067 | 0.0053 | 39.0× | 0.1682 | 0.0050 | 33.5× |
+| 5 days | 0.1322 | 0.0012 | 114.7× | 0.1040 | 0.0013 | 80.8× |
+| 10 days | 0.0974 | 0.0006 | 162.6× | 0.0709 | 0.0005 | 156.1× |
+| **20 days** | 0.0674 | 0.0000 | **1967.7×** | 0.0458 | 0.0002 | 290.5× |
+
+**It inverts at every window, and the inversion gets MORE extreme as the window lengthens.**
+"We are at the N-day high" is not a market state — it is a restatement of the fact that the last
+N days went up. **There is no lookback sweet spot to find, because the quantity being swept
+carries no information to begin with.** C2 cancelled by the pre-registered kill. This is the
+fourth kill for §3ay's rule, after Mon-low/Fri-high, the close-position U-shape and session
+timing.
+
+#### Gate B — the live trail parameters, finally separated
+
+The confound was **in production**: `configs/v5_xau_maven.json` ships `sl_atr: 3.0, trail_atr: 3.0`
+on magic 360571 with `trail_activation_atr` unset (defaults 1.0), and the 3.0 came from §3f, a
+sweep where `v5_multi_tf_trend.py:117-118` passed `sl_atr=trail_atr`. Three 1-D profiles,
+K=12, H4 **rebuilt from M15** (the filed H4 is spliced at 0.04 agreement from 2023-06-28),
+engine `src/v5/xau_trend.run_trades` unmodified, signal monkeypatched to `champion_signal`
+exactly as `v5_maven_champ.py:99` does live.
+
+| axis | Sharpe profile | reading |
+|---|---|---|
+| `sl_atr` 2/3/4 | 1.090 / **1.091** / 1.064 | **FLAT** — spread 0.027. A pure RISK dial: CAGR 10.8→5.4%, maxDD −20.7→−10.7% at constant Sharpe |
+| `trail_atr` 1.5/2/3/4/6 | 1.005 / 1.044 / **1.091** / 0.992 / 0.877 | peaks **at** the incumbent, smooth decay both sides; nothing beats 3.0 |
+| `activation` 0/1/2/3 | **1.131** / 1.091 / 0.918 / 0.967 | 0.0 nominally best at t **+0.92** — misses the +2.5 bar and fails both halves |
+
+**TWO QUESTIONS THIS REPO HAD NEVER ASKED, NOW ANSWERED:**
+
+> **1. Does ratcheting beat not-ratcheting on a signal that works? YES.**
+> trail **1.091** vs sltp **1.014** vs flip **0.828**. §3aa's 64 exit cells contained no ratchet
+> at all and resolved on closes, so this was never testable there. The ratchet is worth +0.077
+> Sharpe over a fixed SL/TP and +0.263 over pure signal-flip.
+>
+> **2. Long-only vs long/short on the same engine: long-only wins by 0.137 Sharpe**
+> (1.091 vs 0.954, t@matched −0.68, both halves negative −0.223 / −0.072). The short leg is now
+> refuted **on this data** rather than by citing §3an. The user's own framing was right and it is
+> the synthesis worth keeping: **a ratcheting stop on a long IS the trim** — it converts "I think
+> this is a top" into "I exit if it reverses", capturing the ~71% of the oracle prize §3am puts
+> in going flat, with no short exposure and no cost on the ~2/3 of top-calls that are wrong.
+
+**PBO over the 15-cell grid = 0.603** against a <0.30 bar, which fails every cell at grid level.
+
+#### Gate D — detector + trail. Closure, as pre-registered.
+
+| trail | ORACLE `EV − hold` | DETECTOR EV/fire | DETECTOR `EV − hold` |
+|---|---|---|---|
+| 1.0 ATR | −1.32 bp | −4.15 bp | +0.39 bp |
+| 2.0 ATR | −0.54 bp | −2.31 bp | −0.24 bp |
+| 3.0 ATR | **−0.31 bp** | +2.22 bp | +0.57 bp |
+
+**The structural question §3bl raised is now answered.** A fixed bracket cost the oracle −0.94 to
+−1.43 bp against simply holding. **A wide trail recovers most of that drag (−0.31 bp at 3 ATR)
+but never beats holding** — and it cannot, because the limit of an infinitely wide trail *is*
+holding. So the trail approaches the hold from below. The detector's +0.57 bp sits inside the
+pre-registered 4.3% ceiling, on overlapping events, in a family whose gross excess §3bl already
+measured as negative. **Closes `EXPLORATION-QUEUE` #28 and #33 with numbers.**
+
+> **Trail ambiguity re-measured, not inherited: 5.58%** against the bracket's 0.1–0.4% — **14–50×
+> higher**, because a ratcheting stop touches far more often than a fixed one. The plan required
+> re-measuring it rather than reusing §3bl's figure, and that was right.
+
+#### VERDICT — the incumbent wins
+
+**No arm clears the pre-registered gate.** Best challenger `activation=0.0` at t **+0.92** against
+a +2.5 bar, failing both halves, under a grid PBO of 0.603. **The live `sl 3.0 / trail 3.0 /
+activation 1.0` stands; no config change.** That is the useful result: the number in production
+was selected by a confounded sweep, and it has now been separated and shown to sit on a flat
+`sl_atr` surface with `trail_atr` at its own maximum.
+
+**A method note the user's framing inverted:** a *sweet spot* was what was asked for, but in this
+repo **a sharp peak is a failure signal and a plateau is what qualifies** (§3f killed H4/med
+precisely because it peaked; §3ab found parameter-cloud averaging hurts the champion). `sl_atr`
+is flat, which is the reassuring shape.
+
+**A bug found and fixed mid-run, worth recording:** the first Gate D run indexed the M15
+path-start array by the *selection position* rather than the *bar index*, pairing 2018 entry
+prices with 2015 paths — it produced `ev_hold` of **−2620 bp** with a 100% stop rate on bar 1.
+The tell was that the **hold comparator**, which cannot be influenced by the stop at all, was
+absurd. **Keep a quantity in every exit study that the exit cannot touch; it is the smoke alarm.**
+
+_Last updated 2026-10-15._

@@ -1,0 +1,75 @@
+{
+  "all_inverted": true,
+  "rows": [
+    {
+      "window": "same-day",
+      "bars": 24,
+      "pooled_at_hi": 0.1584,
+      "pooled_at_lo": 0.126,
+      "hi_on_UP": 0.2886,
+      "hi_on_DOWN": 0.014,
+      "lo_on_UP": 0.0135,
+      "lo_on_DOWN": 0.2507,
+      "ratio_hi": 20.6,
+      "ratio_lo": 18.6,
+      "inverted": true,
+      "n": 67723
+    },
+    {
+      "window": "2 days",
+      "bars": 48,
+      "pooled_at_hi": 0.1119,
+      "pooled_at_lo": 0.0818,
+      "hi_on_UP": 0.2067,
+      "hi_on_DOWN": 0.0053,
+      "lo_on_UP": 0.005,
+      "lo_on_DOWN": 0.1682,
+      "ratio_hi": 39.0,
+      "ratio_lo": 33.5,
+      "inverted": true,
+      "n": 67699
+    },
+    {
+      "window": "5 days",
+      "bars": 120,
+      "pooled_at_hi": 0.0733,
+      "pooled_at_lo": 0.0474,
+      "hi_on_UP": 0.1322,
+      "hi_on_DOWN": 0.0012,
+      "lo_on_UP": 0.0013,
+      "lo_on_DOWN": 0.104,
+      "ratio_hi": 114.7,
+      "ratio_lo": 80.8,
+      "inverted": true,
+      "n": 67627
+    },
+    {
+      "window": "10 days",
+      "bars": 240,
+      "pooled_at_hi": 0.0543,
+      "pooled_at_lo": 0.0318,
+      "hi_on_UP": 0.0974,
+      "hi_on_DOWN": 0.0006,
+      "lo_on_UP": 0.0005,
+      "lo_on_DOWN": 0.0709,
+      "ratio_hi": 162.6,
+      "ratio_lo": 156.1,
+      "inverted": true,
+      "n": 67507
+    },
+    {
+      "window": "20 days",
+      "bars": 480,
+      "pooled_at_hi": 0.0381,
+      "pooled_at_lo": 0.02,
+      "hi_on_UP": 0.0674,
+      "hi_on_DOWN": 0.0,
+      "lo_on_UP": 0.0002,
+      "lo_on_DOWN": 0.0458,
+      "ratio_hi": 1967.7,
+      "ratio_lo": 290.5,
+      "inverted": true,
+      "n": 67267
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+arm,axis,cell,incumbent,sharpe,cagr,maxdd,t_matched,half_18_21,half_22_26,both_halves,neighbours_ok,pbo,clears,cell_num
+sl_atr=2.0,sl_atr,2.0,False,1.09,10.76,-20.7,-0.01,-0.074,0.05,False,False,0.6031746031746031,False,2.0
+sl_atr=3.0,sl_atr,3.0,True,1.091,7.25,-14.0,,0.0,0.0,False,,0.6031746031746031,False,3.0
+sl_atr=4.0,sl_atr,4.0,False,1.064,5.36,-10.7,-0.44,-0.08,0.013,False,False,0.6031746031746031,False,4.0
+trail_atr=1.5,trail_atr,1.5,False,1.005,6.67,-9.7,-0.6,-0.043,-0.122,False,False,0.6031746031746031,False,1.5
+trail_atr=2.0,trail_atr,2.0,False,1.044,6.99,-12.1,-0.4,-0.176,0.04,False,False,0.6031746031746031,False,2.0
+trail_atr=3.0,trail_atr,3.0,True,1.091,7.25,-14.0,,0.0,0.0,False,,0.6031746031746031,False,3.0
+trail_atr=4.0,trail_atr,4.0,False,0.992,6.51,-14.6,-0.99,-0.189,-0.034,False,False,0.6031746031746031,False,4.0
+trail_atr=6.0,trail_atr,6.0,False,0.877,5.47,-13.5,-1.56,0.027,-0.387,False,False,0.6031746031746031,False,6.0
+trail_activation_atr=0.0,trail_activation_atr,0.0,False,1.131,7.53,-13.0,0.92,-0.002,0.073,False,False,0.6031746031746031,False,0.0
+trail_activation_atr=1.0,trail_activation_atr,1.0,True,1.091,7.25,-14.0,,0.0,0.0,False,,0.6031746031746031,False,1.0
+trail_activation_atr=2.0,trail_activation_atr,2.0,False,0.918,6.08,-15.4,-2.97,-0.168,-0.18,False,False,0.6031746031746031,False,2.0
+trail_activation_atr=3.0,trail_activation_atr,3.0,False,0.967,6.45,-12.1,-1.46,0.062,-0.259,False,False,0.6031746031746031,False,3.0
+exit=flip,exit_mode,flip,False,0.828,13.22,-24.6,-1.09,-0.023,-0.45,False,False,0.6031746031746031,False,
+exit=sltp,exit_mode,sltp,False,1.014,6.74,-14.2,-0.99,-0.07,-0.095,False,False,0.6031746031746031,False,
+S3 long/short,side,long/short,False,0.954,6.63,-17.4,-0.68,-0.223,-0.072,False,False,0.6031746031746031,False,

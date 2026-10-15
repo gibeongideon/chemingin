@@ -154,3 +154,6 @@ including the boring ones, so a future session does not re-run them.
    from +0.367 to -0.146 and flipped a verdict.
 6. **A ratio proxy is not the harm.** `forward_stamp_ratio` misses USDJPY (0.632 < 0.649) which
    still leaks at 0.317. Screen on `intrabar_leak()` = |corr(clpos[t], ret[t+1])| instead.
+
+| **28** | structural exit | **CLOSED §3bn** | a wide trail recovers most of the bracket's -1.43bp drag (to -0.31bp) but never beats holding; the limit of an infinite trail IS holding |
+| **33** | trailing stop after +0.3% | **CLOSED §3bn** | detector+trail EV-hold +0.57bp, inside the pre-registered 4.3% exit ceiling, on a family whose gross excess is already negative |
