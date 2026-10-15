@@ -1,0 +1,136 @@
+{
+  "A3": {
+    "spread_usd": 0.448,
+    "round_trip_usd": 0.672,
+    "understatement": 1.5,
+    "by_year": [
+      {
+        "year": 2015,
+        "median_px": 1168.3,
+        "spread_bp": 3.835,
+        "round_trip_bp": 5.752
+      },
+      {
+        "year": 2016,
+        "median_px": 1256.7,
+        "spread_bp": 3.565,
+        "round_trip_bp": 5.347
+      },
+      {
+        "year": 2017,
+        "median_px": 1260.6,
+        "spread_bp": 3.554,
+        "round_trip_bp": 5.331
+      },
+      {
+        "year": 2018,
+        "median_px": 1263.9,
+        "spread_bp": 3.544,
+        "round_trip_bp": 5.317
+      },
+      {
+        "year": 2019,
+        "median_px": 1405.9,
+        "spread_bp": 3.186,
+        "round_trip_bp": 4.78
+      },
+      {
+        "year": 2020,
+        "median_px": 1774.0,
+        "spread_bp": 2.525,
+        "round_trip_bp": 3.788
+      },
+      {
+        "year": 2021,
+        "median_px": 1793.8,
+        "spread_bp": 2.497,
+        "round_trip_bp": 3.746
+      },
+      {
+        "year": 2022,
+        "median_px": 1804.4,
+        "spread_bp": 2.483,
+        "round_trip_bp": 3.724
+      },
+      {
+        "year": 2023,
+        "median_px": 1945.0,
+        "spread_bp": 2.303,
+        "round_trip_bp": 3.455
+      },
+      {
+        "year": 2024,
+        "median_px": 2380.1,
+        "spread_bp": 1.882,
+        "round_trip_bp": 2.823
+      },
+      {
+        "year": 2025,
+        "median_px": 3344.6,
+        "spread_bp": 1.339,
+        "round_trip_bp": 2.009
+      },
+      {
+        "year": 2026,
+        "median_px": 4702.8,
+        "spread_bp": 0.953,
+        "round_trip_bp": 1.429
+      }
+    ]
+  },
+  "A1": [
+    {
+      "window": "same-day (24 H1 bars)",
+      "horizon_bars": 24,
+      "nonoverlap": 1990,
+      "se_auc": 0.0129,
+      "floor_K5": 0.015,
+      "floor_K12": 0.021
+    },
+    {
+      "window": "2 days (48)",
+      "horizon_bars": 48,
+      "nonoverlap": 995,
+      "se_auc": 0.0182,
+      "floor_K5": 0.0212,
+      "floor_K12": 0.0296
+    },
+    {
+      "window": "5 days (120)",
+      "horizon_bars": 120,
+      "nonoverlap": 398,
+      "se_auc": 0.0288,
+      "floor_K5": 0.0335,
+      "floor_K12": 0.0469
+    },
+    {
+      "window": "10 days (240)",
+      "horizon_bars": 240,
+      "nonoverlap": 199,
+      "se_auc": 0.0408,
+      "floor_K5": 0.0474,
+      "floor_K12": 0.0664
+    },
+    {
+      "window": "20 days (480)",
+      "horizon_bars": 480,
+      "nonoverlap": 99,
+      "se_auc": 0.058,
+      "floor_K5": 0.0674,
+      "floor_K12": 0.0945
+    },
+    {
+      "window": "\u00a73ay horizon (16)",
+      "horizon_bars": 16,
+      "nonoverlap": 2985,
+      "se_auc": 0.0105,
+      "floor_K5": 0.0122,
+      "floor_K12": 0.0171
+    }
+  ],
+  "A2": {
+    "max_recoverable_bp": 1.43,
+    "gap_bp": 33.29,
+    "ceiling_pct": 4.2955842595373985
+  }
+}
