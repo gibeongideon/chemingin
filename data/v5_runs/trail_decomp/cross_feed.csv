@@ -1,0 +1,16 @@
+arm,axis_orig,cell_orig,incumbent_orig,sharpe_orig,cagr_orig,maxdd_orig,t_matched_orig,half_18_21_orig,half_22_26_orig,both_halves_orig,axis_ftmo,cell_ftmo,incumbent_ftmo,sharpe_ftmo,cagr_ftmo,maxdd_ftmo,t_matched_ftmo,half_18_21_ftmo,half_22_26_ftmo,both_halves_ftmo,replicates
+sl_atr=2.0,sl_atr,2.0,False,1.09,10.76,-20.7,-0.01,-0.074,0.05,False,sl_atr,2.0,False,0.918,5.62,-4.8,0.33,,0.043,False,False
+sl_atr=3.0,sl_atr,3.0,True,1.091,7.25,-14.0,,0.0,0.0,False,sl_atr,3.0,True,0.875,3.58,-3.6,,,0.0,False,True
+sl_atr=4.0,sl_atr,4.0,False,1.064,5.36,-10.7,-0.44,-0.08,0.013,False,sl_atr,4.0,False,0.72,2.32,-3.0,-0.98,,-0.155,False,True
+trail_atr=1.5,trail_atr,1.5,False,1.005,6.67,-9.7,-0.6,-0.043,-0.122,False,trail_atr,1.5,False,0.76,3.14,-4.6,-0.38,,-0.115,False,True
+trail_atr=2.0,trail_atr,2.0,False,1.044,6.99,-12.1,-0.4,-0.176,0.04,False,trail_atr,2.0,False,0.812,3.42,-3.6,-0.21,,-0.063,False,True
+trail_atr=3.0,trail_atr,3.0,True,1.091,7.25,-14.0,,0.0,0.0,False,trail_atr,3.0,True,0.875,3.58,-3.6,,,0.0,False,True
+trail_atr=4.0,trail_atr,4.0,False,0.992,6.51,-14.6,-0.99,-0.189,-0.034,False,trail_atr,4.0,False,1.272,4.89,-3.8,2.18,,0.398,False,False
+trail_atr=6.0,trail_atr,6.0,False,0.877,5.47,-13.5,-1.56,0.027,-0.387,False,trail_atr,6.0,False,0.84,3.46,-4.0,-0.19,,-0.035,False,True
+trail_activation_atr=0.0,trail_activation_atr,0.0,False,1.131,7.53,-13.0,0.92,-0.002,0.073,False,trail_activation_atr,0.0,False,1.006,4.13,-3.0,0.89,,0.131,False,True
+trail_activation_atr=1.0,trail_activation_atr,1.0,True,1.091,7.25,-14.0,,0.0,0.0,False,trail_activation_atr,1.0,True,0.875,3.58,-3.6,,,0.0,False,True
+trail_activation_atr=2.0,trail_activation_atr,2.0,False,0.918,6.08,-15.4,-2.97,-0.168,-0.18,False,trail_activation_atr,2.0,False,0.915,3.63,-3.0,0.27,,0.04,False,False
+trail_activation_atr=3.0,trail_activation_atr,3.0,False,0.967,6.45,-12.1,-1.46,0.062,-0.259,False,trail_activation_atr,3.0,False,0.908,3.42,-3.0,0.18,,0.033,False,False
+exit=flip,exit_mode,flip,False,0.828,13.22,-24.6,-1.09,-0.023,-0.45,False,exit_mode,flip,False,0.061,0.15,-12.6,-1.53,,-0.814,False,True
+exit=sltp,exit_mode,sltp,False,1.014,6.74,-14.2,-0.99,-0.07,-0.095,False,exit_mode,sltp,False,0.718,2.85,-3.6,-0.89,,-0.157,False,True
+S3 long/short,side,long/short,False,0.954,6.63,-17.4,-0.68,-0.223,-0.072,False,side,long/short,False,0.55,2.74,-9.5,-0.57,,-0.324,False,True

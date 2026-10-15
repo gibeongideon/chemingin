@@ -5047,4 +5047,55 @@ prices with 2015 paths — it produced `ev_hold` of **−2620 bp** with a 100% s
 The tell was that the **hold comparator**, which cannot be influenced by the stop at all, was
 absurd. **Keep a quantity in every exit study that the exit cannot touch; it is the smoke alarm.**
 
+#### ADDENDUM (same day) — latest data added, and it had to be added as a SECOND feed
+
+Asked to refresh and re-run. **The refresh could not be done the obvious way.** Pulling 50,000
+M15 bars from the live broker (FTMO-Demo 1514877189, bridge 18814) gives 2024-09-03 → 2026-10-15,
+a 39,398-bar overlap with the filed series. Measured at the `v5_feed_audit` convention:
+
+| year | n | agreement @2e-5 | median \|Δ\| | max \|Δ\| |
+|---|---|---|---|---|
+| 2024 | 7,195 | **0.0076** | $3.66 | $50.23 |
+| 2025 | 22,209 | **0.0069** | $6.20 | $154.39 |
+| 2026 | 9,994 | **0.0041** | **$13.33** | $405.35 |
+
+**It is a different series.** The 2026 median of $13.33 matches §3ba's H4 splice figure ($13.61)
+— the same two-broker divergence. `XAUUSD` **H1+M15 is the last provenance-clean pair in the
+repo** (agreement 1.00 in every year 2015-2026), and appending would have destroyed it in exactly
+the way §3ba faked two headline results. So the new data is filed as
+**`data/XAUUSD_M15_ftmo.csv`** with a `.provenance.json` sidecar stating why it must never be
+merged, plus an FTMO-native H4 rebuilt from its own M15.
+
+That turns the refresh into something more useful than a longer sample: **a second, independent
+single-broker feed to re-run Gate B against.** It spans 2.1 years, so SE(Sharpe) ≈ 0.85 — it can
+**contradict** a conclusion but cannot confirm one.
+
+**11 of 15 arms replicate in sign. The two durable conclusions hold on both feeds:**
+
+| conclusion | original (2018-2026) | FTMO (2024-09+) | |
+|---|---|---|---|
+| ratchet beats not-ratcheting | 1.091 vs sltp 1.014 / flip 0.828 | 0.875 vs **0.718 / 0.061** | **REPLICATES** |
+| long-only beats long/short | 1.091 vs 0.954 | 0.875 vs **0.550** | **REPLICATES** |
+| activation 0.0 nominally best, not significant | +1.131, t +0.92 | +1.006, t +0.89 | **REPLICATES** |
+
+**And one contradiction, which is the most useful thing the second feed produced:**
+
+| `trail_atr` | 1.5 | 2.0 | **3.0** | 4.0 | 6.0 |
+|---|---|---|---|---|---|
+| original | 1.005 | 1.044 | **1.091** ← peak | 0.992 (t −0.99) | 0.877 |
+| FTMO | 0.760 | 0.812 | 0.875 | **1.272** ← peak (t +2.18) | 0.840 |
+
+> **THE PEAK MOVED.** On the original feed 4.0 ATR is *worse* than 3.0 at t −0.99; on the FTMO
+> feed 4.0 is the best cell at t +2.18. **A peak that relocates between feeds is not a sweet
+> spot — it is where the noise happened to land in that sample.** Had Gate B been run on the
+> newer feed alone, the pre-registered shape test would still have refused it (t +2.18 < +2.5,
+> one half only, PBO 0.405), but the argmax would have pointed somewhere else entirely.
+
+This is the strongest available evidence for the round's own framing: **chase the plateau, not
+the peak.** `sl_atr` is flat on the original feed and stays the least-contradicted axis here; the
+`trail_atr` maximum is not a stable object.
+
+**No arm clears on either feed. The live `sl 3.0 / trail 3.0 / activation 1.0` stands**, now
+tested against two independent broker feeds rather than one.
+
 _Last updated 2026-10-15._

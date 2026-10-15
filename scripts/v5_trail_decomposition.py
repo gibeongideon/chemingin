@@ -43,18 +43,28 @@ INCUMBENT = dict(sl_atr=3.0, trail_atr=3.0, trail_activation_atr=1.0)
 EVAL_START = "2018-01-01"
 
 
-def clean_h4() -> pd.DataFrame:
+def clean_h4(feed: str = "original") -> pd.DataFrame:
     """H4 rebuilt from M15. NEVER data/XAUUSD_H4_long.csv -- §3bb measured its agreement with
     M15 at 0.04 from 2023-06-28 (FTMO quotes spliced in by refresh_xau_h4.py)."""
-    m15 = pd.read_csv(ROOT / "data/XAUUSD_M15_long.csv", parse_dates=["time"],
-                      index_col="time").sort_index()
+    if feed == "ftmo":
+        # The SECOND, independent single-broker feed. It is 2.1 years, so SE(Sharpe) ~ 0.85
+        # (Lo 2002): it can CONTRADICT a conclusion but cannot confirm one. Never mixed with
+        # the original series -- measured agreement over a 39,398-bar overlap is 0.41-0.76%.
+        m15 = pd.read_csv(ROOT / "data/XAUUSD_M15_ftmo.csv", parse_dates=["time"],
+                          index_col="time").sort_index()
+    else:
+        m15 = pd.read_csv(ROOT / "data/XAUUSD_M15_long.csv", parse_dates=["time"],
+                          index_col="time").sort_index()
     m15 = m15[~m15.index.duplicated(keep="last")]
     h4 = mtf_frames.aggregate(m15, "H4")
-    filed = pd.read_csv(ROOT / "data/XAUUSD_H4_long.csv", parse_dates=["time"],
-                        index_col="time").sort_index()
-    v = mtf_frames.verify_against_filed(h4, filed, clean_until=2022, tol=0.10)
-    print(f"  H4 rebuilt from M15: {len(h4):,} bars, {h4.index[0].date()}..{h4.index[-1].date()}")
-    print(f"  verify_against_filed (pre-2023): n={v.get('n')} median|d|={v.get('median_abs', 0):.4f}")
+    print(f"  [{feed}] H4 rebuilt from its OWN M15: {len(h4):,} bars, "
+          f"{h4.index[0].date()}..{h4.index[-1].date()}")
+    if feed == "original":
+        filed = pd.read_csv(ROOT / "data/XAUUSD_H4_long.csv", parse_dates=["time"],
+                            index_col="time").sort_index()
+        v = mtf_frames.verify_against_filed(h4, filed, clean_until=2022, tol=0.10)
+        print(f"  verify_against_filed (pre-2023): n={v.get('n')} "
+              f"median|d|={v.get('median_abs', 0):.4f}")
     return h4[["open", "high", "low", "close", "spread"]].dropna()
 
 
@@ -90,12 +100,17 @@ def stats(r: pd.Series, base: pd.Series, bdays) -> dict:
 
 
 def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--feed", choices=("original", "ftmo"), default="original")
+    args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     print("=" * 112)
     print("GATE B — trailing-stop decomposition on the CHAMPION (the live Maven configuration)")
     print("=" * 112)
-    h4 = clean_h4()
-    h4 = h4[h4.index >= EVAL_START]
+    h4 = clean_h4(args.feed)
+    if args.feed == "original":
+        h4 = h4[h4.index >= EVAL_START]
 
     base = run(h4, {})
     bdays = pd.bdate_range(base.index[0], base.index[-1])
@@ -144,11 +159,11 @@ def main() -> int:
     pbo = pbo_cscv(M, n_partitions=10)
     print(f"\n  PBO over the {M.shape[1]}-cell grid: {pbo.pbo:.3f}  (bar < 0.30)")
 
-    tb.to_csv(OUT / "gate_b_profiles.csv", index=False)
-    pd.DataFrame({k: v for k, v in series.items()}).to_csv(OUT / "gate_b_daily.csv")
+    tb.to_csv(OUT / f"gate_b_profiles_{args.feed}.csv", index=False)
+    pd.DataFrame({k: v for k, v in series.items()}).to_csv(OUT / f"gate_b_daily_{args.feed}.csv")
     json.dump(dict(pbo=float(pbo.pbo), n_cells=int(M.shape[1])),
-              open(OUT / "gate_b_pbo.json", "w"), indent=2)
-    print(f"\n  wrote {OUT}/gate_b_profiles.csv")
+              open(OUT / f"gate_b_pbo_{args.feed}.json", "w"), indent=2)
+    print(f"\n  wrote {OUT}/gate_b_profiles_{args.feed}.csv")
     return 0
 
 

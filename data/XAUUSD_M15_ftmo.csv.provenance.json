@@ -1,0 +1,12 @@
+{
+  "file": "XAUUSD_M15_ftmo.csv",
+  "source": "FTMO-Demo 1514877189 via bridge 18814, copy_rates_from_pos(M15, 0, 50000)",
+  "fetched_utc": "2026-10-15T12:09:08.568493+00:00",
+  "rows": 50000,
+  "first": "2024-09-03 22:30:00",
+  "last": "2026-10-15 15:00:00",
+  "sha256_16": "c8f63a4c81a97901",
+  "single_broker": true,
+  "WHY_SEPARATE": "This is NOT appended to XAUUSD_M15_long.csv. Measured against the filed series over a 39,398-bar overlap (2024-09-03..2026-06-15), FTMO agrees at only 0.41-0.76% at a 2e-5 relative tolerance, with median |delta| .66 (2024) -> .20 (2025) -> 3.33 (2026) and a max of 05.35. That is a DIFFERENT SERIES. The 2026 median matches V5_FINDINGS 3ba's H4 splice figure (3.61) -- the same two-broker divergence. XAUUSD H1+M15 is the last provenance-clean pair in the repo (gate0.json: agreement 1.00 in every year 2015-2026), and appending would destroy it, which is precisely how 3ba faked two headline results.",
+  "HOW_TO_USE": "Use as a SECOND, INDEPENDENT single-broker feed for cross-feed consistency checks. It spans 2.1 years, so SE(Sharpe) is about 0.85 (Lo 2002) -- it can CONTRADICT a conclusion but it cannot confirm one. Never mix it with XAUUSD_M15_long.csv in a single frame."
+}
