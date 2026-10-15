@@ -1,0 +1,35 @@
+{
+  "deployed_on": "2026-10-16",
+  "account": "FTMO 2-Step trial, login 1514962745, FTMO-Demo, $100k USD",
+  "symbol": "XAUUSD",
+  "timeframe": "H4",
+  "port": 18814,
+  "exit_mode": "trail",
+  "flip_mode": "confidence",
+  "once_per_day_guard": true,
+  "bots": {
+    "champ": {
+      "run_id": "v5-xau-ftmo-champ",
+      "magic": 360592,
+      "signal": "champion_signal",
+      "news_filter": {
+        "enabled": false,
+        "close_in_profit": true
+      },
+      "expected_sharpe": 1.091,
+      "expected_maxdd_pct": -14.0,
+      "params": {
+        "sl_atr": 3.0,
+        "trail_atr": 3.0,
+        "trail_activation_atr": 1.0,
+        "conf_risk_scale": {
+          "low": 0.5,
+          "med": 1.0,
+          "high": 1.5
+        },
+        "risk_frac": 0.005
+      }
+    }
+  },
+  "_note": "THE 'FLAT 0.5%' ROW OF V5_FINDINGS 3bo, DEPLOYED. Single-asset XAUUSD champion, flat sizing, 0.5% risk per trade -- no lot escalation of any kind, because 3bo measured the champion's win/loss sign autocorrelation at +0.046 (z +0.88 vs a shuffled null), i.e. no serial structure, so every progression is pure leverage. Measured on 295 trades 2019-2026: +36.8% median over 7.2 years, 0.20% probability of a $10,000 drawdown, ~3.4 trades/month, median hold 5 days, and the median ruined path does not arrive until month 35. trail_activation_atr is set EXPLICITLY here rather than left to default -- 3bn separated it from sl_atr/trail_atr for the first time and found the sl_atr surface flat (1.090/1.091/1.064 at 2/3/4) with trail_atr peaking at 3.0; activation 0.0 scored nominally higher (1.131, t +0.92) but missed the +2.5 bar, failed both halves, and sat under a grid PBO of 0.603, so the incumbent stands. SCOPE: this is a SINGLE-ASSET book. The 4-sleeve version (XAU+BTC+NDX+BRENT, magic 360591, configs/v5_ftmo_gold_tilted.json) historically passes FTMO at ~80% against ~61% for XAU alone, and BRENT alone took daily-limit breaches from 13.9% to 0%. Running this instead was the user's explicit choice on 2026-10-16. book-ftmo.timer MUST stay disabled while this runs, or both books will hold XAUUSD and the combined gold exposure is what neither was sized for."
+}

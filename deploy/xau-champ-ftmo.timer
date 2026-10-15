@@ -1,0 +1,14 @@
+# Hourly reconcile. The signal is H4, but the engine reconciles to a target state and is
+# idempotent, so an hourly pass costs nothing and catches fills, stop moves and manual closes
+# within the hour. :07 is chosen to avoid the other 18814 timers (zigzag :04, notify :10,
+# advisor :03/5, book-ftmo :40).
+[Unit]
+Description=Hourly XAUUSD champion reconcile on FTMO
+
+[Timer]
+OnCalendar=*-*-* *:07:00
+Persistent=false
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

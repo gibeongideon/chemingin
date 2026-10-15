@@ -1,0 +1,9 @@
+[Unit]
+Description=XAUUSD champion (flat 0.5%) on the FTMO trial — magic 360592, bridge 18814
+After=mt5-terminal-ftmo.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-champ-ftmo.sh
+TimeoutStartSec=900

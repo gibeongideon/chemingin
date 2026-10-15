@@ -23,6 +23,11 @@ this magic today (UTC, matching Maven's own reset boundary), a fresh
 entry per UTC day; everything after that is the user's call.
 
     python scripts/v5_maven_champ.py --live --execute --save-data
+    python scripts/v5_maven_champ.py --config configs/v5_xau_ftmo_champ.json --port 18814 ...
+
+GENERALISED 2026-10-16: the port and the once-per-day guard are now config/CLI driven so the
+same executor can serve a second account (FTMO) without a forked copy. Defaults are unchanged,
+so the Maven invocation above behaves exactly as before.
 """
 from __future__ import annotations
 
@@ -77,6 +82,8 @@ def main() -> None:
     ap.add_argument("--force-min-lot", action="store_true")
     ap.add_argument("--save-data", action="store_true")
     ap.add_argument("--journal", default=str(ROOT / "data" / "live_trades.db"))
+    ap.add_argument("--port", type=int, default=None,
+                    help="bridge port; defaults to the config's `port`, else Maven's 18812")
     args = ap.parse_args()
 
     cfg = json.loads(Path(args.config).read_text())
@@ -85,7 +92,9 @@ def main() -> None:
     dual.demo.RUN_ID = run_id
     journal = TradeJournal(args.journal)
 
-    conn = MT5Connector(port=MAVEN_PORT)
+    port = args.port or int(cfg.get("port", MAVEN_PORT))
+    conn = MT5Connector(port=port)
+    print(f"  bridge port {port}  config {Path(args.config).name}  magic {magic}")
     conn.connect()
     try:
         acct, is_demo = dual.require_live(conn, args.live)
@@ -122,8 +131,14 @@ def main() -> None:
                                   conn.get_tick(symbol), conn.symbol_info(symbol),
                                   acct, bot_cfg, args, conn, symbol, atr_last)
 
+        # The once-per-day guard exists for MAVEN's 0%-daily-loss rule, where the user manages
+        # exits by hand and a plain reconcile would re-open what they just closed. It is kept
+        # ON by default (so Maven is untouched) and is config-driven so another broker can opt
+        # out. On FTMO it is deliberately kept ON too: the user has asked more than once that a
+        # manual close not be immediately undone, and at ~3.4 trades/month the cost of refusing
+        # a same-day re-entry is negligible.
         opens_before = [a for a in actions if a[0] == "open_market"]
-        if opens_before:
+        if opens_before and cfg.get("once_per_day_guard", True):
             allowed = once_per_day_guard(conn, magic)
             if not allowed:
                 actions = [a for a in actions if a[0] != "open_market"]
