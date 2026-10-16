@@ -1,0 +1,8 @@
+[Unit]
+Description=ZigZag bottom detector + 3xATR trailing stop on FTMO — magic 360593
+After=mt5-terminal-ftmo.service
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/zigzag-trail-ftmo.sh
+TimeoutStartSec=900

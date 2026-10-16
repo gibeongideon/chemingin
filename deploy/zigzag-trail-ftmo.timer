@@ -1,0 +1,11 @@
+# Hourly at :14 — after the H1 bar has closed and printed, and clear of the other 18814 units
+# (zigzag-obs :04, champ :07, zigzag-notify :10, advisor :03/5). The trailing stop is ratcheted
+# on every pass, so the cadence IS the trail's resolution.
+[Unit]
+Description=Hourly zigzag-trail reconcile on FTMO
+[Timer]
+OnCalendar=*-*-* *:14:00
+Persistent=false
+AccuracySec=30s
+[Install]
+WantedBy=timers.target

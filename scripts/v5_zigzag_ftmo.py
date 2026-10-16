@@ -108,14 +108,25 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--execute", action="store_true")
+    ap.add_argument("--config", default=None,
+
+                    help="config JSON; defaults to the module CONFIG_FILE")
     ap.add_argument("--port", type=int, default=None)
     args = ap.parse_args()
 
-    cfg = json.loads(CONFIG.read_text())
+    cfg = json.loads(Path(args.config).read_text() if args.config else CONFIG.read_text())
     port = args.port or cfg["port"]
     symbol, magic = cfg["symbol"], cfg["magic"]
     thr, tp_pct, sl_pct = cfg["threshold"], cfg["tp_pct"], cfg["sl_pct"]
     max_hold, risk_frac = cfg["max_hold_bars"], cfg["risk_frac"]
+    # EXIT MODE. "pct_bracket" is the original fixed +0.60%/-0.50% structure. "atr_trail" is the
+    # structure V5_FINDINGS 3ay named as the one open actionable item ("re-derive in ATR, not
+    # percent") and 3bo measured as the only non-negative cell on this detector: at a 3.0 ATR
+    # trail, EV/fire is +2.22bp net against -4.15bp at 1.0 ATR. It is also the only exit that
+    # does not TRUNCATE a winner -- 3bl found a fixed bracket costs the ORACLE itself -0.94 to
+    # -1.43bp against simply holding, because the barriers cut the moves that pay for the losers.
+    exit_mode = cfg.get("exit_mode", "pct_bracket")
+    trail_atr = float(cfg.get("trail_atr", 3.0))
 
     from mt5linux import MetaTrader5
     mt5 = MetaTrader5(host="localhost", port=port)
@@ -146,14 +157,32 @@ def main() -> None:
 
     # PROSPECTIVE order — computed every run, fired or not, so the alert can always show
     # the pair and the exact levels you would place if the threshold were met.
+    # ATR of COMPLETED H1 bars (Wilder), the frame the trade is HELD on -- 3bl's method rule:
+    # scale a stop against the ATR of the timeframe the trade is held on, never a coarser one.
+    _pc = df["close"].shift(1)
+    _tr = pd.concat([df["high"] - df["low"], (df["high"] - _pc).abs(),
+                     (df["low"] - _pc).abs()], axis=1).max(axis=1)
+    atr_h1 = float(_tr.ewm(alpha=1 / 14, adjust=False).mean().iloc[-1])
+    print(f"ATR(14) H1 = {atr_h1:.2f}  ({100*atr_h1/ask:.3f}% of price); "
+          f"exit_mode={exit_mode}" + (f" trail {trail_atr}xATR = {trail_atr*atr_h1:.2f}"
+                                      if exit_mode == "atr_trail" else ""))
+
     risk_usd_p = ai.equity * risk_frac
-    lots_p = risk_usd_p / (sl_pct * ask * contract)
+    if exit_mode == "atr_trail":
+        stop_dist_p = trail_atr * atr_h1
+        lots_p = risk_usd_p / (stop_dist_p * contract)
+    else:
+        lots_p = risk_usd_p / (sl_pct * ask * contract)
     step_p = info.volume_step or 0.01
     lots_p = max(info.volume_min, round(lots_p / step_p) * step_p)
     prospective = dict(symbol=symbol, price=round(float(ask), info.digits),
                        entry=round(float(ask), info.digits),
-                       sl=round(ask * (1 - sl_pct), info.digits),
-                       tp=round(ask * (1 + tp_pct), info.digits),
+                       sl=round(ask - trail_atr * atr_h1, info.digits) if exit_mode == "atr_trail"
+                          else round(ask * (1 - sl_pct), info.digits),
+                       # NO take-profit in trail mode: a TP is exactly the truncation the wide
+                       # trail exists to avoid.
+                       tp=0.0 if exit_mode == "atr_trail"
+                          else round(ask * (1 + tp_pct), info.digits),
                        lots=round(lots_p, 2),
                        sl_pct=sl_pct, tp_pct=tp_pct, max_hold=max_hold)
     print(f"prospective: BUY {prospective['lots']} {symbol} @ {prospective['entry']}  "
@@ -162,6 +191,29 @@ def main() -> None:
     held = [p for p in (mt5.positions_get(symbol=symbol) or []) if p.magic == magic]
     print(f"open under magic {magic}: {len(held)}")
     actions = []
+
+    # ---- 0. RATCHET the trailing stop (atr_trail mode only) ----
+    # Peak is taken from COMPLETED H1 bars at or after the entry, never before it: seeding the
+    # peak from a pre-entry bar produced phantom instant trail activation once
+    # (src/v5/xau_m15_exec.py:227-229 and its permanent regression test). The stop is raised
+    # ONE-WAY only, and it lives server-side so the broker enforces it intrabar -- this process
+    # only ever moves it up between passes.
+    if exit_mode == "atr_trail":
+        for p_ in held:
+            entry_t = pd.to_datetime(p_.time, unit="s", utc=True).tz_localize(None)
+            since = df[df.index >= entry_t]
+            peak = float(max(since["high"].max() if len(since) else p_.price_open,
+                             float(p_.price_open), float(bid)))
+            new_sl = round(peak - trail_atr * atr_h1, info.digits)
+            if new_sl > float(p_.sl) + 1e-9:
+                actions.append(("MODIFY", p_.ticket, p_.volume,
+                                f"trail {trail_atr}xATR: peak {peak:.2f} -> SL "
+                                f"{float(p_.sl):.2f} -> {new_sl:.2f}",
+                                dict(entry=float(p_.price_open), sl=new_sl, tp=None,
+                                     close_by=None, age_h=None)))
+            else:
+                print(f"  ticket {p_.ticket}: peak {peak:.2f}, SL {float(p_.sl):.2f} "
+                      f"already at or above the trail ({new_sl:.2f}) — no change")
 
     # ---- 1. max-hold exits (the only exit this process is responsible for) ----
     now = datetime.now(timezone.utc).timestamp()
@@ -195,8 +247,8 @@ def main() -> None:
     if not actions:
         print("  ACTION: none")
     for kind, ticket, vol, why, px in actions:
-        extra = (f" @ {px['entry']}  SL {px['sl']}  TP {px['tp']}"
-                 if kind == "BUY" else "")
+        extra = (f" @ {px['entry']}  SL {px['sl']}  TP {px['tp']}" if kind == "BUY"
+                 else (f"  SL -> {px['sl']}" if kind == "MODIFY" else ""))
         print(f"  ACTION: {kind} {vol} lots{extra}  ({why})")
 
     sent = []
@@ -206,6 +258,16 @@ def main() -> None:
                   "This harness is demo-only by design. **")
         else:
             for kind, ticket, vol, why, px in actions:
+                if kind == "MODIFY":
+                    # Raise the server-side stop. TRADE_ACTION_SLTP only -- it never touches
+                    # volume, so a ratchet can never accidentally close or resize a position.
+                    req = dict(action=mt5.TRADE_ACTION_SLTP, symbol=symbol,
+                               position=ticket, sl=px["sl"], tp=0.0)
+                    r = mt5.order_send(req)
+                    rc = getattr(r, "retcode", r)
+                    print(f"    SL RAISED on #{ticket} -> {px['sl']}: retcode={rc}")
+                    sent.append((kind, ticket, vol, rc))
+                    continue
                 if kind == "CLOSE":
                     pos = next((p for p in held if p.ticket == ticket), None)
                     req = dict(action=mt5.TRADE_ACTION_DEAL, symbol=symbol, volume=vol,
@@ -214,8 +276,11 @@ def main() -> None:
                                magic=magic, comment=cfg["run_id"][:31],
                                type_filling=mt5.ORDER_FILLING_IOC)
                 else:
-                    sl = round(ask * (1 - sl_pct), info.digits)
-                    tp = round(ask * (1 + tp_pct), info.digits)
+                    if exit_mode == "atr_trail":
+                        sl, tp = round(ask - trail_atr * atr_h1, info.digits), 0.0
+                    else:
+                        sl = round(ask * (1 - sl_pct), info.digits)
+                        tp = round(ask * (1 + tp_pct), info.digits)
                     req = dict(action=mt5.TRADE_ACTION_DEAL, symbol=symbol, volume=vol,
                                type=mt5.ORDER_TYPE_BUY, price=ask, sl=sl, tp=tp,
                                magic=magic, comment=cfg["run_id"][:31],
@@ -236,8 +301,14 @@ def main() -> None:
     except Exception:
         held_now = held
 
-    STATE.parent.mkdir(parents=True, exist_ok=True)
-    STATE.write_text(json.dumps(dict(
+    # Each config gets its OWN state file. The notifiers read
+    # data/v5_runs/zigzag_ftmo_state.json; a second harness writing the same path would feed
+    # them a mixture of two accounts' states and silently corrupt the dedupe cursor.
+    state_path = ROOT / cfg.get("state_file", STATE.name)
+    if not state_path.is_absolute():
+        state_path = ROOT / "data" / "v5_runs" / cfg.get("state_file", STATE.name)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(dict(
         computed_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         login=ai.login, server=ai.server, equity=float(ai.equity), symbol=symbol,
         bars=len(df), last_bar=st.asof, stale_hours=st.stale_hours,
@@ -250,7 +321,7 @@ def main() -> None:
         sent=sent, executed=bool(args.live and args.execute and is_demo),
         warning="NEGATIVE EXPECTANCY — walk-forward SR -0.76, 0/8 years, DSR 0.000 (V5_FINDINGS 3x)"
     ), indent=2))
-    print(f"\nstate -> {STATE.relative_to(ROOT)}")
+    print(f"\nstate -> {state_path.relative_to(ROOT)}")
     mt5.shutdown()
 
 
