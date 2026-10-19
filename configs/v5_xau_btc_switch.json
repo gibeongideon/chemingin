@@ -1,0 +1,98 @@
+{
+  "created_on": "2026-10-19",
+  "purpose": "XAU + BTC, 50/50 equal class risk, on SWITCH MARKETS — the venue V5_FINDINGS 3bs measured as the cheapest for this book",
+  "firm": "Switch Markets",
+  "model": "ftmo",
+  "_model_note": "`model` is kept at \"ftmo\" ON PURPOSE and it does NOT mean this is a prop account. In v5_basket_challenge.target_leverage the model name only selects the SIZING dial; the firm rules all come from `guards` below, which this config overrides wholesale. Keeping the same dial is what makes the Switch run directly comparable to the FTMO run of the same book that is still live on magic 360594 — venue is the only variable. Do not 'fix' this to a different model without re-reading the guards block.",
+  "vol": 0.09,
+  "_vol_note": "IDENTICAL to configs/v5_xau_btc_ftmo.json. The point of this deployment is to vary the BROKER and nothing else, so the dial is held fixed even though a broker account has no rule forcing 0.09. Changing the dial and the venue in the same step would confound the only comparison this account can make.",
+  "magic": 360595,
+  "run_id": "v5-xau-btc-switch",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo)",
+  "reset_tz": "UTC+3",
+  "_reset_tz_note": "Measured 2026-10-19: SwitchMarkets-Live stamps ticks at UTC+3, same as FTMO-Demo. FTMO's config uses Europe/Prague because FTMO's RULE resets at 00:00 CE(S)T; here there is no firm rule, so the daily anchor follows the platform's own day boundary instead.",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": [
+      "XAUCHAMP"
+    ],
+    "crypto": [
+      "BTC"
+    ]
+  },
+  "_buffer_note": "no-trade band: skip a symbol whose target vs held leverage differs by < buffer x its own target (cuts churn).",
+  "symbols": {
+    "_note": "engine symbol -> Switch Markets broker name. EVERY Switch symbol carries an `s` suffix. VERIFIED LIVE on 40080430 2026-10-19: both resolve, both trade_mode 4 (FULL), both filling_mode 2 (IOC ONLY — MT5Connector._fill_type reads this bitmask per symbol at send time, so no hardcoded FOK can reach this broker). contract_size/price read live at execute time.",
+    "XAUCHAMP": {
+      "fp_symbol": "XAUUSDs",
+      "class": "xau",
+      "tf": "H4",
+      "_broker": "Switch contract 100oz, vmin 0.01, vmax 35.0, vstep 0.01, digits 2, min-lot notional ~$4,165 — contract size IDENTICAL to FTMO's XAUUSD, so the book sizes the same here"
+    },
+    "BTC": {
+      "fp_symbol": "BTCUSDs",
+      "class": "crypto",
+      "tf": "D1",
+      "_broker": "Switch contract 1.0 BTC/lot, vmin 0.01, vmax 10.0, vstep 0.01, min-lot notional ~$825 — contract size IDENTICAL to FTMO's BTCUSD"
+    }
+  },
+  "guards": {
+    "daily_guard_frac": 0.10,
+    "overall_halt_frac": 0.20,
+    "phase_targets": {
+      "1": 99.0,
+      "2": 99.0
+    },
+    "_note": "*** THESE ARE DELIBERATELY NOT FTMO'S NUMBERS, AND THE REASON MATTERS. ***\nSwitch Markets is a BROKER, not a prop firm: there is no daily loss limit, no max overall loss and no phase to pass. Carrying the FTMO guards across unchanged would have been actively harmful on all three axes, so each was re-derived for an account with no external rule:\n\n  phase_targets 0.10/0.05 -> 99.0/99.0 (EFFECTIVELY OFF). This is the dangerous one. On FTMO, reaching +10% MEANS you passed phase 1 and SHOULD stop. challenge_guards.decide returns `realize_target` at +10% equity and then latches `phase_complete` on realised balance -- and `complete` is STICKY: ensure FLAT, no entries, FOREVER. On a broker account that would have silently retired the book after its first good run and never restarted it. 99.0 needs a 9,900% gain, so it can never fire.\n\n  overall_halt_frac 0.08 -> 0.20. On FTMO the 8% halt exists to stay inside FTMO's OWN 10% max-loss line, so halting is correct there. Here it would be strictly destructive: this book's measured path drawdown is -12.5% (3bs), so an 8% halt sits INSIDE the strategy's ordinary operating range and would permanently kill it mid-drawdown, locking in the loss and forfeiting the recovery that the backtest says follows. 0.20 clears the measured -12.5% with margin while still acting as a genuine circuit breaker against something structurally wrong (runaway sizing, bad contract size, broker glitch). `halted` is STICKY -- hitting it needs a manual state-file reset, which is the intent.\n\n  daily_guard_frac 0.035 -> 0.10. FTMO's 3.5% daily flatten is an artifact of FTMO's 5% daily rule. Flattening this book on any 3.5% day would be an UNMEASURED overlay on a freshly measured book, and 3d/overnight-ban already measured what forced flattening costs: 0.27 Sharpe and 13pp MORE drawdown, via turnover rather than missed gaps. 0.10 keeps a backstop without turning one into a strategy change.\n\nTo restore prop-firm behaviour, copy the guards block from configs/v5_xau_btc_ftmo.json verbatim."
+  },
+  "min_trading_days": 0,
+  "_min_trading_days_note": "0 because there is no challenge to satisfy. FTMO's 4 is one of its trading objectives.",
+  "news_filter": {
+    "enabled": true,
+    "currencies": [
+      "USD"
+    ],
+    "impact": "High",
+    "before_min": 30,
+    "after_min": 30,
+    "major_before_min": 60,
+    "major_after_min": 45,
+    "close_in_profit": true,
+    "refresh_minutes": 60,
+    "cache_file": "data/news_cache.json"
+  },
+  "stop_loss_pct_per_position": 0.03,
+  "_stop_loss_note": "Kept at 3% per position, as on FTMO. Measured 2018-2026 it sits 2.3-4.2x DAILY ATR away at the tightest historical sizes and was NEVER hit in 8+ years, so it is harmless insurance rather than an exit rule. Switch reports trade_stops_level 0 on both symbols, so there is no broker-side minimum distance to collide with. Set to 0 to disable -- the exec then CLEARS existing broker-side stops on magic-matched tickets rather than merely stopping renewal.",
+  "class_weights": {
+    "xau": 0.5,
+    "crypto": 0.5
+  },
+  "port": 18815,
+  "_port_note": "Bridge 18815 = Wine prefix ~/.mt5d, display :102. The host runs four terminals (18812 Maven, 18813 cent, 18814 FTMO, 18815 Switch) and MT5Connector defaults to Maven, so the port is mandatory, not optional.",
+  "_carry_note": "MEASURED LIVE ON THIS ACCOUNT 2026-10-19 and this is the whole reason the book is here. XAUUSDs swap_mode 1 (POINTS) swap_long -65.07 = -5.70%/yr; BTCUSDs swap_mode 5 (INTEREST_CURRENT) swap_long -15.00 = -15.0%/yr. Against FTMO's -6.47%/yr gold and -30.0%/yr BTC. V5_FINDINGS 3bs priced both brokers' spread AND carry through the same engine: FTMO Sharpe +1.172 / CAGR +10.5% / maxDD -13.4% vs SWITCH +1.286 / +11.6% / -12.5%. Switch wins DESPITE a 37x worse BTC spread ($36.82 vs $1.00) because the BTC sleeve turns over only 5.8x/yr -- spread is charged on what you TRADE, carry on what you HOLD, and the carry saving (~150bp/yr) beats the spread penalty (~39bp/yr) by about 4x. NOTE both swaps are charged on LONGS; gold's swap_short is POSITIVE (+34.08) but this book is long-only in gold by construction (kill-the-shorts).",
+  "_data_note": "The engine reads LOCAL CSVs, not the broker feed: data/GOLD_D1_long.csv + data/BTC_D1_long.csv (Yahoo, refresh_d1_panel.py) and data/XAUUSD_H4_long.csv (MT5, refresh_xau_h4.py). *** THE H4 FILE IS REFRESHED FROM FTMO (18814), NOT FROM SWITCH, AND THAT IS DELIBERATE. *** Pointing refresh_xau_h4.py at XAUUSDs would append a THIRD broker's quotes to a file that already carries an MT5/FTMO splice from 2023-06-28 -- the exact failure recorded in 'multi-broker dataset = leak', which faked two separate results and is invisible to every timestamp control. So: SIGNAL comes from the FTMO feed, EXECUTION happens at Switch. That also makes the two live books trade the identical forecast, which is what isolates the venue. IF FTMO IS EVER DECOMMISSIONED the refresh must be re-pointed to a SEPARATE Switch-native file (refresh_xau_h4.py --symbol XAUUSDs --csv data/XAUUSDs_H4_switch.csv) and NEVER appended to XAUUSD_H4_long.csv.",
+  "session": {
+    "_note": "Evening no-increase gate OFF, matching the FTMO deployment of this same book. It was measured on the 4-sleeve book, not this 2-sleeve one, and BTC trades 24/7 so a nightly block is a materially different constraint for the crypto sleeve. Set disabled=false to restore.",
+    "no_increase_from": [
+      17,
+      0
+    ],
+    "no_increase_until": [
+      1,
+      5
+    ],
+    "disabled": true
+  },
+  "session_ref_symbol": "XAUUSDs",
+  "bottom_gate": {
+    "_note": "OFF. Measured as HARMFUL in 3bm (18/18 cells negative) and re-confirmed in 3bn: at p>=0.60/8h, buying at market earned -22.80bp where the detector FIRED and +17.85bp where it did NOT (gap 40.65bp, t -5.23). Adverse selection, not noise.",
+    "enabled": false,
+    "threshold": 0.6,
+    "max_wait_hours": 24,
+    "train_bars": 20000,
+    "h1_bars": 24000
+  },
+  "account": "Switch Markets, login 40080430, SwitchMarkets-Live, $100k USD. VERIFIED 2026-10-19: trade_mode 0 = DEMO (the server is named -Live but the ACCOUNT is a demo), margin_mode 2 = hedging, leverage 1:100, 2,064 symbols, terminal trade_allowed true.",
+  "_manual_position_note": "This account carries a hand-placed XAUUSDs 0.1 BUY (ticket 46695465, MAGIC 0) from the user's own GUI login. The executor is magic-scoped on every read and write -- held_lots(), close_volume() and apply_compliance_sl() all filter get_positions(magic=360595) -- so the bot will neither close it, resize it nor attach a stop to it, and it does not count toward the book's own gold target. CONSEQUENCE TO BE AWARE OF: total account gold exposure = the book's gold sleeve PLUS that ~$41.6k of unmanaged long, and the manual position's P&L does move the equity the guards read.",
+  "_note": "3bs's WINNING VENUE for 3bq's A+B cell. The book itself is unchanged and is NOT re-validated by this deployment -- its honest status is still DSR 0.000 / PBO 0.381, both FAILING CONTROL #6, i.e. a real but UNPROVEN lead, which is why it remains on a demo account. What changed is only the execution venue, and that change IS measured: 3bs priced both brokers' spread and carry through the same engine and Switch won on Sharpe, CAGR and drawdown simultaneously. Running alongside the FTMO deployment (magic 360594) on the identical forecast makes the pair a live venue A/B."
+}
