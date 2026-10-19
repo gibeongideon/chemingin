@@ -5299,6 +5299,61 @@ the 50% weight here is what brings the floor down to $25-50k.
 
 _Last updated 2026-10-19._
 
+### 3bs. Switch Markets vs FTMO for the XAU+BTC book — carry decides it, not spread (2026-10-19, `scripts/v5_broker_cost_compare.py`)
+
+A Switch Markets demo (40080430, `SwitchMarkets-Live`, confirmed `trade_mode 0`) was measured
+against the incumbent FTMO demo. Spreads and carry sampled live, 10 ticks per symbol:
+
+| | spread | carry on a LONG |
+|---|---|---|
+| SM `XAUUSDs` | **$0.210 = 0.50bp** | **−5.70%/yr** |
+| FTMO `XAUUSD` | $0.410 = 0.99bp | −6.47%/yr |
+| SM `BTCUSDs` | $36.82 = **4.46bp** | **−15.0%/yr** |
+| FTMO `BTCUSD` | **$1.00 = 0.12bp** | −30.0%/yr |
+
+The two pull in opposite directions — FTMO's BTC spread is **37× cheaper** while SM's BTC carry is
+**half** — so the answer is not guessable and both were priced into the same engine.
+
+| broker cost basis | Sharpe | CAGR | maxDD | FTMO pass | XAU turns/yr | BTC turns/yr |
+|---|---|---|---|---|---|---|
+| FTMO | +1.172 | +10.5% | −13.4% | 62.5% | 30.1 | **5.8** |
+| **Switch Markets** | **+1.286** | **+11.6%** | **−12.5%** | **65.9%** | 30.1 | **5.8** |
+| SM gold + FTMO BTC ("best of each") | +1.216 | +10.9% | −12.9% | 63.0% | 30.1 | 5.8 |
+
+**Switch Markets wins outright**, and the turnover column is why: **the BTC sleeve turns over only
+5.8 times a year.** Spread is charged on what you TRADE and carry on what you HOLD, so for a sleeve
+that barely trades, carry dominates:
+
+- SM's BTC spread penalty: 5.8 turns × 1.5 × 4.46bp ≈ **39bp/yr**
+- SM's BTC carry saving: ~0.1 average exposure × 15pp ≈ **150bp/yr**
+
+The saving beats the penalty by roughly **4×**. The "best of each" row proves the mechanism rather
+than assuming it: pairing SM's cheaper gold with FTMO's cheaper BTC spread is **worse** than pure
+SM, because it re-imports FTMO's −30%/yr BTC carry.
+
+> **This is the fifth time execution economics has beaten signal research in this file**, and the
+> first time the deciding term was CARRY on a sleeve chosen for its low turnover. The rule
+> generalises: **the cheaper spread matters only in proportion to turnover — price carry first for
+> anything held longer than a few days.**
+
+**A CORRECTION TO §3bq/§3br, which this run forced.** Those filed the XAU+BTC book at Sharpe
+**+1.511** charging **spread only**. With carry included it is **+1.172 (FTMO) / +1.286 (SM)** —
+so **carry is worth 0.22 to 0.34 Sharpe**, consistent with the −0.29 recorded for the 4-sleeve
+book. §3bq/§3br's cross-sectional rankings stand (every row was equally flattered) but their
+ABSOLUTE Sharpes were overstated and should be read as the SM/FTMO figures above.
+
+**Not a like-for-like business comparison.** FTMO is a prop firm trading its capital for a payout
+split; Switch Markets is a broker trading the user's own. The `pass` column is only meaningful for
+the former and is shown for continuity, not as a Switch Markets property. What transfers is the
+execution economics.
+
+**Symbol/contract differences to carry into any config:** every Switch Markets symbol takes an `s`
+suffix (`XAUUSDs`, `BTCUSDs`, `USTECs`, `BRENTs`), and **`BRENTs` has a contract size of 1000
+against FTMO's 100** — a 10× difference that would silently break lot sizing if Brent is ever
+added.
+
+_Last updated 2026-10-19._
+
 ### 3br. Book WIDTH has an optimum, and it is 2 sleeves — widen until the daily breach is zero, then STOP (2026-10-19, `scripts/v5_book_width_compare.py`)
 
 Asked directly whether 3bq's XAU+BTC is better than the 4-sleeve book. The filed figures could not
