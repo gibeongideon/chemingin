@@ -5299,6 +5299,66 @@ the 50% weight here is what brings the floor down to $25-50k.
 
 _Last updated 2026-10-19._
 
+### 3bt. The book is live on Switch Markets — and two dead gates surfaced on the way (2026-10-19)
+
+3bs's winning venue, deployed. `configs/v5_xau_btc_switch.json`, magic **360595**, bridge 18815
+(prefix `~/.mt5d`, display :102), account 40080430 / SwitchMarkets-Live, `trade_mode 0` = DEMO.
+First live pass opened **BTCUSDs 0.12 BUY @ 82,655.51** and **XAUUSDs 0.01 BUY @ 4,163.62**, both
+with the 3% compliance SL attached; the second pass reported `in sync`, so the reconcile is
+idempotent. Timer `xau-btc-switch.timer` fires `0/4:50`, staggered 10 min behind the FTMO book.
+
+It runs **alongside** the FTMO deployment (magic 360594) on the **identical forecast**, which makes
+the pair a live venue A/B rather than a replacement.
+
+**Three things had to be re-derived rather than copied.**
+
+1. **The guards are not FTMO's, and `phase_targets` was the dangerous one.** Switch is a BROKER:
+   no daily limit, no max loss, no phase. `challenge_guards.decide` returns `realize_target` at
+   +10% equity and then latches `phase_complete`, which is **sticky — flat forever**. Carried
+   across unchanged it would have silently retired the book after its first good run. Set to
+   **99.0** (a 9,900% gain). `overall_halt_frac` 0.08 → **0.20**, because the book's measured path
+   drawdown is −12.5%, so an 8% halt sits *inside* its ordinary operating range and would kill it
+   mid-drawdown. `daily_guard_frac` 0.035 → **0.10**, since forced flattening already measured at
+   −0.27 Sharpe and +13pp drawdown (§3d / overnight-ban).
+2. **The H4 file is refreshed from FTMO, never from Switch.** `XAUUSD_H4_long.csv` already carries
+   one MT5/FTMO splice from 2023-06-28; appending a third broker is the exact failure in
+   *multi-broker dataset = leak*. Signal from FTMO, execution at Switch. Freshness is validated
+   against Switch's bars — **read, never written** — so the book is not hostage to FTMO being up.
+3. **Symbols take an `s` suffix and `filling_mode` is 2 (IOC only).** `MT5Connector._fill_type`
+   reads that bitmask per symbol at send time, so no hardcoded FOK can reach this broker. Contract
+   sizes are identical to FTMO (100oz gold, 1.0 BTC), so the book sizes the same — confirmed by the
+   dry run producing the same 0.12 / 0.01 targets as the live FTMO book.
+
+> **TWO DEAD GATES, ONE CAUSE: server clock vs host clock.** The new staleness gate printed
+> `bar in progress … (-3.0h old)`. **Negative.** MT5 stamps bars and ticks on the BROKER's clock
+> (both brokers UTC+3), so subtracting a server-stamped bar from `utcnow()` made every `> 8h`
+> stall test **structurally unable to fire**. This is the third instance of the same class: the
+> market gate compared host UTC to a server tick and passed unconditionally (fixed in 5678bd7),
+> `book-ftmo.sh` carried the identical dead check, and then —
+>
+> **fixing the gate surfaced a live data bug it had been masking.**
+> `refresh_xau_h4.py` dropped its in-progress bar with
+> `d.index + duration > pd.Timestamp.now(tz="UTC")` against a server-stamped index, so it
+> **discarded the most recent CLOSED bar on every refresh**: at 13:03 UTC / 16:03 server the 12:00
+> H4 bar had closed three minutes earlier, yet `12:00 + 4h = 16:00 > 13:03` threw it away. The
+> file ran **up to one full H4 period stale and the live champion sized off a superseded bar** —
+> on FTMO as well, for as long as that refresher has existed. Nothing looked wrong: it reported
+> success and `+0 new` every time. After the fix: `+1 new`, staleness 5.1h → **1.1h**.
+>
+> **The lesson is the order of discovery.** A gate that cannot fire does not merely fail to catch
+> things — it *certifies* the thing it was built to catch. The data bug was visible only once the
+> gate was made capable of firing, so **repairing a dead check is not cleanup, it is measurement.**
+> Rule going forward: any comparison between an MT5 timestamp and a wall clock must be written in
+> the **server** frame, and a gate whose threshold has never once been crossed should be treated
+> as unproven rather than as passing.
+
+A hand-placed **XAUUSDs 0.10 BUY (magic 0)** sits on the account from the user's GUI login. Every
+executor read and write is magic-scoped, and it was verified untouched (its own SL 4157.00 against
+the book's 1164.18). But its P&L does move the equity the guards read, and total account gold
+exposure is the book's sleeve **plus** that ~$41.6k of unmanaged long.
+
+_Last updated 2026-10-19._
+
 ### 3bs. Switch Markets vs FTMO for the XAU+BTC book — carry decides it, not spread (2026-10-19, `scripts/v5_broker_cost_compare.py`)
 
 A Switch Markets demo (40080430, `SwitchMarkets-Live`, confirmed `trade_mode 0`) was measured
