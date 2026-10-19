@@ -5268,3 +5268,67 @@ declared grid priced before the run. The honest next step is a pre-registered 2-
 raises the bar faster than the statistic.
 
 _Last updated 2026-10-19._
+
+### 3bq. BTC vs the XAU champion, head to head — B does NOT replace A, but A+B beats both and kills the daily breach (2026-10-19, `scripts/v5_btc_vs_xau.py`)
+
+Pre-registered at `data/v5_runs/btc_vs_xau/PREREGISTRATION.md` (commit 0962755). **Two declared
+cells, no parameter search** — §3bp found BTC's walk-forward speed picks wander the entire grid,
+so B uses the book's **existing 1/6**, deliberately not the full-sample argmax of 1/12, which
+would import §3bp's measured +0.318 of selection bias. Same continuous vol-targeted engine at the
+same 10% dial for both, so only the asset mix varies. Common business-day index (rule 1.3.6).
+
+| cell | Sharpe | CAGR | maxDD | t vs own B&H | ≤2020 edge | ≥2021 edge |
+|---|---|---|---|---|---|---|
+| **A** XAU champion (H4, scale 1.0) | +0.919 | +12.1% | −21.0% | **+0.02** | −0.090 | +0.072 |
+| **B** BTC trend (D1, scale 1/6) | +1.363 | +14.9% | −13.8% | **+2.27** | +0.537 | +0.315 |
+| **A+B** 50/50 | **+1.511** | +13.9% | **−11.2%** | +1.63 | +0.303 | +0.296 |
+
+**Head-to-head B vs A at matched vol: paired t +1.07, 6 of 11 years.** The pre-registered gate was
++2.0, so **B does not replace A** — on Sharpe alone it would have, which is exactly what the gate
+existed to prevent.
+
+#### The statistic that actually decides a prop account
+
+`book-shootout` established that **Sharpe does not predict pass rate — the dial-scaled LEFT TAIL
+against the daily limit does.** FTMO 2-Step phase 1 simulated directly (+10% target, 5% daily,
+10% overall; 4,000 block-bootstrap paths, 1-year horizon):
+
+| | pass | **fail DAILY 5%** | fail total 10% |
+|---|---|---|---|
+| A XAU alone | 53.6% | **17.6%** | 10.9% |
+| B BTC alone | 65.3% | 8.8% | 2.1% |
+| **A+B 50/50** | **72.2%** | **0.0%** | 1.0% |
+
+> **Combining takes the daily-breach rate from 17.6% to 0.0% and the pass rate from 53.6% to
+> 72.2%.** Gold alone fails on the DAILY line; BTC alone fails less often but still 8.8% of the
+> time; together neither tail reaches it. This is the same mechanism §3ae found with BRENT
+> (fail_day 13.9% → 0.0%) — the sleeves' bad days do not coincide.
+
+Note A's own benchmark comparison: **t +0.02 against vol-targeted buy-and-hold gold.** The gold
+champion is, once again, statistically indistinguishable from owning the metal — it sells drawdown
+control. B is the first sleeve here to beat its own benchmark in both halves.
+
+#### VERDICT — deployed on DEMO as A+B, not as B
+
+`configs/v5_xau_btc_ftmo.json`, magic 360594, FTMO demo 1514968075. Filled on the first live pass:
+BTCUSD 0.12 and XAUUSD 0.01, both retcode 10009, compliance SLs applied. The standalone XAU
+champion (360592) was disabled — its gold now lives inside this book, and running both would
+double the gold exposure neither was sized for.
+
+**HONEST STATUS, recorded so it is not rounded up: DSR 0.000 and PBO 0.381 on the 2-cell grid both
+FAIL CONTROL #6.** This is a "real, unproven lead" in that control's own words, which is precisely
+why it is on a demo and not on anything funded. The overlays measured on the 4-sleeve book (the
+evening no-increase gate, the bottom gate) are **disabled** here — adding an unmeasured overlay to
+a freshly measured book is what rule 1.3.3 exists to prevent, and BTC trades 24/7 so a nightly
+block is a different constraint for crypto than for gold.
+
+**A SCALE BUG CAUGHT BY A KNOWN ANSWER.** The first run of this comparison passed `scale=1/6` to
+**both** sleeves. But `champion_recipe`'s docstring states `scale=1.0` reproduces
+`champion_signal`, which hardcodes 6 bars/day = H4 — so 1/6 is the **D1 compensation**, and
+applying it to H4 gold made the gold signal six times too slow, collapsing its Sharpe to **0.476**
+against the +1.091 §3bn measured. **The tell was that cell A, whose answer was already known, came
+back wrong** — the same smoke alarm that caught §3bo's path-index bug. It is the inverse of rule
+1.3.5's `D=6` trap, and it argues the rule should be stated as "the scale is per-timeframe", not
+"use 1/6 for D1".
+
+_Last updated 2026-10-19._

@@ -1,0 +1,9 @@
+[Unit]
+Description=XAU+BTC 50/50 book on FTMO demo — magic 360594
+After=mt5-terminal-ftmo.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-btc-ftmo.sh
+TimeoutStartSec=1200

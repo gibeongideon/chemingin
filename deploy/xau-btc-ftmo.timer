@@ -1,0 +1,11 @@
+# Every 4h at :40 — the XAU sleeve is an H4 clock. Clear of the other 18814 units.
+[Unit]
+Description=4-hourly XAU+BTC book reconcile on FTMO
+
+[Timer]
+OnCalendar=0/4:40:00
+Persistent=true
+AccuracySec=60s
+
+[Install]
+WantedBy=timers.target
