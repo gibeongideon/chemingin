@@ -5267,6 +5267,36 @@ declared grid priced before the run. The honest next step is a pre-registered 2-
 (incumbent 1/6 vs one declared alternative), not a wider sweep — §3ak proved searching harder
 raises the bar faster than the statistic.
 
+#### Minimum account size for the XAU+BTC book (`scripts/v5_min_account_size.py`)
+
+Asked what equity this book needs. Answered from the **historical position distribution**, not
+today's snapshot — target size moves with the forecast and with volatility, so the real question
+is "below what equity does a sleeve spend too much of its life rounding to ZERO". A sleeve that
+rounds to zero is **absent**, and §3br priced that: gold running alone takes the daily-breach rate
+from 0.0% to 17.5% and the pass rate from 72.4% to 53.7%.
+
+| equity | XAU rounds to 0 | XAU size error | BTC rounds to 0 | BTC size error | verdict |
+|---|---|---|---|---|---|
+| $250,000 | 0.0% | 0.6% | 0.0% | 0.3% | both sizable |
+| $100,000 | 0.0% | 1.4% | 0.0% | 0.8% | both sizable |
+| **$50,000** | **1.1%** | **2.7%** | **0.0%** | **1.7%** | **comfortable floor** |
+| **$25,000** | 2.7% | 5.4% | 2.3% | 3.4% | **workable floor** |
+| $10,000 | **18.1%** | 10.2% | **15.5%** | 5.7% | book is single-asset 1 day in 6 |
+| $5,000 | **35.0%** | 17.0% | **28.9%** | 8.0% | broken |
+
+**Equity needed for a sleeve to size at all** (the 0.005 round-up point): XAUUSD median **$3,180**
+(75th pct $7,532); BTCUSD median $2,280 (75th pct $5,900). **Gold is the binding sleeve** — its
+100 oz contract makes one minimum lot ~$4,200 of notional against BTC's ~$830.
+
+**Verdict: $50,000 comfortable, $25,000 workable, breaks below roughly $15,000.**
+
+**One caveat that makes the raw percentages optimistic:** the drops are not uniformly distributed.
+A sleeve rounds to zero precisely when its forecast is weak or its volatility is high — which is
+when the *other* sleeve is carrying the book and the diversification matters most. So a nominal
+2.7% drop rate at $25,000 costs more than 2.7% of the benefit. This is the same size constraint
+recorded for the 4-sleeve book, where gold needed ~$118k to size properly at a 1/6 class weight;
+the 50% weight here is what brings the floor down to $25-50k.
+
 _Last updated 2026-10-19._
 
 ### 3br. Book WIDTH has an optimum, and it is 2 sleeves — widen until the daily breach is zero, then STOP (2026-10-19, `scripts/v5_book_width_compare.py`)
