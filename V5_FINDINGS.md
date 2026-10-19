@@ -5269,6 +5269,63 @@ raises the bar faster than the statistic.
 
 _Last updated 2026-10-19._
 
+### 3br. Book WIDTH has an optimum, and it is 2 sleeves — widen until the daily breach is zero, then STOP (2026-10-19, `scripts/v5_book_width_compare.py`)
+
+Asked directly whether 3bq's XAU+BTC is better than the 4-sleeve book. The filed figures could not
+answer it — the book's recorded ~88.6% pass rate came from a different dial, cost basis and
+simulator. Every width was therefore re-run through **one** harness: same continuous vol-targeted
+engine, same 10% dial, common business-day index, same FTMO phase-1 simulation. XAU is H4 so
+`champion_recipe` takes scale 1.0; the D1 sleeves take 1/6 (3bq's scale bug, not repeated).
+
+| book | Sharpe | CAGR | maxDD | **pass** | **fail DAILY** | fail total |
+|---|---|---|---|---|---|---|
+| XAU alone | +0.919 | +12.1% | −21.0% | 53.7% | **17.5%** | 10.8% |
+| BTC alone | +1.363 | +14.9% | −13.8% | 65.0% | 8.8% | 2.2% |
+| **XAU+BTC 50/50** | +1.511 | +13.9% | −11.2% | **72.4%** | **0.0%** | 1.1% |
+| XAU+BTC+NDX | **+1.696** | +12.1% | **−9.5%** | 67.7% | 0.0% | 0.2% |
+| core-4 equal | +1.633 | +10.1% | −8.6% | 58.7% | 0.0% | 0.1% |
+| core-4 gold-tilted (the deployed book) | +1.395 | +10.9% | −10.8% | 62.6% | 0.0% | 0.3% |
+
+#### The answer depends on the objective, and the objectives disagree
+
+- **To PASS a prop challenge: XAU+BTC wins, 72.4%** — ahead of XAU+BTC+NDX (67.7%), the gold-tilted
+  core-4 (62.6%) and core-4 equal (58.7%).
+- **For risk-adjusted return: XAU+BTC+NDX wins, Sharpe +1.696.**
+- **For pure drawdown: core-4 equal wins, −8.6%.**
+
+**So the widest book is the WORST on the statistic a challenge is actually scored on**, and the
+Sharpe ranking and the pass ranking are nearly reversed.
+
+#### Why, and it refines an existing rule
+
+> **At a fixed vol dial, widening cuts CAGR (13.9% → 12.1% → 10.1%) because diversification
+> smooths the path. But the phase-1 target is an ABSOLUTE +10%. So width helps only while it is
+> still buying a reduction in the daily-breach rate — and that reaches ZERO at TWO sleeves.
+> Past that point every extra sleeve is pure dilution: it buys nothing on the breach side and
+> costs CAGR on the target side.**
+
+The breach column shows it directly: 17.5% (XAU alone) → 8.8% (BTC alone) → **0.0% at two
+sleeves**, and 0.0% for every wider book. XAU+BTC is precisely the narrowest book that reaches
+zero, which is why it maximises the pass rate.
+
+**This REFINES `binding-constraint-book-matching`**, which recorded "FTMO's 5% daily limit binds,
+so widen — 4→9 sleeves took pass 88.6% → 94.1%". The corrected statement is **"widen until the
+daily breach reaches zero, then stop"**. The earlier study widened from a 4-sleeve book whose
+breach rate was already zero at this dial, so it was measuring something else — most likely dial
+interaction, since the recorded work ran at a 9% dial against this harness's 10%.
+
+#### Caveat, stated plainly
+
+These six rows are internally comparable and **are not comparable to the filed 88.6%** — different
+dial, cost basis and simulator. Nothing here says the earlier figure was wrong; it says the two
+cannot be put in the same table, and only this table decides between widths.
+
+Also: the per-row DSR/PBO from 3bq still apply — **DSR 0.000, PBO 0.381, both failing CONTROL #6.**
+Width selection across six books is itself a 6-way search, so the ranking is a lead, not a verdict.
+The deployed XAU+BTC book stays on DEMO.
+
+_Last updated 2026-10-19._
+
 ### 3bq. BTC vs the XAU champion, head to head — B does NOT replace A, but A+B beats both and kills the daily breach (2026-10-19, `scripts/v5_btc_vs_xau.py`)
 
 Pre-registered at `data/v5_runs/btc_vs_xau/PREREGISTRATION.md` (commit 0962755). **Two declared
