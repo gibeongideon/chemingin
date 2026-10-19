@@ -5208,3 +5208,63 @@ one XAUUSD trade, a lot size that also has to clear margin and the broker's own 
 so on a funded account the ladder is not a long-run risk, it is a first-year one.
 
 _Last updated 2026-10-16._
+
+### 3bp. BTCUSD trend — a REAL, UNPROVEN lead, and the first thing here that beats buy-and-hold in BOTH halves (2026-10-19, `scripts/v5_btc_strategy_scan.py`, `v5_btc_controls.py`)
+
+Asked for a BTCUSD strategy. The champion recipe already runs on BTC as a sleeve of the 4-sleeve
+book, so the question is not "invent one" but "what does the incumbent deliver, and does it clear
+CONTROL #2". For bitcoin that bar is severe — it has the largest drift of any instrument here.
+
+#### First pass: every trend speed beats holding bitcoin
+
+| arm | Sharpe | CAGR | maxDD | t vs B&H | yrs beat | ≤2020 | ≥2021 |
+|---|---|---|---|---|---|---|---|
+| buy & hold (vol-targeted) | +1.055 | +10.9% | −18.2% | — | — | +1.687 | +0.530 |
+| buy & hold (unlevered) | +1.041 | +60.2% | **−83.4%** | −0.15 | 8/11 | +1.541 | +0.532 |
+| champion 1/6 (the book's own) | +1.626 | +20.0% | −13.4% | +2.61 | **11/11** | +2.375 | +0.899 |
+| champion FAST 1/3 | +1.554 | +19.1% | −10.9% | +2.38 | 10/11 | +2.369 | +0.780 |
+| **champion SLOW 1/12** | **+1.719** | +21.5% | −15.5% | **+2.98** | **11/11** | +2.415 | +1.041 |
+
+Three BTC-specific traps were handled rather than assumed: BTC quotes **365 bars/yr** against
+gold's 252 (rule 1.3.6 — a day-count mismatch inverted a book ranking once), so everything is
+annualised on its own realised bars; `champion_recipe(close, scale, 1.5)` avoids the `D=6` trap;
+and cost is a **per-bar bp of the live price**, because $1 of BTC spread is 0.16bp today and was
+**22bp** at the start of the sample.
+
+#### Then the mandatory controls, which cut it
+
+| control | result |
+|---|---|
+| **#3 walk-forward RE-SELECTION** (speed re-picked each January on trailing 3y) | **1.719 → +1.401.** In-sample selection was worth **+0.318** |
+| vs buy-and-hold, matched vol, walk-forward | **t +1.88** (was +2.98), **8/8 years** |
+| **#4 standard error** | SE 0.513 over 7.5y → 95% CI **[+0.39, +2.41]** |
+| **1.3.8 split halves** (on the walk-forward series) | ≤2020 **+2.356** vs B&H +1.872 · ≥2021 **+0.970** vs B&H +0.530 — **beats holding in BOTH** |
+| **#6 DSR / PBO** | DSR **0.743** (bar ≥0.90) **FAIL** · PBO 0.175 (bar <0.30) pass |
+| **cost stress, 10× spread** | walk-forward **+1.283**, t +1.50, both halves still beat; DSR 0.000 / PBO 0.496 **FAIL** |
+
+#### VERDICT — "a real, unproven lead", in CONTROL #6's own words
+
+It fails the DSR bar (0.743 against 0.90) and its walk-forward t of +1.88 is under the +2.0 this
+repo gates on, so it **is not an edge**. But it is the most promising object measured here in
+months, and on the one axis that has killed nearly everything else it does something gold's
+champion cannot:
+
+> **It beats BUY-AND-HOLD in BOTH sample halves (+2.356 vs +1.872 and +0.970 vs +0.530), 8 of 8
+> walk-forward years, and still beats it at 10× the modelled spread.** For comparison, CONTROL #2
+> records the gold champion as never beating the metal (2008+: +0.64 vs +0.57; 2022+: +1.11 vs
+> +1.15) — it sells drawdown control, not alpha. On BTC the trend overlay earns its keep:
+> unlevered buy-and-hold makes +60.2%/yr at a **−83.4% drawdown**, and the overlay converts that
+> into +20% at −13%. **That conversion, not the Sharpe, is the finding.**
+
+**THE WARNING SIGN, recorded plainly:** the walk-forward speed picks are **unstable** — 1/3, 1/48,
+1/48, 1/12, 1/6, 1/24, 1/24, 1/24. A robust parameter re-picks itself; this one wanders across
+the whole grid, which is exactly why walk-forward cost 0.318 Sharpe. **So do not change the book's
+incumbent 1/6: no speed is stably identifiable, and 1/6 is as defensible as the full-sample
+argmax.** §3f killed H4/med on the same tell.
+
+**What would promote it:** DSR ≥ 0.90 needs either a longer sample (impossible) or a narrower
+declared grid priced before the run. The honest next step is a pre-registered 2-cell test
+(incumbent 1/6 vs one declared alternative), not a wider sweep — §3ak proved searching harder
+raises the bar faster than the statistic.
+
+_Last updated 2026-10-19._
