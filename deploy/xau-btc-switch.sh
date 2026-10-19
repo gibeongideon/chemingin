@@ -69,19 +69,32 @@ mt5 = MetaTrader5(host="localhost", port=18815)
 if not mt5.initialize():
     print(f"  gate XAUUSD_H4_long: bridge init failed {mt5.last_error()}"); sys.exit(1)
 mt5.symbol_select("XAUUSDs", True)
+tick = mt5.symbol_info_tick("XAUUSDs")
 r = mt5.copy_rates_from_pos("XAUUSDs", 16388, 0, 4)   # 16388 = TIMEFRAME_H4
 mt5.shutdown()
 if r is None or len(r) < 2:
     print("  gate XAUUSD_H4_long: broker returned no H4 bars"); sys.exit(1)
+if tick is None:
+    print("  gate XAUUSD_H4_long: no tick, cannot establish the server clock"); sys.exit(1)
+
+# *** EVERY BAR-AGE COMPARISON BELOW IS IN SERVER TIME, NOT HOST UTC. ***
+# MT5 stamps bars and ticks on the BROKER's clock (SwitchMarkets-Live and FTMO-Demo are both
+# UTC+3, measured 2026-10-19). Subtracting a server-stamped bar from pd.Timestamp.utcnow() makes
+# the forming bar read as -3.0h old, so a `> 8` stall test can NEVER fire -- exactly the dead
+# gate this book already shipped once on the market check (fixed in 5678bd7), re-created here by
+# copying the FTMO wrapper. The fix is to take "now" from the broker's own tick, which is in the
+# same frame as the bar stamps. The file-vs-broker test below was never affected: both sides of
+# it are server-stamped, so it compares like with like.
+srv_now = pd.to_datetime(int(tick.time), unit="s")
 bars = pd.to_datetime([x[0] for x in r], unit="s").sort_values()
-broker_last = bars[bars + pd.Timedelta(hours=4) <= now].max()   # newest CLOSED bar
-newest_any = bars.max()                                         # incl. the in-progress bar
+broker_last = bars[bars + pd.Timedelta(hours=4) <= srv_now].max()   # newest CLOSED bar
+newest_any = bars.max()                                            # incl. the in-progress bar
 
 f = Path("data/XAUUSD_H4_long.csv")
 file_last = pd.read_csv(f, usecols=["time"], parse_dates=["time"])["time"].max()
-open_age = (now - newest_any).total_seconds() / 3600
+open_age = (srv_now - newest_any).total_seconds() / 3600
 print(f"  gate XAUUSD_H4_long: file {file_last} | Switch newest closed {broker_last} "
-      f"| bar in progress {newest_any} ({open_age:.1f}h old)")
+      f"| bar in progress {newest_any} ({open_age:.1f}h old, server clock {srv_now})")
 if file_last < broker_last:
     bad.append(f"XAUUSD_H4_long behind the broker ({file_last} < {broker_last}) — "
                f"the FTMO refresh is not keeping up")

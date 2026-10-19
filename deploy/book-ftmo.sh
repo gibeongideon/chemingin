@@ -79,19 +79,31 @@ mt5 = MetaTrader5(host="localhost", port=18814)
 if not mt5.initialize():
     print(f"  gate XAUUSD_H4_long: bridge init failed {mt5.last_error()}"); sys.exit(1)
 mt5.symbol_select("XAUUSD", True)
+tick = mt5.symbol_info_tick("XAUUSD")
 r = mt5.copy_rates_from_pos("XAUUSD", 16388, 0, 4)
 mt5.shutdown()
 if r is None or len(r) < 2:
     print("  gate XAUUSD_H4_long: broker returned no H4 bars"); sys.exit(1)
+if tick is None:
+    print("  gate XAUUSD_H4_long: no tick, cannot establish the server clock"); sys.exit(1)
+
+# *** BAR AGES ARE COMPARED IN SERVER TIME, NOT HOST UTC (fixed 2026-10-19). ***
+# MT5 stamps bars and ticks on the BROKER's clock; FTMO-Demo is UTC+3. Subtracting a
+# server-stamped bar from utcnow() made the forming bar read as -3.0h old, so the `> 8` stall
+# test below could NEVER fire -- the same dead-gate bug this file's own market check had (fixed
+# in 5678bd7), surviving one layer down. Caught 2026-10-19 when the Switch Markets copy of this
+# gate printed "(-3.0h old)". The file-vs-broker test was never affected: both sides of it are
+# server-stamped, so it compares like with like.
+srv_now = pd.to_datetime(int(tick.time), unit="s")
 bars = pd.to_datetime([x[0] for x in r], unit="s").sort_values()
-broker_last = bars[bars + pd.Timedelta(hours=4) <= now].max()   # newest CLOSED bar
-newest_any = bars.max()                                         # includes the in-progress bar
+broker_last = bars[bars + pd.Timedelta(hours=4) <= srv_now].max()   # newest CLOSED bar
+newest_any = bars.max()                                            # includes the in-progress bar
 
 f = Path("data/XAUUSD_H4_long.csv")
 file_last = pd.read_csv(f, usecols=["time"], parse_dates=["time"])["time"].max()
-open_age = (now - newest_any).total_seconds() / 3600
+open_age = (srv_now - newest_any).total_seconds() / 3600
 print(f"  gate XAUUSD_H4_long: file {file_last} | newest closed {broker_last} "
-      f"| bar in progress {newest_any} ({open_age:.1f}h old)")
+      f"| bar in progress {newest_any} ({open_age:.1f}h old, server clock {srv_now})")
 if file_last < broker_last:
     bad.append(f"XAUUSD_H4_long behind broker ({file_last} < {broker_last}) — refresh failed")
 elif open_age > 8:

@@ -88,8 +88,26 @@ def fetch(mt5, symbol: str, n: int, tf: str = "H4") -> pd.DataFrame:
                                     "tick_volume", "spread", "real_volume"])
     d["time"] = pd.to_datetime(d["ts"], unit="s")
     d = d.drop(columns=["ts"]).set_index("time").sort_index()
-    # drop the in-progress bar — by THIS timeframe's duration, not H4's
-    now = pd.Timestamp.now(tz="UTC").tz_localize(None)
+    # Drop the in-progress bar -- by THIS timeframe's duration, not H4's.
+    #
+    # *** "NOW" MUST COME FROM THE BROKER'S CLOCK, NOT THE HOST'S (fixed 2026-10-19). ***
+    # d.index is stamped in SERVER time (FTMO-Demo and SwitchMarkets-Live are both UTC+3,
+    # measured 2026-10-19). Comparing it against pd.Timestamp.now(tz="UTC") made this filter
+    # three hours too aggressive and it silently discarded the most recent CLOSED bar on every
+    # refresh: at 13:03 UTC / 16:03 server the 12:00 H4 bar had closed 3 minutes earlier, yet
+    # 12:00 + 4h = 16:00 > 13:03 dropped it. So data/XAUUSD_H4_long.csv ran up to one full H4
+    # period stale and the champion sized off a bar that was already superseded. Nothing looked
+    # wrong -- the refresher reported success and "+0 new" every time.
+    # Caught because the Switch Markets staleness gate, once ITS own copy of this same
+    # host-vs-server bug was fixed, reported the file behind the broker by exactly one bar.
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is not None and int(getattr(tick, "time", 0)) > 0:
+        now = pd.to_datetime(int(tick.time), unit="s")          # server clock
+    else:
+        # No tick (market closed / symbol not quoting): we cannot establish the server clock, so
+        # fall back to treating the newest fetched bar as possibly unfinished. That drops exactly
+        # one bar, which is the conservative direction -- never admit an in-progress bar.
+        now = d.index.max()
     return d.drop(index=d.index[d.index + pd.Timedelta(minutes=minutes) > now], errors="ignore")
 
 
