@@ -22,19 +22,34 @@ echo "===== $(date -u +%FT%TZ) =====" >> "$LOG"
 # Market state asked of the BROKER, not a hard-coded calendar: holidays, broker-specific hours
 # and early closes are invisible to a weekday/hour rule and obvious in the tick stream.
 $PY - >> "$LOG" 2>&1 <<'PYOPEN'
+# MARKET-OPEN TEST, FRAME-INDEPENDENT.
+#
+# The previous version did `age = time.time() - tick.time`, which compared two DIFFERENT clocks:
+# MT5 stamps ticks in SERVER time (FTMO runs UTC+3) while time.time() is host UTC. That made a
+# fresh tick read as -180.0 min old, and since -180 <= 10 the gate passed unconditionally --
+# it only ever blocked on a weekend, when the true age grew past the 180-minute offset. So the
+# guard was not guarding.
+#
+# Rather than hard-code or guess the offset (it shifts an hour with US DST, and 3be had to
+# correct exactly that kind of claim), ask the only question that needs no shared clock:
+# DOES THE TICK ADVANCE? Gold ticks several times a second when open, so a 15-second gap is
+# decisive, and the test is immune to any offset because both readings sit in the same frame.
 import sys, time
 from mt5linux import MetaTrader5
 mt5 = MetaTrader5(host="localhost", port=18814)
 if not mt5.initialize():
     print(f"  market check: bridge init failed {mt5.last_error()}"); sys.exit(2)
 mt5.symbol_select("XAUUSD", True)
-t = mt5.symbol_info_tick("XAUUSD")
+t1 = mt5.symbol_info_tick("XAUUSD")
+time.sleep(15)
+t2 = mt5.symbol_info_tick("XAUUSD")
 mt5.shutdown()
-if t is None or not getattr(t, "time", 0):
-    print("  market check: no tick"); sys.exit(2)
-age = (time.time() - float(t.time)) / 60.0
-print(f"  market check: last XAUUSD tick {age:.1f} min old")
-sys.exit(0 if age <= 10 else 1)
+if t1 is None or t2 is None:
+    print("  market check: no tick object"); sys.exit(2)
+advanced = int(t2.time) > int(t1.time) or float(t2.bid) != float(t1.bid)
+print(f"  market check: tick {int(t1.time)} -> {int(t2.time)}, bid {t1.bid} -> {t2.bid}"
+      f"  => {'OPEN' if advanced else 'CLOSED'}")
+sys.exit(0 if advanced else 1)
 PYOPEN
 case $? in
   0) : ;;

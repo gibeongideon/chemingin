@@ -304,9 +304,14 @@ def main() -> None:
     # Each config gets its OWN state file. The notifiers read
     # data/v5_runs/zigzag_ftmo_state.json; a second harness writing the same path would feed
     # them a mixture of two accounts' states and silently corrupt the dedupe cursor.
-    state_path = ROOT / cfg.get("state_file", STATE.name)
-    if not state_path.is_absolute():
-        state_path = ROOT / "data" / "v5_runs" / cfg.get("state_file", STATE.name)
+    # BUG FIXED 2026-10-19: the previous form was
+    #     state_path = ROOT / cfg.get("state_file", STATE.name)
+    #     if not state_path.is_absolute(): state_path = ROOT / "data/v5_runs" / ...
+    # ROOT is absolute, so `ROOT / name` is ALWAYS absolute and the fallback never ran. Both
+    # harnesses wrote to the repo ROOT instead of data/v5_runs/, so the notifier kept reading a
+    # stale file and exiting 1 for three days. Resolve the config value on its own first.
+    _sf = cfg.get("state_file") or STATE.name
+    state_path = Path(_sf) if Path(_sf).is_absolute() else (ROOT / "data" / "v5_runs" / _sf)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(json.dumps(dict(
         computed_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
