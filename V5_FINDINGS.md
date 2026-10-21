@@ -5299,6 +5299,82 @@ the 50% weight here is what brings the floor down to $25-50k.
 
 _Last updated 2026-10-19._
 
+### 3bu. "A daily pattern that almost never fails" — bounded, searched, and answered (2026-10-21)
+
+Requested as a daily signal whose appearance makes an action near-certain, on XAUUSD, BTCUSD and
+BTC/XAU, explicitly outside this project's usual methods. Pre-registered in
+`data/v5_runs/daily_certainty/PREREGISTRATION.md`; `scripts/v5_daily_certainty_gate_a.py` (the
+bound) and `scripts/v5_daily_certainty_scan.py` (the search).
+
+**First: `BTCXAU` DOES NOT EXIST.** All 2,067 Switch Markets symbols checked — only `XAUUSDs`,
+`XAUEURs`, `BTCUSDs`, `BTCEURs`. The ratio is synthesisable but needs two legs at **7.44bp** round
+trip against gold's 0.75bp.
+
+**GATE A — the bound, computed before any pattern was proposed.** Cost is *not* the constraint at a
+daily horizon: gold's round trip is 0.75bp against a ~100bp daily sigma, **0.76% of one sigma**.
+What binds is the **best-of-K noise floor** — the p95 of the maximum precision over K no-edge
+candidates, against base rates of GOLD 0.525 and BTC 0.523:
+
+| fires | K=1 | K=50 | K=500 | K=5000 |
+|---|---|---|---|---|
+| 15 | — | 0.867 | 0.933 | 0.967 |
+| **25** | — | 0.800 | **0.880** | 0.920 |
+| 50 | — | 0.740 | 0.780 | 0.820 |
+| 250 | 0.576 | 0.620 | **0.644** | 0.656 |
+| 500 | 0.560 | 0.592 | 0.606 | 0.618 |
+
+> **This table is the finding.** A "90% reliable" pattern firing 25 times, found by screening 500
+> candidates, is **indistinguishable from nothing** — pure noise already reaches 0.880 there.
+> **Rarity is what makes a pattern look certain and simultaneously what makes it unprovable.**
+> That is the exact opposite of the intuition that a rarer signal is a safer one, and it means the
+> only establishable claims live in the high-frequency / low-excess corner.
+
+**GATE B — 761 patterns, 0 survivors.** Streaks, gaps, range-regime, momentum and reversal
+quantiles, volatility regime, calendar, close-position, cross-asset joint states, BTC/XAU
+divergence, and two-way conjunctions. The null is a **circular shift of the outcome by a random lag
+≥ 20 days**, not a permutation — these patterns fire in clusters and returns are serially
+structured, so permutation would destroy that structure and *understate* the floor. The whole
+search is re-run inside every null draw, so the p-value prices the search rather than the winner.
+
+| asset | K | best precision found | null median | null p95 | survivors |
+|---|---|---|---|---|---|
+| GOLD | 272 | 0.636 | **0.685** | 0.760 | **0/272** |
+| BTC | 250 | 0.722 | 0.692 | 0.769 | **0/250** |
+| BTC/XAU ratio | 239 | 0.732 | 0.700 | 0.778 | **0/239** |
+
+> **Gold's best searched trigger is WORSE than the MEDIAN of its own no-edge null** (0.636 vs
+> 0.685). Not merely short of significance — below the midpoint of what the identical search
+> returns on data whose relationship has been destroyed.
+
+**A CONTROL #8 INVERSION WORTH RECORDING.** Several top rows carry enormous EV — BTC
+`streak_dn_4&mom20_q0.0_0.1` at **+154.58bp** net, the ratio's `streak_up_4&mom20_q0.9_1.0` at
+**+219.71bp**, both positive against buy-and-hold. A naive read calls those tradeable. But their
+precision sits below the noise floor, so the EV is carried by a handful of large moves in a small
+sample. §3ay recorded EV positive with skill negative in the same row; **this is the mirror image —
+EV spectacular while precision is indistinguishable from noise.** EV and precision must both clear,
+and neither rescues the other.
+
+**THE POSITIVE ANSWER.** The question has one, and it is not a trigger — it is holding period:
+
+| horizon | GOLD P(up) | BTC P(up) |
+|---|---|---|
+| 1 day | 0.525 | 0.523 |
+| 1 month | 0.567 | 0.556 |
+| 1 quarter | 0.637 | 0.576 |
+| 1 year | **0.753** | 0.715 |
+| 2 years | **0.819** | 0.752 |
+| 3 years | **0.834** | 0.835 |
+
+Holding gold for a year reaches **0.753** with no trigger, no search and no selection penalty —
+comfortably beating the 0.636 that the best of 272 searched daily triggers could reach. **What
+"almost never fails" in gold is time in the market, not a pattern in it.** This is the fourth
+independent arrival at the same place: the drift baseline beat every conditional signal (§3ar), the
+COT study found 0/36 cells beat *holding* gold, the external playbook found 0/60, and now 0/761
+daily patterns. The live champion's value was never a high hit rate — it is **risk control on a
+position that is long most of the time**, which is why the deployed book is long-biased.
+
+_Last updated 2026-10-21._
+
 ### 3bt. The book is live on Switch Markets — and two dead gates surfaced on the way (2026-10-19)
 
 3bs's winning venue, deployed. `configs/v5_xau_btc_switch.json`, magic **360595**, bridge 18815
