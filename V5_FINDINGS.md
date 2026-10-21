@@ -5456,6 +5456,63 @@ a venue where it can actually be executed.**
 > Method rule 1.3.2 exists for this. **The number to trust is the carry measurement, not the t**,
 > which is why the basis was measured over 92 days rather than assumed.
 
+#### FILL VERIFIED — the open item §3bd could never close at Maven
+
+One minimum-lot order placed on the demo (deal 28710642, order 46910810), magic **360596** so it is
+distinguishable from the book (360595) and hand trades (0):
+
+```
+SENDING: BUY 0.01 GC.Z6s @ ask 4158.73 (bid 4158.35, spread 0.38)
+retcode 10009   filled 0.01 @ 4158.73   SLIPPAGE +0.0000 = 0.00 bp
+```
+
+**Filled at exactly the quoted ask, zero slippage** — the "a synthetic's quoted spread can hide
+slippage" gate from `v5_maven_carry_book.py` passes on the first ticket.
+
+**THE A/B IS NOW RUNNING INSIDE ONE ACCOUNT** (`v5_swap_observe.py`, logged daily at 06:05 UTC,
+after the 22:00-23:00 server rollover):
+
+| symbol | tag | vol | **accrued swap** | swap_mode | swap_long |
+|---|---|---|---|---|---|
+| `XAUUSDs` | BOOK (spot) | 0.01 | **−1.30** | 1 POINTS | −65.07 |
+| `GC.Z6s` | PROBE (future) | 0.01 | **+0.00** | 0 DISABLED | **0.0** |
+
+Same account, same underlying, same nights. Note `GC.Z6s` reports swap_long/short at **exactly
+0.0**, where Maven's GoldEternal reported `swap_mode=0` with the fields still showing −30.0 — a
+cleaner signal than the instrument §3ag was built on.
+
+> **AND THE CARRY MODEL IS NOW VERIFIED AGAINST A REAL CHARGE, not just a broker field.**
+> −65.07 points × 0.01 lot × 100 oz × 0.01 point = **−$0.6507/night**; two nights held predicts
+> **−$1.30** and the terminal shows **−1.30**. Annualised: 0.6507 × 365 / 4,163.62 = **−5.70%/yr**
+> against the **−5.76%** used to price the book. The chain broker field → conversion → observed
+> debit → the Sharpe figures above is closed end to end.
+
+#### The roll, and the blocker the census exposed
+
+`scripts/v5_futures_roll.py` (report-only; `--execute` is opt-in) + `deploy/futures-roll-check.sh`
+on a daily timer. Two things MT5 does not tell you, both measured:
+
+1. **`expiration_time` is ZERO on every Switch futures symbol** (GC/NQ100/US30 all 0,
+   `expiration_mode` 15), so expiry must be derived from the contract code (`Z6` → Dec 2026).
+2. **The roll signal is `trade_mode`, not a date.** Expiring contracts drop from 4 (FULL) to
+   3 (CLOSE_ONLY) while staying listed — `BRN.Q6s/V6s/X6s` sit at 3 right now. That is the broker's
+   own statement and cannot drift out of sync with its schedule the way a hard-coded date can.
+
+> **⚠ THE REAL BLOCKER: Switch lists only ONE gold contract.** The census found exactly `GC.Z6s`
+> with **no successor** — same for NQ100, US30, ES500, SI, DE40, UK100. Only BRN and CL carry
+> several months (BRN.Z6s **and** BRN.F7s both openable). So the roll **cannot be pre-wired to a
+> known target**; it must discover the successor when Switch lists it, and **if none ever appears
+> the sleeve must fall back to spot `XAUUSDs`, not go flat.** That is why the daily check is
+> report-only and a roll stays a human decision. Current status:
+>
+> ```
+> GC     GC.Z6s   2026-12   successor -        front only; NO SUCCESSOR LISTED YET
+> BRN    BRN.Z6s  2026-12   successor BRN.F7s  successor available
+> ```
+>
+> The roll re-measures the basis every run (now **+0.456%**) because the whole case rests on it
+> staying below spot's 5.76%/yr.
+
 **OPEN BEFORE ANY DEPLOYMENT.** `GC.Z6s` has only 3 months of bars and can never be backtested —
 the signal must stay on 11 years of spot history and execute on the tracking instrument, the
 GoldEternal pattern, which is what makes the 0.9990 correlation load-bearing. Futures **expire**,
