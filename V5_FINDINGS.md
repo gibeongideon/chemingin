@@ -5375,6 +5375,87 @@ position that is long most of the time**, which is why the deployed book is long
 
 _Last updated 2026-10-21._
 
+### 3bz. "Keep firing a probability, hold while high, flip on the opposite" — the HYSTERESIS works, the PROBABILITY does not (2026-10-21, `scripts/v5_prob_hysteresis.py`)
+
+User request, from two TradingView charts (1-day and 5-day XAUUSD): *"a prediction of the market
+going up or down with probability... it keeps firing as long as the probability is high enough, it
+keeps the trade on; the opposite trigger should close the trade and create the opposite trade. When
+I see with my eyes directly the up and down is so predictable."*
+
+#### FIRST: why a completed chart looks predictable — measured, not asserted
+
+On XAUUSD H1, per window:
+
+| | 1 day (24 bars) | 5 days (120 bars) |
+|---|---|---|
+| **ORACLE — right on every bar** (what the eye traces) | **305.3 bp** | **1,524.5 bp** |
+| buy & hold (the net move) | 71.0 bp = 23.2% | 164.9 bp = 10.8% |
+| **PERFECT CALLS, ONE BAR LATE** | **−5.4 bp = −1.8%** | **−25.9 bp = −1.7%** |
+| direction flips per window | 13.0 | 63.0 |
+
+> **The same perfect calls made ONE BAR LATE — the earliest any causal rule can act — are
+> NEGATIVE.** Not smaller. Negative. And `P(next H1 bar has the same sign as this one) = 0.4787`,
+> i.e. **gold ANTI-persists bar to bar at the resolution those charts are drawn at.** Persistence
+> only appears further out: 0.5060 at 1h, 0.5119 at 4h, **0.5253 at 24h** — which is precisely the
+> horizon the deployed champion already operates on. A finished chart is an answer key.
+
+#### THEN: the requested machine, built exactly as specified
+
+Walk-forward HistGB (8 folds, purged by the full 24h horizon), calibrated P(up), hysteresis
+`p > hi → +1`, `p < 1−hi → −1 (or 0)`, **otherwise HOLD** — that third line being what "keeps the
+trade on". Costs at the live 0.76bp round trip.
+
+| arm | Sharpe | CAGR | maxDD | turns/yr |
+|---|---|---|---|---|
+| buy & hold | +0.794 | +12.0% | −27.3% | 0.1 |
+| **CHAMPION (long-only, deployed)** | **+0.932** | **+17.0%** | −33.1% | 114.2 |
+| P>0.65 hysteresis **LONG-ONLY** | **+0.932** | +10.1% | **−19.6%** | **33.4** |
+| P>0.65 hysteresis LONG/SHORT | +0.641 | +8.3% | −22.3% | 66.8 |
+| P>0.60 LONG-ONLY / LONG-SHORT | +0.608 / +0.119 | | | |
+| P>0.55 LONG-ONLY / LONG-SHORT | +0.602 / +0.122 | | | |
+| P>0.52 LONG-ONLY / LONG-SHORT | +0.548 / +0.032 | | | |
+
+**Three findings, in order of how much they matter.**
+
+**1. THE FLIP-TO-SHORT DESTROYS IT, 4 THRESHOLDS OUT OF 4.** Long-only beats long/short by +0.29,
++0.49, +0.48 and +0.52 Sharpe at 0.65/0.60/0.55/0.52. **`kill-the-shorts` reproduced exactly, and
+the short leg is the specific half of the request that fails.**
+
+**2. THE PROBABILITY HAS NEGATIVE FORWARD SKILL.** Base rate P(up 24h) = **0.5360**; raw accuracy at
+a 0.5 threshold = 0.5118, so the **lift against the base rate is −0.0242** — worse than always
+saying "up". Worse still, conditioned on the bars it fires:
+
+| | mean forward 24h return |
+|---|---|
+| **P > 0.65 (most confident)** | **−4.93 bp** |
+| P ≤ 0.65 | +7.14 bp |
+| all bars | +6.68 bp |
+
+and the quintile profile is non-monotone (+1.88 / +7.60 / +9.30 / +9.71 / **+4.90**). **The bars the
+model is most sure will rise are the bars that fall.**
+
+**3. SO WHERE DOES THE +0.932 COME FROM? THE HYSTERESIS, NOT THE FORECAST.** The arm is a strict
+SUBSET of the champion's longs — it is long-and-champion-flat on **0.0%** of bars, and
+champion-long-while-it-is-flat on 34.5%. It is a **de-risking filter on the champion**, so rule
+1.3.1 applies:
+
+- raw paired-t **−1.11** (the wrong test — it penalises holding less)
+- **matched-vol paired-t +0.32**, against a +2.0 gate → **does not clear**
+- both halves positive but shrinking: +0.158 (H1), +0.033 (H2)
+
+**And the control that settles it:** swap the model for a **plain 24h momentum rank** inside the
+identical hysteresis → **Sharpe +1.034** against the model's +1.115. **The machine-learned
+probability is worth ~0.08 Sharpe over `rank(close/close.shift(24))`, and most of that is lower
+turnover (47.7 vs 194.7), not better prediction.**
+
+**VERDICT.** The user's instinct about *hysteresis* is sound and it is the part that works — holding
+through the band cut turnover from 114 to 33/yr and drawdown from −33.1% to −19.6% at the same
+Sharpe. But **it is a holding rule, not a prediction**, the probability layer adds nothing a
+momentum rank does not, it fails the matched-vol gate against what is already deployed, and the
+flip-to-short half of the specification is the single most damaging component. **Not deployed.**
+
+_Last updated 2026-10-21._
+
 ### 3by. A deployable gain at last: swap-free GOLD at a venue that allows EAs — and the width hypothesis dies (2026-10-21)
 
 Two pre-registered execution-economics experiments after five consecutive signal closures.
