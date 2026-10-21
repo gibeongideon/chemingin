@@ -57,6 +57,11 @@ OR_MINUTES = (15, 30, 60)
 RULES = ("BREAKOUT", "FADE")
 WIDTH = ("ALL", "NARROW", "WIDE")
 SPREAD_BP_ROUND_TRIP = 2.34          # live Maven XAUUSD $0.51 on $4,364, both ways
+# Overridable from the CLI (--cost). Added 2026-10-21: this constant is no longer a property of
+# "the broker", it is a property of WHICH broker. Switch Markets quotes XAUUSDs at $0.210 on
+# $4,164 = 0.504bp, so the round trip is 0.76bp -- about a THIRD of the Maven figure this study
+# was originally priced at. 3be found the ORB direction real (19/27 cells, mirror negative) and
+# killed it on cost alone, so the cost is the whole verdict here and it must be a parameter.
 TRAIL = 60                            # sessions for the width percentile
 
 
@@ -144,7 +149,18 @@ def cells(m15: pd.DataFrame) -> pd.DataFrame:
                     per = net.groupby(yrs).mean()
                     span_wk = (sub["day"].max() - sub["day"].min()).days / 7
                     key = f"{ses}_{om}_{rule}_{w}"
-                    store[key] = pd.Series(net.values, index=pd.DatetimeIndex(sub["day"]))
+                    # *** THE NULL IS BUILT ON GROSS, NEVER NET (fixed 2026-10-21). ***
+                    # Storing `net` put a DETERMINISTIC -cost offset inside a null that is then
+                    # recentred to zero mean, so the observed statistic carried an offset the null
+                    # could not. Combined with abs(t) below, the cell with the MOST TRADES won on
+                    # the largest NEGATIVE t and was reported as surviving. Demonstrated by running
+                    # this same file at --cost 2.34 vs --cost 0.0: the "best cell" flips from
+                    # LONDON_60_FADE_ALL at |t| 5.626 (p 0.0000 SURVIVES) to LONDON_60_BREAKOUT_ALL
+                    # at |t| 1.897 (p 0.9600 fails). The cost was manufacturing the significance,
+                    # with the sign inverted. V5_FINDINGS 3bf recorded this exact lesson on
+                    # 2026-09-21 ("a null must be run on GROSS, not net") but this script was
+                    # never changed, so every re-run since has reproduced the artifact.
+                    store[key] = pd.Series(gross.values, index=pd.DatetimeIndex(sub["day"]))
                     res.append(dict(cell=key, session=ses, or_min=om, rule=rule, width=w,
                                     n=len(sub), per_week=len(sub) / span_wk,
                                     gross_bp=float(gross.mean()), net_bp=float(net.mean()),
@@ -165,18 +181,22 @@ def maxstat_null(store: dict, draws: int, block: int = 20, seed: int = 11) -> di
     rng = np.random.default_rng(seed)
     keys = list(store)
     arrs = {k: store[k].values for k in keys}
-    obs = {k: abs(a.mean() / (a.std() / np.sqrt(len(a)))) for k, a in arrs.items()}
+    # SIGNED, not absolute. FADE is by construction the exact negative of BREAKOUT for the same
+    # (session, or_min, width) -- `gross = sgn * fwd_bp` with an identical width mask -- so abs(t)
+    # double-counts every cell and lets a cell "win" for losing. It also means 3be's cited
+    # "mirror negative" control is an ARITHMETIC IDENTITY, not evidence.
+    obs = {k: a.mean() / (a.std() / np.sqrt(len(a))) for k, a in arrs.items()}
     best_cell = max(obs, key=obs.get)
     mx = np.empty(draws)
     for i in range(draws):
-        m = 0.0
+        m = -np.inf
         for k, a in arrs.items():
             n = len(a)
             nb = int(np.ceil(n / block))
             st = rng.integers(0, max(n - block, 1), nb)
             b = np.concatenate([a[x:x + block] for x in st])[:n]
             b = b - a.mean()                     # impose the null of zero mean
-            m = max(m, abs(b.mean() / (b.std() / np.sqrt(n))))
+            m = max(m, b.mean() / (b.std() / np.sqrt(n)))   # SIGNED maximum
         mx[i] = m
     q = lambda v: float(np.percentile(mx, v))
     return dict(cells=len(keys), draws=draws, observed_best_cell=best_cell,
@@ -188,7 +208,12 @@ def maxstat_null(store: dict, draws: int, block: int = 20, seed: int = 11) -> di
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--draws", type=int, default=400)
+    ap.add_argument("--cost", type=float, default=None,
+                    help="round-trip cost in bp (default 2.34 = Maven; Switch Markets = 0.76)")
     a = ap.parse_args()
+    if a.cost is not None:
+        global SPREAD_BP_ROUND_TRIP
+        SPREAD_BP_ROUND_TRIP = float(a.cost)
     from scripts.v5_advisor_measure import load_frames
     _, m15 = load_frames()
     df, store = cells(m15)

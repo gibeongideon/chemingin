@@ -5375,6 +5375,110 @@ position that is long most of the time**, which is why the deployed book is long
 
 _Last updated 2026-10-21._
 
+### 3bx. Independent intraday exploration — the cost wall moved, and §3be's ORB result rests on a bug this file had already documented (2026-10-21)
+
+Open-ended intraday exploration, grounded by reading the project first. `v5_intraday_explore.py` ·
+`v5_btc_leads_gold_weekend.py` · fix to `v5_session_orb.py`.
+
+**NOT RE-RUN, because the project already closed it.** BEST_FINDINGS #7 priced net Sharpe by
+timeframe at a best-case **$0.12** spread — *tighter than the live venue* — and H4 still beat M30
+(0.93) and H1 (0.98) at **1.27** with a third of the drawdown. "Tight spreads do not rescue intraday
+trend." Reading that first is what stopped this becoming a seventh repeat.
+
+#### A. The cost wall moved, materially
+
+BEST_FINDINGS #7 is described as "the constraint that governs every day-trading idea here" and is
+floored at **1.5bp one-way**. The live account quotes **0.504bp**. `P* = 0.5 + rt/(2·k·ATR)`:
+
+| tf | k | ATR bp | P* at filed floor | **P* LIVE** | shrink |
+|---|---|---|---|---|---|
+| **M15** | 1 | 11.0 | 0.6363 | **0.5343** | **+0.1019** |
+| M15 | 2 | 11.0 | 0.5681 | 0.5172 | +0.0510 |
+| H1 | 1 | 23.3 | 0.5642 | 0.5162 | +0.0481 |
+| D1 | 1 | 122.1 | 0.5123 | 0.5031 | +0.0092 |
+
+M15's breakeven falls from **0.636 to 0.534**. Also note ATR *in bp* has fallen (gold's price rose
+faster than its absolute volatility), which shrinks the wall a second time. This does **not** revive
+intraday trend — #7's signal-quality half stands — but it widens what is worth testing for
+non-trend structures, which is why C and D below were run at all.
+
+#### B. Gold's OVERNIGHT vs INTRADAY decomposition — never tested here; real, decayed, and still untradeable
+
+The equity overnight anomaly (close-to-open earns nearly everything) has never been tested on gold in
+this repo. 2,960 sessions, 11.4 years, break detected empirically rather than from a session
+calendar (this file has been burnt once by a hard-coded 2h DST claim that was really 1h):
+
+| leg | CAGR | **Sharpe** | mean bp | t |
+|---|---|---|---|---|
+| **overnight** | +3.07% | **1.28** | +1.18 | **+4.32** |
+| intraday | +8.63% | 0.61 | +3.67 | +2.06 |
+| full day | +11.96% | 0.80 | +4.85 | +2.69 |
+
+**The overnight leg's Sharpe (1.28) beats the full day's (0.80)** on t +4.32 — a genuine structural
+fact. Two things kill it as a strategy:
+
+1. **THE FILL CHECK §3b ASKED FOR AND NEVER DID.** Overnight-only pays a round trip *every* session:
+   0.76bp × 259 sessions/yr = **1.96%/yr**. Gross +3.07% becomes **net +1.07%** (Sharpe 0.46)
+   against buy-and-hold's **+11.96%** paying the spread once. §3b's "overnight+reversal 1.30 OOS" is
+   now resolved: **it does not survive its own turnover.**
+2. **IT DECAYED COMPLETELY.** Overnight ran +4.9% to +7.2%/yr every year 2015-2020, then −1.12% to
+   +1.11% across 2021-2026. Meanwhile intraday exploded (+25.6% 2024, **+52.8% 2025**). Gold's
+   return has **migrated from overnight to intraday** — which also explains why `ON share` of the
+   full move goes from ~0.5 pre-2021 to ~0.0 after.
+
+#### C. Does BTC's weekend move predict gold's Monday gap? — REFUTED
+
+A mechanism, not a pattern: gold shuts ~49h over a weekend, BTC never does, so weekend macro news
+has only one liquid debasement venue and gold should catch up at the re-open. 660 weekends, 2014-2026.
+
+| | corr | t |
+|---|---|---|
+| BTC weekend → gold GAP | **+0.0170** | +0.44 |
+| gold Friday → gold GAP (autocorr control) | −0.0597 | −1.53 |
+
+The conditional table is the kill: gold's gap is **+7.04bp when BTC rose** and **+8.28bp when BTC
+fell** — indistinguishable, and the wrong sign. Split-half flips (+2.19bp → −4.63bp), 6 of 13 years
+positive. What *is* there is non-directional: both `BTC > +2%` and `BTC < −2%` precede larger gaps,
+i.e. volatile weekends produce volatile gaps. The information-ordering mechanism is refuted.
+
+> #### D. THE FINDING OF THIS SESSION — §3be's ORB result is an artifact of a bug §3bf had already named
+>
+> §3be concluded the opening-range breakout was "**real** (19/27 cells, mirror negative) but worth
+> ~1-2bp against a 2.34bp round trip". Since the live round trip is now 0.76bp, a real 1-2bp edge
+> would flip positive — so it was re-priced. **It does not flip, because it was never real.**
+>
+> **Running the unchanged script at two costs exposes it:**
+>
+> | cost | "best cell" | max \|t\| | verdict |
+> |---|---|---|---|
+> | 2.34bp | LONDON_60_**FADE**_ALL | **5.626** | SURVIVES p 0.0000 |
+> | 0.00bp | LONDON_60_**BREAKOUT**_ALL | **1.897** | fails p 0.9600 |
+>
+> **The cost offset WAS the significance, with the sign inverted.** Three things combined:
+> `store[key]` held **net**, the statistic was `abs(t)`, and the null was recentred to zero mean —
+> so the deterministic −cost sat in the observed statistic but not in the null, and the cell with
+> the **most trades** won on the largest **negative** t. **§3bf recorded this exact lesson on
+> 2026-09-21 — "a null must be run on GROSS, not net" — and the script was never changed**, so every
+> re-run since has reproduced the artifact.
+>
+> **And §3be's second support is an arithmetic identity.** `gross = sgn * fwd_bp` with `sgn = ±1` and
+> an identical width mask means **FADE is by construction the exact negative of BREAKOUT** for the
+> same (session, or_min, width). The cited "mirror negative" control therefore carries **zero
+> information** — it cannot come out any other way — and `abs(t)` double-counted all 54 cells.
+>
+> **Harness fixed (null on GROSS, SIGNED maximum). The honest verdict:** best cell
+> LONDON_60_BREAKOUT_ALL, signed t **+1.897**, null of the signed maximum p50 **2.300**, p95 3.171,
+> **p = 0.8425, DOES NOT SURVIVE.** The best cell's gross signal sits **below the null's median**.
+> So the ORB has no edge at any cost, and the cheaper spread cannot rescue it because there is
+> nothing to rescue. **§3be's "real but sub-cost" should be read as "not established".**
+
+**THE TRANSFERABLE LESSON.** A filed lesson is not a fix. §3bf diagnosed this bug correctly and
+wrote it down; the code kept shipping it for a month. **When a null's verdict can be flipped by a
+parameter that should not touch it — cost, in a zero-mean null — that is the test to run first, and
+it costs one extra run.** Cheap diagnostic, permanent protection.
+
+_Last updated 2026-10-21._
+
 ### 3bw. Recency weighting makes it strictly worse — and manufactures the "97% pattern" (2026-10-21)
 
 Asked whether weighting recent data more heavily changes the 3bu verdict. The mechanistic case was
