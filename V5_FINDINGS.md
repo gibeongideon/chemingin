@@ -5375,6 +5375,73 @@ position that is long most of the time**, which is why the deployed book is long
 
 _Last updated 2026-10-21._
 
+### 3bw. Recency weighting makes it strictly worse — and manufactures the "97% pattern" (2026-10-21)
+
+Asked whether weighting recent data more heavily changes the 3bu verdict. The mechanistic case was
+reasonable: gold's 2026 daily range is 2.73%, about **8x** its 2015 level, so old data may be a
+different process. The statistical case against it is decisive.
+`scripts/v5_daily_certainty_recency.py` · `v5_recency_predictive_power.py`.
+
+**THE TRAP, PRICED.** Recency weighting adds no information; it DISCARDS old information.
+Exponential weights with half-life h cut the effective sample to `N_eff = (Σw)²/Σw²`, and Gate A
+established that the best-of-K noise floor RISES as N falls. So a shorter half-life must produce
+more apparent winners even when nothing is there. Gold, K=307, in-sample before 2024-10-21:
+
+| half-life | N_eff | base | **best precision** | survivors @ FIXED bar | N_eff-adjusted bar | survivors @ HONEST bar |
+|---|---|---|---|---|---|---|
+| none (flat) | 226 | 0.523 | 0.652 | 3 | 0.633 | 2 |
+| 2000d | 179 | 0.525 | 0.700 | 5 | 0.659 | 3 |
+| 1000d | 117 | 0.528 | 0.768 | 15 | 0.690 | 4 |
+| 500d | 63 | 0.536 | 0.884 | 24 | 0.762 | 4 |
+| **250d** | **33** | 0.545 | **0.974** | **54** | **0.844** | 8 |
+
+> At a 250-day half-life the search reports a **0.974-precision pattern** and **54 survivors
+> against 3** — an 18x increase. This is *exactly* the "pattern that almost never fails" originally
+> asked for in 3bu, and it is **manufactured entirely by shrinking the sample to N_eff = 33.**
+> Moving the bar honestly with N_eff removes about three-quarters of the apparent gain.
+
+**THE WELL-POWERED TEST (214 patterns, held-out 2024-10-21 onward, never weighted).** Fit each
+pattern's precision in-sample under each half-life, then correlate against the same patterns'
+unweighted precision on the future. If recency captured a real regime shift this must RISE.
+
+| half-life | corr(IS, OOS) | mean abs gap | top-10 OOS precision |
+|---|---|---|---|
+| none (flat) | **+0.364** | 0.072 | **0.615** |
+| 2000d | +0.367 | 0.072 | 0.614 |
+| 1000d | +0.310 | 0.073 | 0.637 |
+| 500d | +0.227 | 0.075 | 0.605 |
+| **250d** | **+0.140** | 0.079 | **0.549** |
+
+**Recency weighting destroys predictive power, monotonically.** The in-sample/out-of-sample
+correlation more than halves (+0.364 → +0.140) and calibration worsens. Picking the ten best
+in-sample patterns under flat weights scores **0.615** out of sample against a 0.550 base; under a
+250-day half-life the same procedure scores **0.549 — at the base rate, i.e. exactly zero skill.**
+
+In the single-pattern check, every half-life selected the SAME pattern and returned the SAME
+out-of-sample result: in-sample precision climbed **0.700 → 0.974 (+27pp) while OOS stayed pinned at
+0.571** on 7 fires. In-sample precision rose 27 points; out-of-sample did not move at all.
+
+**WHY the mechanistic case fails even though the regime shift is real.** The grid is almost entirely
+**scale-free** — quantile buckets, streaks, z-scores — so an 8x change in absolute range is already
+normalised away. Recency weighting was therefore discarding sample to solve a problem the features
+had solved. The rising `all-pattern OOS` column (0.529 → 0.545) is not skill either: a shorter
+half-life makes side-selection track recent drift, and gold rose, so patterns get assigned the long
+side more often and converge on the base rate.
+
+**A BUG CAUGHT AND FIXED MID-RUN:** the first version built the noise floor on
+`res["base"].iloc[0]` — the FIRST pattern's *side-adjusted* base (0.477 when that row chose the
+short side) rather than the global up-rate (0.523). The floor must be built on the favoured side,
+`max(b, 1−b)`, because every pattern is free to pick its side. The corrected floor cut the flat-weight
+survivor count from 18 to 3.
+
+**RULE: when a change reduces the effective sample, the significance bar must move with it in the
+same step.** Reporting more survivors after narrowing the sample is not a discovery, it is the
+arithmetic of a smaller N. This is the third confirmation that "recent data looks better" is an
+artifact signature here (SMC-BOS 1.44 single-split vs 0.54 walk-forward; range-vol t +2.25 pooled
+but 2022+ only).
+
+_Last updated 2026-10-21._
+
 ### 3bv. ZigZag on BTC/XAU — closed, and the accuracy question answered by arithmetic (2026-10-21)
 
 Requested as a ZigZag re-exploration on "BTCXAU" with "the correct accuracy and RR". That framing
