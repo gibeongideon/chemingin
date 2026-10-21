@@ -186,7 +186,7 @@ a trailing high-water mark. Source of truth for FundingPips mechanics: `CHALLENG
 
 | Strategy | Net edge | Status | Notes |
 |---|---|---|---|
-| Sharpe-1.6 drift portfolio | eval SR **1.59**, DSR 0.9998 | backtested, **not deployed** | champion recipe across BTC/indices/XAU/silver + LS diversifiers; the real upside |
+| Sharpe-1.6 drift portfolio | eval SR **1.561** (was 1.59 — see note), DSR 0.9998, **PBO never computed** | backtested, **not deployed** | champion recipe across BTC/indices/XAU/silver + LS diversifiers. **CORRECTED 2026-10-21:** `data/v5_runs/SHARPE16_QUEST.md:68-76` records a causality audit — the P8 combiner rescaled streams to 10% vol using **full-sample std**, a lookahead. Causal re-run = **1.561**, maxDD −18.1% (not −16.6%). This row carried the pre-audit 1.59 for three months. Also needs UST futures, which are not tradeable, and §3ah measured its wide sleeves as net-negative after carry (GER30 −0.003). |
 | Long-only XAU champion | eval **0.99–1.04**, live ~0.97 | **LIVE** (acct 360542) | H4, vol-targeted EWMAC+breakout, conc^1.5, long-only. `data/v5_runs/xau-longonly-champion/` |
 | LS ensemble | SR **0.81** | **LIVE** (acct 360541) | long-short trend diversifier |
 | 2nd independent basket: NIKKEI+COFFEE+ETH+DAX | eval SR **0.81**, CI [+0.05,+1.58] | backtested, **not deployed**, weaker than flagship | same recipe, DIFFERENT asset set, ~0.3 corr to BTC/NDX. Detail below. |
@@ -5372,6 +5372,104 @@ independent arrival at the same place: the drift baseline beat every conditional
 COT study found 0/36 cells beat *holding* gold, the external playbook found 0/60, and now 0/761
 daily patterns. The live champion's value was never a high hit rate — it is **risk control on a
 position that is long most of the time**, which is why the deployed book is long-biased.
+
+_Last updated 2026-10-21._
+
+### 3by. A deployable gain at last: swap-free GOLD at a venue that allows EAs — and the width hypothesis dies (2026-10-21)
+
+Two pre-registered execution-economics experiments after five consecutive signal closures.
+`v5_regime_u_width.py` · `v5_symbol_census.py` · `v5_swapfree_gold_switch.py` ·
+`src/core/swap_modes.py`. Pre-registration: `data/v5_runs/regime_u_width/PREREGISTRATION.md`.
+
+#### EXPERIMENT 1 — book width on the regime-U criterion: the incumbent STANDS
+
+The hypothesis was that §3br picked 2 sleeves on a prop-firm daily-breach criterion which
+`RESEARCH-REGIMES.md:124-126` files as *"meaningless in regime U"*, so on a broker account the
+3-sleeve book should win (§3br's spread-only table: XAU+BTC+NDX **+1.696** vs XAU+BTC **+1.511**).
+Re-run with **carry charged**, at Switch's measured costs:
+
+| book | n | net Sharpe | CAGR@.09 | maxDD | Calmar | matched-vol t | verdict |
+|---|---|---|---|---|---|---|---|
+| XAU alone | 1 | +0.739 | +8.5% | −21.1% | 0.40 | −2.83 | fails |
+| **XAU+BTC [incumbent]** | 2 | **+1.284** | **+10.4%** | −11.3% | 0.92 | — | — |
+| XAU+BTC+NDX | 3 | +1.370 | +8.6% | −9.5% | 0.90 | **+0.62** | fails gate |
+| XAU+BTC+BRENT | 3 | +1.291 | +8.4% | −8.9% | 0.94 | +0.05 | fails gate |
+| XAU+BTC+NDX+BRENT | 4 | +1.380 | +7.5% | −8.2% | 0.92 | +0.48 | fails gate |
+
+**§3br's +0.185 spread-only gap collapses to +0.087 once carry is charged, at t +0.62 against a
+pre-registered +2.0.** The pre-registration predicted "+0.05 to +0.15 net, possibly inside noise";
+it landed at +0.087, inside noise. Widening also costs **1.8pp of CAGR** (10.4% → 8.6%) for that.
+**The deployed 2-sleeve book stands, and my hypothesis is refuted on its own criterion.**
+
+> **Control cell behaved exactly as designed.** XAU+BTC reproduced **+1.284** against §3bs's
+> +1.286. XAU alone came in at +0.739 against a "+0.92" reference — *not* a harness error: +0.919
+> is §3br's **spread-only** figure, and the 0.18 gap is precisely the carry §3bs priced at
+> 0.22-0.34 Sharpe. The control caught my own mis-citation.
+
+#### EXPERIMENT 2 — the first full-universe carry census, and what it found
+
+No full-universe sweeper existed in this repo — only an XAU-filtered spread probe and a
+per-symbol printer. `v5_symbol_census.py` scans all **2,067** Switch symbols read-only in ~3 min.
+
+| swap_mode | count | | |
+|---|---|---|---|
+| INTEREST_OPEN | 1,876 | **DISABLED (swap-free)** | **38** |
+| POINTS | 89 | INTEREST_CURRENT | 64 |
+
+**This refutes §3ah's "there is NO swap-free index, crypto or energy"** — which was measured on
+**Maven's 68 symbols**, not here. Switch has swap-free gold, NASDAQ, Dow, S&P, DAX, FTSE,
+EuroStoxx, Brent, WTI and silver. Still **no swap-free crypto**, so §3ah holds there.
+
+> **THE TRAP, AND IT IS THE WHOLE POINT.** These are **futures**. A future is swap-free because
+> futures do not pay swap — **the financing is embedded in the BASIS.** `swap_mode = DISABLED` is
+> therefore *not* free money, and a naive read of this census would be a disaster. The honest cost
+> is the measured basis decay.
+
+**Measured on `GC.Z6s` vs `XAUUSDs`, 1,518 common H1 bars, 2026-07-21 → 2026-10-21:**
+- return correlation **0.9990** (GoldEternal needed 0.998 — this is better)
+- basis **+1.532% → +0.491%**, i.e. −1.041% over 92 days = **−4.13%/yr realised**
+- forward: +0.491% over ~69 days to the Dec expiry = **−2.60%/yr**
+- spot `XAUUSDs` swap = **−5.76%/yr**
+
+So the saving is **1.6 to 3.2 percentage points a year, not the full 5.76.** Priced into the live
+book, charging the extra spread (0.89bp vs 0.50bp) and a quarterly roll:
+
+| gold leg | SR gold | **SR book** | CAGR | maxDD |
+|---|---|---|---|---|
+| `XAUUSDs` spot (incumbent) | +0.739 | **+1.284** | +10.4% | −11.3% |
+| `GC.Z6s`, realised basis | +0.807 | **+1.335** | +10.9% | −11.1% |
+| `GC.Z6s`, forward basis | +0.888 | **+1.396** | +11.4% | −10.7% |
+| _hypothetical zero carry (§3ag ceiling)_ | _+1.025_ | _+1.499_ | _+12.3%_ | _−10.1%_ |
+
+**+0.05 to +0.11 Sharpe and +0.5 to +1.0pp of CAGR, with drawdown slightly BETTER, for no new
+signal — only a different execution ticket.**
+
+**WHY THIS MATTERS BEYOND THE NUMBER.** §3ag called GoldEternal *"worth more than every signal
+result in this repo's history"* and it has sat unharvested for seven weeks for exactly one reason:
+**Maven forbids EAs**, so no order could be placed and no settlement ever observed (§3bd). Switch
+permits automation — the book already trades there on magic 360595. **This is the same finding at
+a venue where it can actually be executed.**
+
+> **READ THE t-STATS CORRECTLY: they came back +54 to +62 and they mean NOTHING.** That is the
+> signature of a **deterministic cost substitution** — same signal, same prices, differing only by
+> a constant applied to |position|, so the difference has near-zero variance and the t explodes.
+> Method rule 1.3.2 exists for this. **The number to trust is the carry measurement, not the t**,
+> which is why the basis was measured over 92 days rather than assumed.
+
+**OPEN BEFORE ANY DEPLOYMENT.** `GC.Z6s` has only 3 months of bars and can never be backtested —
+the signal must stay on 11 years of spot history and execute on the tracking instrument, the
+GoldEternal pattern, which is what makes the 0.9990 correlation load-bearing. Futures **expire**,
+so a quarterly roll must be built and the basis re-measured each roll. And no order has yet been
+placed, so fill quality is unverified — the same open item §3bd left on GoldEternal.
+
+#### Housekeeping done in the same pass
+- `v5_verify_all.py` **had never been run** (no log, banner or doc reference anywhere). Run and
+  committed: **7 of 8 headlines reproduce to +0.000.** The one FAIL is 3bp's BTC buy-and-hold
+  (1.055 → 1.102, +0.047) and it is **data vintage, not code** — `BTC_D1_long.csv` was refreshed to
+  2026-10-21. **The harness pins no data vintage, so a FAIL can mean "the data moved".**
+- The champions table's `1.59` corrected to the causality-audited **1.561** (stale three months).
+- `src/core/swap_modes.py` added — there was **no swap-mode mapping anywhere** in the codebase, and
+  the one converter silently ran modes 2/3/4/7/8 through the POINTS formula.
 
 _Last updated 2026-10-21._
 

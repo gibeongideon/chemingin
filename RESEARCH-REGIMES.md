@@ -278,3 +278,34 @@ Errors made and fixed, recorded so they are not re-inherited:
 
 _Last updated 2026-09-04. Companion documents: `V5_FINDINGS.md` (chronological detail, §-numbered),
 `README.MD` (current state), `BlogPOST.md` (narrative)._
+
+---
+
+## 4. Addendum 2026-10-21 — width re-tested in regime U, and a venue correction
+
+This file was last updated **2026-09-04**, before the 2-sleeve book existed. Two corrections.
+
+**4.1 The width row (L184) was re-tested on the regime-U criterion WITH CARRY, and the incumbent
+held.** §3br selected 2 sleeves using `pass` / `fail_day` from an FTMO phase-1 simulator — a
+criterion §1 of this file calls *"meaningless in regime U"* — and the 2-sleeve book was then
+deployed to Switch, which has no daily limit, with the width copied unchanged. That looked like
+exactly the mixing error this file's preamble warns about, so it was re-derived (§3by):
+
+| book | net Sharpe (carry charged) | CAGR@.09 | matched-vol t vs incumbent |
+|---|---|---|---|
+| XAU+BTC (incumbent) | **+1.284** | **+10.4%** | — |
+| XAU+BTC+NDX | +1.370 | +8.6% | **+0.62** |
+| XAU+BTC+NDX+BRENT | +1.380 | +7.5% | +0.48 |
+
+§3br's +0.185 spread-only gap collapses to **+0.087 once carry is charged**, far short of a
+pre-registered +2.0, and widening costs 1.8pp of CAGR. **So L184's "regime U = narrow" verdict
+survives — now on direct evidence at 2 vs 3 vs 4 sleeves, not only at 4 vs 7.**
+
+**4.2 L57's "no swap-free index, crypto or energy" is VENUE-SPECIFIC, not universal.** That was
+measured on Maven's 68 symbols. The first full-universe census (2,067 Switch symbols, §3by) found
+**38 swap-free instruments**, including gold, NASDAQ, Dow, S&P, DAX, FTSE, EuroStoxx, Brent, WTI
+and silver. Crypto remains swap-free nowhere. **But they are FUTURES, so the financing sits in the
+BASIS, not in a nightly swap** — measured on `GC.Z6s`, −4.13%/yr realised against spot's −5.76%,
+i.e. a real but partial saving. Carry conclusions must now be stated **per venue**.
+
+_Addendum added 2026-10-21._
