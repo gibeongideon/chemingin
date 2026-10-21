@@ -5375,6 +5375,82 @@ position that is long most of the time**, which is why the deployed book is long
 
 _Last updated 2026-10-21._
 
+### 3bv. ZigZag on BTC/XAU — closed, and the accuracy question answered by arithmetic (2026-10-21)
+
+Requested as a ZigZag re-exploration on "BTCXAU" with "the correct accuracy and RR". That framing
+is the right one, so the question was inverted: rather than build a detector and hope, compute what
+precision each risk-reward REQUIRES and compare it to the oracle ceiling and to the best precision
+any detector here has ever reached. `scripts/v5_zigzag_ratio_rr.py` ·
+`v5_zigzag_ratio_random_control.py` · `v5_zigzag_ratio_walkforward.py`.
+
+**`BTCXAU` is not a symbol** (3bu, all 2,067 Switch symbols). Synthesised as BTCUSD/XAUUSD, traded
+as **two legs at 7.44bp** against gold's 0.75bp. Note the ratio's high/low are **not** the ratios of
+the highs/lows — the extremes of B/G pair B-high with G-LOW and vice versa; getting that backwards
+understates the range and flatters every bracket.
+
+**THE REQUIRED-PRECISION TABLE (the direct answer).** For TP = RR × SL, breakeven is
+`p = (SL + cost) / (SL × (1 + RR))`:
+
+| RR | 0.5 | 1.0 | 1.5 | 2.0 | 3.0 |
+|---|---|---|---|---|---|
+| **need p** | 0.671 | 0.503 | 0.403 | 0.335 | 0.252 |
+
+Against **0.645** — the best precision any detector in this repo has reached (gold H1 ZigZag @ 0.60,
+AUC 0.7589, 698 non-overlapping fires, `within_tol` 0.6455). So on paper every RR ≥ 1.0 is reachable.
+**The oracle is what kills it.**
+
+> **THE CIRCULARITY THAT MADE THE FIRST RUN LOOK GREAT.** A trough is confirmed only once price has
+> risen k × ATR above it, so *by construction* price rises at least k × ATR after a true trough.
+> Entering at the **pivot bar** therefore makes any TP below k × ATR a mathematical certainty. The
+> first run returned **oracle precision 0.97–1.00** and marked almost every cell "worth a model" —
+> the same tautology class already killed four times here. A detector cannot fire at the pivot; the
+> pivot is knowable only once the confirming move has **already happened**.
+>
+> Re-entering at the **confirmation bar**, the honest earliest moment, collapses the oracle to
+> **0.19–0.67**, because the median confirmation lag is 3 bars at k=1 and **1.30 ATR of the move is
+> already spent** (2.30 ATR at k=2). At RR=1.0 the oracle reaches **0.497** against a required
+> **0.503** — **zero headroom before any model exists.**
+
+**THE RANDOM-ENTRY CONTROL — the same bracket at random bars, matched on count and side mix.**
+
+| asset | cells | beat random (p95) | inside noise | WORSE than random |
+|---|---|---|---|---|
+| **GOLD** (control, known answer) | 15 | **0** | 6 | **9** |
+| BTC/XAU ratio | 15 | 4 (all k=2.0) | 10 | 1 |
+
+Gold behaving exactly as 3bl predicts validates the harness. The ratio's 4 apparent survivors sat
+only at k=2.0 and vanished at both k=1.0 and k=3.0 — a single-cell peak with both neighbours failing.
+
+**TWO BUGS IN MY OWN HARNESS, both of which flattered the result.**
+1. **Unresolved trades were dropped.** 37 of 110 pivots (34%) never touched TP or SL inside the
+   horizon and were excluded from precision — conditioning on the outcome, the same survivorship
+   bug as dropping outside days in the NR7 study. Every trade now settles: TP, SL, or marked to
+   market at the horizon. At wide stops **45–53% of trades never resolve**, so a "3 ATR bracket"
+   is really a 30-day hold wearing a bracket's name.
+2. **Selection was pooled.** Choosing cells on full-sample performance and then "confirming" them in
+   both halves is near-circular, since pooled is the average of the halves. All four k=2.0 cells
+   passed that test; it means nothing.
+
+**THE CORRECTED WALK-FORWARD VERDICT — select on H1, judge on H2 only:**
+
+- **k=1.0, where the data actually is** (n 174/141): H1 EV ran +13 to +239bp, **H2 ran −78 to +9.7bp
+  — every single cell negative out of sample.** A complete sign flip on the cells with the most
+  trades.
+- The H1-selected best (k=2.0, SL 3.0, RR 1.5) earned **+335.7bp OOS** on 47 trades, precision 0.596
+  — against a random-entry **p95 of +419.0bp**. **Inside the noise band.**
+- `corr(H1, H2) = +0.602` across cells is **BTC beta, not pivot skill**: at wide stops half the
+  trades are 30-day holds, and the ratio rose enormously over 2014-2026, which is why random entries
+  also earn a positive median (+29bp).
+
+**CLOSED on the same mechanism as gold.** By the time a ZigZag pivot is knowable, 1.3–2.3 ATR of the
+move is spent and what remains is indistinguishable from a random entry. The durable transferable
+rule: **in any ZigZag/pivot study, entry must be at CONFIRMATION, and the oracle must be re-measured
+there — an oracle entered at the pivot bar is measuring the label's own definition.** That single
+change moved the ceiling from 0.97–1.00 to 0.19–0.67 and turned a 60-cell "mostly worth a model"
+grid into a closure.
+
+_Last updated 2026-10-21._
+
 ### 3bt. The book is live on Switch Markets — and two dead gates surfaced on the way (2026-10-19)
 
 3bs's winning venue, deployed. `configs/v5_xau_btc_switch.json`, magic **360595**, bridge 18815
