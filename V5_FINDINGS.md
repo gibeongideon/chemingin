@@ -5375,6 +5375,71 @@ position that is long most of the time**, which is why the deployed book is long
 
 _Last updated 2026-10-21._
 
+### 3ca. Which 5%ers EVALUATION to buy, re-run on CURRENT terms — Bootcamp, and the funded accounts are identical (2026-10-22, `scripts/v5_account_chooser_2026_10.py`)
+
+§3al answered this on 2026-09-09, but two things changed and both matter.
+
+**1. High Stakes' DAILY LIMIT went 5% → 3%, and its price $491 → $149.** That is not a discount,
+it is a different product — and §3al's central finding was that the binding constraint decides.
+It had already measured the **3% daily limit destroying the 1-Step Growth plan** (fail_day 36.3%).
+**The cheap plan now carries the constraint that killed the other one.**
+
+**2. The deployed book is no longer gold-only** — it is XAU+BTC (Sharpe +1.286, maxDD −12.5% at
+Switch costs), and a thinner left tail is exactly what a daily rule rewards.
+
+Also: Bootcamp's max-loss is **not** what §3al encoded. The current page is $10,000 on a 100K first
+step (**10%**), then $7,500/150K and $10,000/200K (5% each). §3al had [5%, 5%, 5%].
+
+#### Simulated on the DEPLOYED XAU+BTC book (3 seeds × 1,200 sims, day_safety 1.5)
+
+| plan | dial | pass% | median months | **fail_day%** | fail_dd% |
+|---|---|---|---|---|---|
+| **3-Step Bootcamp** | 7% | **69.6** | 17.1 | **0.0** | 22.3 |
+| ^ read as 2-step eval | 7% | **83.8** | 10.9 | **0.0** | 12.9 |
+| High Stakes ($149, 3% daily) | 5% | 64.5 | 20.7 | **15.9** | 0.2 |
+| ^ *the same plan at the OLD 5% daily* | 7% | *86.2* | *16.0* | *0.0* | *1.9* |
+
+> **Bootcamp's `fail_day` is 0.0% at EVERY dial tested** — it has no daily rule, so that failure
+> mode does not exist. High Stakes' 3% daily bites progressively: **15.9% → 40.7% → 71.8%** of runs
+> die on a single day at 5/7/10% dials.
+>
+> **THE DAILY-LIMIT CHANGE COST HIGH STAKES 21.7 PERCENTAGE POINTS OF PASS RATE** (86.2% at 5%
+> daily → 64.5% at 3%). The $342 price cut bought a materially worse product, which is only
+> visible because the binding constraint was simulated rather than the headline price compared.
+
+#### The funded phase: the two accounts are ARITHMETICALLY IDENTICAL
+
+§3al's main self-correction was that the **funded** wall caps income, not the evaluation. Priced on
+the deployed book (maxDD/vol = 1.42×, so a wall of W% permits a dial of W/1.42):
+
+| funded | balance | wall | safe dial | CAGR | **gross $/yr** |
+|---|---|---|---|---|---|
+| Bootcamp | 250,000 | 4% | 2.82% | 3.62% | **$9,050** |
+| High Stakes | 100,000 | 10% | 7.05% | 9.05% | **$9,050** |
+
+> **Identical, and not by coincidence: both funded accounts have a $10,000 max loss IN DOLLARS.**
+> Bootcamp's 2.5× larger balance exactly offsets its 2.5× tighter percentage wall. **The
+> balance and the percentage are cosmetic; the dollar wall is the whole specification.** This is
+> worth carrying forward — comparing prop plans on "account size" or "max loss %" independently is
+> comparing two halves of one number.
+
+**The tiebreak is High Stakes' "Withdraw Cap $2,000"**, which the page does not qualify. §3al
+treated the equivalent Growth cap as a hard cap and it cut that plan from $4,107 to $2,000. Per
+withdrawal cycle it does not bind ($9,050); as a total it cuts income by **78%**. Bootcamp lists no
+cap.
+
+**VERDICT: Bootcamp.** It passes more often (69.6-83.8% vs 64.5%), *faster* (17.1 vs 20.7 months),
+with **zero** daily-loss failures against High Stakes' 15.9%, for the same funded income and
+possibly 4.5× more. Its $350 is payable only on passing, so the real downside risk is $225 vs $149
+— a $76 difference. Leverage 1:30 is not a constraint: at a 7% dial this book holds ~0.3× notional.
+
+**AMBIGUITY DECLARED, not guessed:** the Bootcamp page lists three balance steps but only two
+profit targets (5%, 6%). Both readings are simulated above and **Bootcamp wins under either**, so
+the ambiguity does not change the decision — but it changes the expected duration a lot (17.1 vs
+10.9 months) and should be confirmed with the firm.
+
+_Last updated 2026-10-22._
+
 ### 3bz. "Keep firing a probability, hold while high, flip on the opposite" — the HYSTERESIS works, the PROBABILITY does not (2026-10-21, `scripts/v5_prob_hysteresis.py`)
 
 User request, from two TradingView charts (1-day and 5-day XAUUSD): *"a prediction of the market
