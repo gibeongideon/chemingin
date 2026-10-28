@@ -49,9 +49,17 @@ esac
 # the FTMO feed and only EXECUTION happens at Switch. A side benefit: both live books then trade
 # the identical forecast, which is what isolates the venue.
 $PY scripts/refresh_d1_panel.py --aliases GOLD,BTC >> "$LOG" 2>&1
-if ! $PY scripts/refresh_xau_h4.py --port 18814 >> "$LOG" 2>&1; then
-  echo "  WARN: H4 refresh via FTMO 18814 failed — falling back to a freshness CHECK" >> "$LOG"
+# *** SELF-SUFFICIENT AS OF 2026-10-28: refresh from SWITCH's OWN feed, not FTMO's. ***
+# This wrapper used to call `refresh_xau_h4.py --port 18814`, so a live book depended on a
+# terminal for a broker we no longer trade -- standing FTMO down would have starved it.
+# The gold sleeve now sizes off the quotes of the broker it actually EXECUTES on, which is also
+# what removes the splice: XAUUSD_H4_long.csv's pre-2023 half correlates 0.18-0.40 with real
+# broker quotes, while this file is single-provenance back to 2003 and agrees with live at 0.9978.
+if ! $PY scripts/refresh_xau_h4.py --port 18815 --symbol XAUUSDs --tf H4 \
+        --csv data/XAUUSDs_H4_switch.csv --bars 20000 >> "$LOG" 2>&1; then
+  echo "  WARN: Switch H4 refresh failed — falling back to a freshness CHECK" >> "$LOG"
 fi
+export XAU_H4_CSV="$PWD/data/XAUUSDs_H4_switch.csv"
 
 # Independent gate: trust the FILES, not the exit codes above. A refresher can succeed and still
 # return nothing useful, and this book must not be hostage to the FTMO terminal being up -- so
@@ -67,15 +75,15 @@ bad = []
 
 mt5 = MetaTrader5(host="localhost", port=18815)
 if not mt5.initialize():
-    print(f"  gate XAUUSD_H4_long: bridge init failed {mt5.last_error()}"); sys.exit(1)
+    print(f"  gate XAUUSDs_H4_switch: bridge init failed {mt5.last_error()}"); sys.exit(1)
 mt5.symbol_select("XAUUSDs", True)
 tick = mt5.symbol_info_tick("XAUUSDs")
 r = mt5.copy_rates_from_pos("XAUUSDs", 16388, 0, 4)   # 16388 = TIMEFRAME_H4
 mt5.shutdown()
 if r is None or len(r) < 2:
-    print("  gate XAUUSD_H4_long: broker returned no H4 bars"); sys.exit(1)
+    print("  gate XAUUSDs_H4_switch: broker returned no H4 bars"); sys.exit(1)
 if tick is None:
-    print("  gate XAUUSD_H4_long: no tick, cannot establish the server clock"); sys.exit(1)
+    print("  gate XAUUSDs_H4_switch: no tick, cannot establish the server clock"); sys.exit(1)
 
 # *** EVERY BAR-AGE COMPARISON BELOW IS IN SERVER TIME, NOT HOST UTC. ***
 # MT5 stamps bars and ticks on the BROKER's clock (SwitchMarkets-Live and FTMO-Demo are both
@@ -90,10 +98,10 @@ bars = pd.to_datetime([x[0] for x in r], unit="s").sort_values()
 broker_last = bars[bars + pd.Timedelta(hours=4) <= srv_now].max()   # newest CLOSED bar
 newest_any = bars.max()                                            # incl. the in-progress bar
 
-f = Path("data/XAUUSD_H4_long.csv")
+f = Path("data/XAUUSDs_H4_switch.csv")
 file_last = pd.read_csv(f, usecols=["time"], parse_dates=["time"])["time"].max()
 open_age = (srv_now - newest_any).total_seconds() / 3600
-print(f"  gate XAUUSD_H4_long: file {file_last} | Switch newest closed {broker_last} "
+print(f"  gate XAUUSDs_H4_switch: file {file_last} | Switch newest closed {broker_last} "
       f"| bar in progress {newest_any} ({open_age:.1f}h old, server clock {srv_now})")
 if file_last < broker_last:
     bad.append(f"XAUUSD_H4_long behind the broker ({file_last} < {broker_last}) — "

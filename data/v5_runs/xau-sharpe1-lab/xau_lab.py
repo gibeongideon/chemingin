@@ -30,8 +30,18 @@ ANN_D1 = 252
 
 # ---------------------------------------------------------------- data
 def load_h4() -> pd.DataFrame:
-    df = pd.read_csv(f"{ROOT}/data/XAUUSD_H4_long.csv",
-                     parse_dates=["time"], index_col="time").sort_index()
+    # XAU_H4_CSV lets a DEPLOYMENT point the gold sleeve at the feed of the broker it actually
+    # EXECUTES on, instead of the shared XAUUSD_H4_long.csv. Added 2026-10-28 when FTMO was stood
+    # down: the Switch book had been refreshing its gold H4 through FTMO's bridge, so killing that
+    # terminal would have starved a live book.
+    # And the Switch-native file is strictly better, measured over 16,928 shared bars:
+    # XAUUSD_H4_long.csv is a SPLICE, and its pre-2023 half correlates only 0.18-0.40 with real
+    # broker quotes (median gap $1.20-5.12) before jumping to 0.997-0.998 from 2024 (gap $0.03-
+    # 0.27) -- the 2023-06-28 seam 3bb documented. The Switch file is one provenance, reaches back
+    # to 2003 rather than 2015, and agrees with live quotes at 0.9978 over the last 1,000 bars.
+    import os
+    _csv = os.environ.get("XAU_H4_CSV") or f"{ROOT}/data/XAUUSD_H4_long.csv"
+    df = pd.read_csv(_csv, parse_dates=["time"], index_col="time").sort_index()
     df = df[~df.index.duplicated(keep="last")]
     df["spread_px"] = np.maximum(df["spread"], df["spread"].median()) * 0.1
     return df
