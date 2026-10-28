@@ -144,6 +144,18 @@ def main() -> None:
     info = mt5.symbol_info(symbol)
     tick = mt5.symbol_info_tick(symbol)
     ask = getattr(tick, "ask", 0.0) or info.ask
+    # *** BUG FIXED 2026-10-28: `bid` was used by the atr_trail ratchet but NEVER DEFINED. ***
+    # The ratchet block raised `NameError: name 'bid' is not defined` on EVERY pass that had an
+    # open position -- 291 passes, 0 ratchet decisions ever logged, the process exiting 1 each
+    # time. So the trailing stop never moved once since deployment on 2026-10-19, and the max-hold
+    # exit and entry logic below it never ran either, because the exception aborted the pass.
+    # The live tell was three closed trades at -248.94 / -243.36 / -246.35: a spread of $5.58 on
+    # losses that should vary if a trail had ratcheted at all. Identical losses = the stop was hit
+    # at its INITIAL distance every time. A fourth position then sat +42 points (4x ATR) in profit
+    # with its stop still 45 points BELOW entry.
+    # A LONG trails the BID, not the ask -- the bid is the price the position would actually be
+    # closed at, so trailing the ask would place the stop one spread too high.
+    bid = getattr(tick, "bid", 0.0) or info.bid
     contract = info.trade_contract_size
     print(f"feed: {len(df):,} closed H1 bars, last {st.asof} ({st.stale_hours:.1f}h ago)")
     print(f"model: {st.arm}, trained on {st.n_train:,} bars"
