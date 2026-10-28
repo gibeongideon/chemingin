@@ -5440,6 +5440,78 @@ the ambiguity does not change the decision — but it changes the expected durat
 
 _Last updated 2026-10-22._
 
+### 3cb. FundingPips 2-Step: Standard, but ONLY with the 5% daily toggle — and buy both options (2026-10-28, `scripts/v5_fundingpips_2step_2026_10.py`)
+
+User leaning toward Standard and asking how to pass it. Simulated on the **deployed XAU+BTC book**
+(Sharpe +1.286, vol 8.8%, maxDD −12.5%), 1,500 sims × 3 seeds, block bootstrap, day_safety 1.5.
+
+| plan | best dial | **pass%** | median months | **fail_day%** | price |
+|---|---|---|---|---|---|
+| **Standard @ 5% daily** | 8% | **90.7** | 11.9 | **0.0** | $652 |
+| Standard @ 3% daily | 6% | 78.8 | 15.7 | 11.1 | $652 |
+| Pro | 6% | 78.2 | 14.1 | 9.3 | $466 |
+| Flex | 8% | 77.5 | 16.0 | 11.4 | $555 |
+
+> **THE DAILY-LOSS TOGGLE IS THE WHOLE DECISION, AND IT IS FREE.** Standard offers 3% or 5% at the
+> same price. At **5% the daily limit NEVER BINDS for this book — fail_day is 0.0% at every dial
+> tested up to 8%.** At 3% it starts biting at a 5% dial (13.4%) and reaches 42.6% at an 8% dial.
+> **Same plan, same money, +11.9 percentage points of pass rate.** This is `book-shootout`'s rule
+> made concrete: Sharpe does not pick the plan, the dial-scaled left tail against the daily limit
+> does.
+
+**Why the cheap plans lose.** Pro has the *lowest* profit target (6%/6%) and the lowest price,
+which makes it look easiest — but its **6% static max loss** is the tightest of the three and its
+3% daily bites: fail_dd 7.4% and fail_day 9.3% at its own best dial. Flex has the *biggest* max
+loss (12%) but the highest targets (10%/8%), so it dies by timeout (56.0% at a 4% dial).
+
+#### The dial: pass fast, or survive the funded phase
+
+maxDD/vol = **1.42×**, so a dial of D% carries an expected maxDD of 1.42·D against a **10% STATIC**
+wall (static = from initial balance, never trailing — the convention trap logged in the risk_frac
+table):
+
+| dial | expected maxDD | vs the 10% wall | CAGR | $/yr on 100k |
+|---|---|---|---|---|
+| 5% | 7.1% | safe | 6.4% | $6,421 |
+| **6-7%** | 8.5-9.9% | **at the wall** | 7.7-9.0% | $7,705-8,989 |
+| 8% | 11.4% | **through it** | 10.3% | $10,273 |
+
+The 8% dial maximises *pass rate* (90.7%) because it times out less, but it runs past the wall —
+which is why fail_dd goes 0.8% → 3.9% from 6% to 8%. **6-7% is the dial you can keep after you
+pass**, and §3al's self-correction stands: the **funded** wall caps income, not the evaluation.
+
+#### Both paid options are worth it, and one is a precondition
+
+- **SWAP FREE (+$55.50).** Financing is this book's largest measured drag: **−3.79%/yr, −0.29
+  Sharpe** (§3q), and §3ag called a swap-free instrument *"worth more than every signal result in
+  this repo's history"*. At a 7% dial that is ~**$2,700/yr on 100k** against a **one-off $55.50** —
+  **it pays for itself in about a week.** Buy it without further analysis.
+- **SWING (+$55.50).** Not an optimisation — a **precondition**. The champion is an H4 trend
+  follower holding for days and the BTC sleeve trades **7 days a week**; §3d measured a
+  weekend-flat constraint costing **~45% of the edge** and taking an FTMO pass rate to 43.5%.
+
+#### Standard vs Pro on total cost — Pro is cheaper per pass and still loses
+
+Expected cost per pass: Standard $763/0.907 = **$841**; Pro $577/0.782 = **$738**. Pro is cheaper
+*to pass*. It loses anyway, on the funded phase:
+
+| funded wall | safe dial | CAGR | **$/yr at 100% split** |
+|---|---|---|---|
+| Standard 10% | 7.0% | 9.0% | **$9,050** |
+| Pro 6% | 4.2% | 5.4% | **$5,425** |
+
+**+$3,625/yr for a $186 price difference — recovered in about three weeks of funded trading.**
+Choosing on the challenge fee is choosing on the smallest number in the problem.
+
+**VERDICT: Standard, daily-loss toggle set to 5%, swap-free YES, swing YES, run at a 6-7% vol
+dial.** ~$763 all-in, ~87-90% modelled pass in 12-16 months.
+
+**CONFIRM BEFORE BUYING:** that **"Swing" covers CRYPTO weekend holding**, not just FX and metals.
+`fundingpips-b-account-plan` recorded that FundingPips plans *"all restrict weekends"*; if Swing
+does not extend to BTC, the crypto sleeve is crippled and the book must be re-simulated XAU-only.
+
+_Last updated 2026-10-28._
+
 ### 3bz. "Keep firing a probability, hold while high, flip on the opposite" — the HYSTERESIS works, the PROBABILITY does not (2026-10-21, `scripts/v5_prob_hysteresis.py`)
 
 User request, from two TradingView charts (1-day and 5-day XAUUSD): *"a prediction of the market
