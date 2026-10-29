@@ -5603,6 +5603,73 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3ce. OCTOBER A3 — the stack this repo never built, and the champ-meta oracle is ~ZERO at H4 too (2026-10-29, `scripts/v5_strategy_stack.py`)
+
+No stacked ensemble over this repo's own strategy signals has ever existed — verified by import
+graph, filename scan and document scan. The nearest objects are `src/models/ensemble.py` (stacks
+MODEL CLASSES over raw price features, never run on XAU) and `src/cta/ml_combine.py::ml_forecast`
+(purged Ridge over 4 EWMAC speeds + xsmom + rev5 + vol_z, **no recorded result anywhere**).
+
+**A3 was declared with the champion-P&L-sign target, which §3cd had just closed at H1.** §3p files
+that oracle at **+0.824 (t 11.7, 10/10)** at H4, so running A3 at H4 oracle-first did two jobs at
+once: gate the stack, and settle §3cd's open discrepancy with one construction on both timeframes.
+
+#### STAGE 1 — the oracle at H4. Control champion: Sharpe +1.312, CAGR +17.9%, maxDD −16.2%
+
+| horizon | trim → 0.0 | → 0.5 | → 0.75 |
+|---|---|---|---|
+| **6 bars (1d)** | −0.524 (t −2.35) | −0.148 (t −1.54) | −0.051 (t −1.19) |
+| **30 bars (5d)** | −0.208 (t −0.94) | −0.006 (t −0.06) | **+0.013 (t +0.30)** |
+
+**Best oracle dSharpe at H4: +0.013.** Against +0.20 required. At H1 (§3cd) the best was −0.022.
+
+> **THIS RESOLVES §3cd's OPEN DISCREPANCY, and it resolves it in §3cd's favour.** The same
+> construction is **indistinguishable from zero at BOTH timeframes** (−0.022 at H1, +0.013 at H4),
+> so **the H1 negative was not a timeframe artefact** and H4 is not the kinder frame. §3p's +0.824
+> must come from a different trim mechanic or a different baseline.
+>
+> **What is now established, and what is not.** Established: the timeframe explanation is
+> eliminated. Not established: what §3p's construction actually did differently — I did not re-run
+> its harness, and the honest statement remains that one of the two constructions is measuring
+> something the other is not. The remaining candidates are continuous probability sizing versus the
+> zero/half/three-quarter steps used here, and the baseline each was differenced against.
+
+**The stack was NOT built**, as pre-registered. Two oracle runs across two timeframes and eighteen
+cells retired an entire modelling programme — CONTROL #5 earning its keep for the second time this
+round.
+
+#### THE DURABLE ARTEFACT — 23 signals with measured champion-collinearity
+
+The panel was assembled anyway and written to `data/v5_runs/october/a3_signals.csv`: trend
+(ewmac fast/slow, breakout fast/slow, ls_signal, SuperTrend, tsmom 21/126), mean-reversion (rsi7/14,
+Bollinger %B, stochastic, Andean), volatility/regime (adx14, atr ratio, vol_z), structure
+(displacement, premium/discount, liquidity sweep, distance to prior-day high/low) and volume
+(percentile, trend).
+
+| signal | \|corr\| with the champion forecast |
+|---|---|
+| `ewmac_slow` | **0.879** |
+| `breakout_s` | **0.810** |
+| `tsmom_126` | 0.735 |
+| `ls_signal` | 0.729 |
+| `ewmac_fast` | 0.674 |
+| rsi14 | 0.417 |
+| **median across all 23** | **0.227** |
+
+> **This extends §3s's measurement from one signal to a family.** SuperTrend was known to correlate
+> 0.77–0.88; here the *entire trend family* sits at **0.67–0.88**, which is why §3s's instruction —
+> *"don't re-try any other single-mechanism trend filter"* — generalises. But the **median across
+> all 23 signals is only 0.227**, so the non-trend signals genuinely are orthogonal. **The problem
+> was never that the panel is redundant; it is that the target has no prize.** Any future stack can
+> start from this file and skip the assembly.
+
+**Control note:** the champion on M15-rebuilt H4 scores **+1.312** over 2015-2026 at a 10% dial
+against a filed reference of ~+1.02, which is an eval-window (2017+) stress-tested figure on a
+different cost basis. Same sign and order of magnitude, so the control passes, but the two are not
+like-for-like and should not be quoted against each other.
+
+_Last updated 2026-10-29._
+
 ### 3cd. OCTOBER A2 — champ-meta at H1: the target believed immune to CONTROL #8 has a NEGATIVE ORACLE (2026-10-29, `scripts/v5_champ_meta_h1.py`)
 
 Queue #35, the sharpest remaining partial in the queue. Target `y = sign(champion position ×
