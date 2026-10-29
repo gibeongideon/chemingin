@@ -5603,6 +5603,82 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cf. OCTOBER A4 — volume-derived supply/demand: the premise is BACKWARDS, and a correlation trap caught in my own analysis (2026-10-29, `scripts/v5_volume_zones.py`)
+
+The one row in `OCTOBER.MD` with **no prior in this repo at all**: a grep over all 6,232 lines and
+every `src/` file returns **zero hits** for volume profile, market profile, value area, POC, VAH,
+VAL, footprint or order-flow delta. The 12-concept ICT sweep tested order blocks, breakers,
+mitigation blocks, FVGs, IFVGs and liquidity pools — and **every zone it tested was SWING-DERIVED.**
+A volume zone asks where business was done, not where price turned.
+
+**TWO LIMITATIONS MEASURED BEFORE ANY TEST.** `real_volume` is **0.0% populated** in this feed, so
+this is a **tick-count** profile, not a volume profile. And `tick_volume`'s median grew **3,749
+(2015) → 15,325 (2026)**, roughly 4×, so absolute levels are non-stationary and every level below is
+normalised inside its own rolling window. Profile: 120 H1 bars (5 days), 50 price bins, 70% value
+area, each bar's volume spread uniformly across its own range, window ending at t−1.
+
+#### The zone table — base: HOLD always-long +5.006bp, hit 0.5255
+
+| rule | fires | hit | EV bp | **vs HOLD** |
+|---|---|---|---|---|
+| **broke above VAH → long (continuation)** | 18,056 | 0.5278 | **+7.106** | **+2.100** |
+| in LVN (thin node) → long | 12,782 | 0.5383 | +6.351 | +1.345 |
+| in HVN (thick node) → long | 23,743 | 0.5197 | +5.700 | +0.694 |
+| at/below VAL → long (**fade**) | 14,650 | 0.5330 | +4.887 | −0.119 |
+| below POC by 1.0×ATR → long (**revert to value**) | 23,936 | 0.5318 | +3.624 | **−1.382** |
+| at/above VAH → **short** | 18,056 | 0.4721 | −7.106 | **−12.112** |
+| CONTROL: flat 1.0×ATR dip → long | 3,457 | 0.5377 | +4.198 | −0.808 |
+
+> **THE PREMISE IS BACKWARDS.** "Price returns to value" is the whole rationale of volume-profile
+> trading, and **reverting to the POC is WORSE than simply holding** (−1.382bp). What works is the
+> opposite: **breaking OUT of the value area beats holding (+2.100bp) while fading its edge does not
+> (−0.119bp).** On a drifting asset the value area is a floor to leave, not a magnet to return to.
+> This is the same shape §3v found when the "bounce at an unflipped order block" read came out
+> **backwards** rather than merely noisy.
+>
+> **And the short side is catastrophic** — −12.112bp against holding. §3bh's identity again:
+> `excess(LONG) + excess(SHORT) = −2·base`. Kill-the-shorts, now at a volume zone.
+
+#### Is the one positive row real? Three diagnostics, and a trap
+
+`broke above VAH` is **not** the champion in disguise — `corr(flag, champion forecast) = +0.1918`,
+against the 0.67–0.88 that §3ce measured for the whole trend family. That is genuinely unusual here.
+But the hit rate is **0.5278 against hold's 0.5255 — a +0.23pp difference, i.e. nothing** — while
+|forward| is only 1.030× and realised vol 1.020×. So the EV gain is neither direction nor volatility;
+it is **up-tail asymmetry**, which a Sharpe cannot bank. As a standalone sleeve it is **+0.768
+against the champion's +1.295, matched-vol t −1.55.**
+
+> **⚠ THE CORRELATION TRAP, CAUGHT IN MY OWN ANALYSIS.** I read `+0.1918` as evidence the zone could
+> **diversify** the champion, which is the XAU+BTC argument. **It is the wrong correlation.** That
+> number is *flag versus forecast* — two different objects. The quantity that governs
+> diversification is the **correlation of the RETURN STREAMS, and that is +0.5699**, three times
+> larger. **A signal can look orthogonal in feature space and be highly correlated in P&L space,
+> because position sizing and the shared underlying do the mixing.** Always correlate the traded
+> streams, never the raw signals.
+
+#### The blend, at matched vol — 0 of 4 cells pass
+
+| book | Sharpe | CAGR | maxDD | t@matched | H1 dSR | **H2 dSR** |
+|---|---|---|---|---|---|---|
+| champion alone | +1.295 | +17.2% | −19.7% | — | — | — |
+| + VAH-break 0.15 | +1.301 | +15.3% | −18.4% | +0.32 | +0.023 | **−0.011** |
+| + VAH-break 0.25 | **+1.302** | +14.1% | −17.7% | +0.21 | +0.039 | **−0.023** |
+| + VAH-break 0.35 | +1.300 | +12.8% | −16.9% | +0.09 | +0.054 | **−0.043** |
+| + VAH-break 0.50 | +1.283 | +11.0% | −15.7% | −0.14 | +0.072 | **−0.093** |
+
+**Sharpe is flat (+1.295 → +1.302 at best, i.e. +0.007), the paired-t never exceeds +0.32 against a
++2.0 gate, and H2 is NEGATIVE in every cell** — so the both-halves criterion fails universally while
+H1 improves monotonically, which is the signature of a single-era effect. CAGR falls monotonically
+(17.2% → 11.0%) while drawdown improves (−19.7% → −15.7%): **a de-risking overlay, not a return
+source** — CONTROL #2's "selling drawdown control, not alpha", one level up.
+
+**VERDICT: CLOSED.** The volume-profile machinery and the zone table are written to
+`data/v5_runs/october/a4_volume_zones.csv` for reuse, and the two durable facts are that
+**reversion-to-value is the wrong sign on gold** and that **feature correlation is not P&L
+correlation.**
+
+_Last updated 2026-10-29._
+
 ### 3ce. OCTOBER A3 — the stack this repo never built, and the champ-meta oracle is ~ZERO at H4 too (2026-10-29, `scripts/v5_strategy_stack.py`)
 
 No stacked ensemble over this repo's own strategy signals has ever existed — verified by import
