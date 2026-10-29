@@ -5603,6 +5603,109 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3ch. OCTOBER A6 — re-pricing at the live spread, and the LONG-ONLY prior-high break: the round's one survivor (2026-10-29, `scripts/v5_intraday_reprice.py`)
+
+§3bx measured the live quote at **0.504bp** against the **1.5bp floor** BEST_FINDINGS #7's cost wall
+is built on, then re-priced **two** of ~15 intraday closures. Every other intraday verdict in this
+file was decided at 1.5–2.34bp.
+
+#### Part 1 — arithmetic re-netting: 0 of 5 cells flip on cost alone
+
+| § | structure | filed net | re-netted at live |
+|---|---|---|---|
+| 3bi #6 | round-number stop runs | −3.03 | −1.45 |
+| 3bi #7 | Monday gap fill | −1.75 | −0.17 |
+| 3bi #5 | gold vs DXY+yields | −12.45 | −10.87 |
+| 3bj | **prior-day first break** | +2.06 | **+3.64** |
+| 3be | session ORB | +1.50 | +3.08 *(basis destroyed by §3bx-D's null bug)* |
+
+Six further closures **cannot be re-netted arithmetically** and the reasons are recorded rather than
+guessed — most importantly §3c/§3f, which was **already tested at $0.12, tighter than the live
+quote**, and where H4 still beat M30 0.93 / H1 0.98 at 1.27. That is signal quality, not cost.
+
+#### Part 2 — re-running §3bj's prior-day break from the data
+
+| cost | trades | mean bp | hit | t | Sharpe |
+|---|---|---|---|---|---|
+| 2.34bp (filed basis) | 2,768 | +2.986 | 0.4913 | +1.84 | +0.557 |
+| **0.756bp (LIVE)** | 2,768 | **+4.570** | 0.4996 | **+2.82** | +0.852 |
+| 0.00bp (gross) | 2,768 | +5.326 | 0.5047 | +3.29 | +0.993 |
+
+H1 and M15 agree to 0.08bp, which is the internal check: the structure is defined on *daily* levels,
+so the intraday frame should only change when the break is detected.
+
+#### THE SIDE SPLIT — kill-the-shorts, for the fifth time in this round
+
+| side | n | mean net bp | hit | t |
+|---|---|---|---|---|
+| **LONG (broke prior HIGH)** | 1,446 | **+10.161** | 0.5332 | **+4.71** |
+| SHORT (broke prior low) | 1,322 | −1.545 | 0.4629 | −0.64 |
+
+**The entire edge is the long leg, and the short leg was diluting it by more than half.** §3bj's
+filed +2.06bp was a blend of +10.161 and −1.545.
+
+#### The long-only break, measured properly
+
+- **net +10.161bp at t +4.71 over 1,446 trades**, hit 0.5332
+- **both halves strongly positive**: H1 +7.427 (t +2.65), H2 +12.895 (t +3.94)
+- **block-bootstrap null on GROSS, signed mean: observed t +5.07 vs p50 +0.11 / p95 +2.05 →
+  p = 0.0000.** Note the null median sits at **+0.11**, i.e. correctly centred — unlike §3bx-D's
+  broken ORB null whose median was +2.59 because a deterministic cost offset was inside it.
+- standalone Sharpe **+1.213** against the champion's **+1.042**
+- return-stream correlation with the champion **+0.5658** (the *traded streams*, per §3cf's lesson)
+
+**Blended with the champion — all four weights clear the pre-registered Bar 2:**
+
+| blend | Sharpe | matched-vol t | H1 dSR | H2 dSR |
+|---|---|---|---|---|
+| champion alone | +1.042 | — | — | — |
+| + break 0.15 | +1.109 | **+2.74** | +0.049 | +0.082 |
+| + break 0.25 | +1.154 | +2.58 | +0.083 | +0.137 |
+| + break 0.35 | +1.198 | +2.40 | +0.115 | +0.188 |
+| **+ break 0.50** | **+1.252** | **+2.08** | +0.155 | +0.252 |
+
+**This is the first thing in the OCTOBER round — and the first in some time — to clear t ≥ +2.0 with
+both halves positive.**
+
+#### TWO ERRORS IN MY OWN MEASUREMENT, corrected here rather than reported
+
+1. **The DSR I printed (0.0000) is not a verdict and must not be quoted.** I fed
+   `deflated_sharpe_ratio` a **fabricated** trial array (fractions of the observed Sharpe) instead of
+   the actual grid of trial Sharpes. §3s's rule is that *"DSR's trial count must reflect the ENTIRE
+   search"* — a made-up distribution makes the output meaningless in either direction. **Bar 1
+   (CONTROL #6) is therefore NOT yet computed for this candidate.** The PBO of 0.0000 rests on an
+   equally ad-hoc yearly-block matrix and is no more trustworthy.
+2. **The "standalone daily Sharpe +1.968" is overstated.** It came from resampling to daily and then
+   **dropping the zero days** (`daily[daily != 0]`), which removes every non-trading day and so
+   removes the zero-variance periods that belong in the denominator. **The honest standalone figure
+   is +1.213**, computed over all days. The block-bootstrap 95% CI of **[+1.109, +2.898]** inherits
+   the same defect and should be re-run.
+
+#### FILL REALISM — the binding question, and it is not the spread
+
+A break of the prior high is entered with a **stop order**, which slips by construction, and §3ag
+records that CSV spreads understate live by **20–50×**:
+
+| extra slippage | net bp | t | Sharpe |
+|---|---|---|---|
+| 0bp | +10.161 | +4.71 | — |
+| 2bp | +8.161 | +3.79 | — |
+| **4bp** | **+6.161** | **+2.86** | — |
+| 8bp | +2.161 | +1.00 | — |
+
+**It survives roughly 4bp of extra slippage and dies around 8bp.** Gold's live spread is 0.21 USD
+≈ 0.50bp, so 4bp of slippage is eight spreads — generous but not absurd for a stop order into a
+breakout.
+
+**VERDICT: a REAL, UNPROVEN LEAD** in this file's own language (§3bp's phrase). It clears the gross
+null at p = 0.0000 with a correctly-centred null, beats the champion standalone, and clears Bar 2 at
+every blend weight with both halves positive. **It does NOT yet have a valid Bar 1**, its Sharpe
+figure needed correcting, and its real exposure is **entry slippage, not spread**. **Open before any
+deployment:** a proper DSR against the true trial set, PBO on a principled partition, walk-forward
+re-selection of the blend weight, and a measured fill on a live stop order.
+
+_Last updated 2026-10-29._
+
 ### 3cg. OCTOBER A5 — forward MAX ADVERSE EXCURSION: perfect foresight of ANY risk quantity fails, not just volatility (2026-10-29, `scripts/v5_mae_regression.py`)
 
 The second regression target ever used here, and the only approach in the round aimed at the
