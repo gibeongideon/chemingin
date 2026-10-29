@@ -106,6 +106,19 @@ bar moved in the same step per §3bw's rule.
 
 ---
 
+### Added 2026-10-29 at the user's request — A7, TradingView Technical Ratings
+
+Replicate the live ratings widget (11 oscillators + 15 moving averages + pivots) and sweep the
+consensus threshold for a "sweet spot". **The primary deliverable is a MULTIPLICITY BOUND, not an
+edge**, because pure direction is CONTROL #8-retired: the user's own screenshot shows EMA and SMA at
+10/20/30/50/100/200 all reading "Sell" because price (4,023) sits below every one of them
+(4,068 → 4,502) — **one fact counted twelve times**. The honest question is therefore *how many
+independent opinions a 26-component vote actually contains*, which A3's collinearity table already
+suggests is small (the trend family alone runs 0.67-0.88 against the champion).
+
+New script `v5_tv_ratings.py`; reuses `data/v5_runs/october/a3_signals.csv` and
+`src/features/indicators.py`. Pivots are included as levels but not voted, matching the widget.
+
 ## Deliverable 2 — execute Tier A
 
 **Pre-registration first**, `data/v5_runs/october/PREREGISTRATION.md`, committed before the first

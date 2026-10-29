@@ -1,4 +1,4 @@
-# OCTOBER — 20 approaches, ranked, gated, with honest priors
+# OCTOBER — 21 approaches, ranked, gated, with honest priors
 
 **Filed 2026-10-29.** Successor to `EXPLORATION-QUEUE.md` (38 items, ~32 closed). Scope set by the
 user: revisit the ZigZag with simple AI, combine repo strategies as **features in an ensemble**,
@@ -85,6 +85,7 @@ plumbing in the repo.
 | **A4** | **Volume-derived supply/demand** — volume profile, POC, value area, HVN/LVN. | **T** | **Zero hits for volume profile / POC / value area / footprint in 6,232 lines or any `src/` file.** Every zone the 12-concept ICT sweep tested was **swing-derived**. This is the one untouched branch of the supply-demand family, and the cheapest proxy for the order flow §3r names as *the* data type that could change the answer. | Oracle ceiling first (#5). Then EV/fire vs a flat ATR-offset control — the control that beat every ICT zone in §3bc. | **Genuinely unknown. No prior in this repo**, which is itself the reason to run it. |
 | **A5** | **Regression on forward MAE** (max adverse excursion). | **T** | Only **one** regression target has ever existed here (§3at volatility) and it closed on a **negative oracle**, not model failure. MAE feeds **stop placement** — the conversion step `BEST_FINDINGS` #5 names as the actual binding constraint. | Oracle-MAE first: if perfect MAE foresight does not improve the book, close immediately (the §3at pattern). Then R² *and* matched-vol economics. | Expect real R² and negative economics. Running the oracle first makes that cheap to establish. |
 | **A6** | **Re-price every intraday closure at the live 0.504bp.** | — | §3bx revised the cost wall (M15 breakeven **0.6363 → 0.5343**) and then re-priced only **two** of ~15 intraday closures. **Every other one was decided at 1.5–2.34bp.** §3bx itself says the revision *"widens what is worth testing for non-trend structures."* | Any cell that flips sign must then clear the fixed null harness (GROSS, signed maximum) before it counts as reopened. | Expect 1–2 of ~15 to flip sign and none to clear a gate. Cheap and mechanical. |
+| **A7** | **TradingView Technical Ratings, replicated — and its EFFECTIVE number of opinions measured.** Build all 26 components exactly (11 oscillators: RSI14, Stoch %K, CCI20, ADX14, Awesome, Momentum10, MACD, StochRSI, Williams %R, Bull-Bear Power, Ultimate; 15 MAs: EMA/SMA at 10/20/30/50/100/200, Ichimoku base, VWMA20, HMA9), reproduce the Buy/Sell/Neutral vote, then sweep the consensus threshold for the "sweet spot". | **T (strength, not direction)** | Requested by the user from the live XAUUSD page. The repo has tested most components **individually** (RSI, Stochastic, Bollinger, ADX, and the champion *is* an EWMAC+breakout blend) and A3 built 23 signals, but **the vote-counting AGGREGATOR itself has never been tested**, and nor has consensus STRENGTH as distinct from consensus direction. ⚠️ Pure direction is #8-retired, so the primary deliverable is the **multiplicity bound**, not an edge. | Report (a) the **effective rank** of the 26-component correlation matrix, (b) correlation of the vote count with a single price-vs-MA indicator and with the champion forecast, (c) EV/fire by consensus strength vs **holding** and vs the champion. | **The vote is not 26 opinions.** The user's own screenshot shows EMA/SMA 10/20/30/50/100/200 all "Sell" because price (4,023) sits below every one (4,068→4,502) — that is **one fact counted twelve times**. Expect effective rank 2-4, vote-vs-champion \|corr\| > 0.8, and no EV past the champion. |
 
 ---
 
@@ -149,7 +150,7 @@ Every survivor is scored against both and the decision is taken per candidate. F
 
 ## 7. Expected outcome, recorded so nothing is rounded up
 
-**Tier A closes 5 of 6.** A2 is the likeliest survivor because its label is the economics; A4 is the
+**Tier A closes 6 of 7.** A2 is the likeliest survivor because its label is the economics; A4 is the
 genuine unknown; A1 is the most interesting and the most likely to produce a real information gain
 that no trade structure can collect. If that is the result, **the document's value is the bound** —
 the same way Gate A's best-of-K table was worth more than the 761 patterns it bounded.
