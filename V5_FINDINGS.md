@@ -5603,6 +5603,73 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cd. OCTOBER A2 — champ-meta at H1: the target believed immune to CONTROL #8 has a NEGATIVE ORACLE (2026-10-29, `scripts/v5_champ_meta_h1.py`)
+
+Queue #35, the sharpest remaining partial in the queue. Target `y = sign(champion position ×
+forward return)` — the one target this file calls immune to CONTROL #8, verbatim: *"the one target
+where control #8's valuable-but-unmonetisable gap cannot open, because the label IS the economics...
+monetising it is the definition of the label."* Run at H4 (AUC 0.593, *"the best ever achieved here
+on any label"*) and at D1 (**retracted** — the 18 t>+2 legs were FX pairs leaking the next bar).
+**Never at H1, never gold-only.** This run is gold-only, so the FX panel that caused the retraction
+is absent by construction.
+
+**CONTROL CELL PASSED FIRST.** The H1 champion at `scale = 4.0` (24 bars/day ÷ 6) tracks the H4
+champion at scale 1.0 with **position correlation +0.9626** and near-identical exposure (0.773 vs
+0.758). Without that check, rule 1.3.5's D=6 trap would have silently rescaled every lookback.
+
+**TWO TIMEFRAME CORRECTIONS, both of which would have leaked silently.**
+1. `f_base`'s daily features end in **`.shift(6)`** — calibrated for H4. `d1.resample("D").last()`
+   is the daily CLOSE, knowable only at end of day; ffilling it onto an intraday index and shifting
+   6 bars is the H4 correction. **At H1 that leaves up to 18 HOURS of same-day information in
+   `d1_slope` and `d1_z`.** Corrected to `shift(24)`. This file is three-for-three on
+   cross-timeframe resample lookaheads, so the shift was made explicit rather than inherited.
+2. The champion's lookbacks are in BARS, so holding the CALENDAR span fixed at H1 requires
+   `scale = 4.0`, not 1.0.
+
+#### THE ORACLE, measured first per CONTROL #5 — and it is NEGATIVE in all 9 cells
+
+Champion H1 incumbent: **Sharpe +1.341, CAGR +17.9%, maxDD −19.2%**. Perfect knowledge of `y`,
+across three horizons × three trim strengths:
+
+| horizon | trim → 0.0 (flat) | trim → 0.5 | trim → 0.75 |
+|---|---|---|---|
+| **6h** | **−0.912** (t −4.02) | −0.316 (t −3.26) | −0.127 (t −2.91) |
+| **24h** | **−0.407** (t −1.78) | −0.086 (t −0.88) | −0.022 (t −0.51) |
+| **120h** | **−0.457** (t −2.09) | −0.120 (t −1.26) | −0.039 (t −0.91) |
+
+> **Perfect foresight of whether the champion's own position is about to make money cannot improve
+> the champion — at any horizon, at any trim strength.** The pattern is monotone: the gentler the
+> trim, the closer to zero, converging on the incumbent **from below**. That is exactly §3bn's
+> structure for trailing stops (*"the limit of an infinitely wide trail IS holding"*) and §3at's for
+> volatility (*"perfect vol foresight makes the book WORSE"*, ORACLE-VOL −0.146).
+>
+> **The mechanism is §3bh's identity.** The champion is long-only and gold drifts up, so a window
+> whose forward P&L is negative is frequently **a pullback inside a winning trend**. Zeroing there
+> forfeits the drift that *is* the edge. `excess(LONG) + excess(SHORT) = −2·base`.
+
+**THE DETECTOR WAS NOT BUILT.** CONTROL #5's gate (oracle dSharpe ≥ +0.20 **and** t ≥ 2.5) fails at
+−0.407 / −1.78, and the script stops there as pre-registered. **This is the control working as
+designed: a closure bought for one oracle run instead of a full modelling programme.**
+
+**WHAT THIS MEANS FOR THE #8-IMMUNITY ARGUMENT.** The claim was never wrong — monetising this label
+*is* the definition of the label. It is simply **irrelevant at H1, because there is nothing to
+monetise.** Immunity to the valuable-but-unmonetisable gap is worth nothing when the quantity is not
+valuable in the first place. **Check the oracle before invoking the immunity.**
+
+**ONE DISCREPANCY LEFT OPEN, DELIBERATELY.** §3p records a champ-meta trim oracle of **+0.824
+(t 11.7, 10/10 years)** at H4, against the −0.407 measured here at H1. Nine internally-consistent
+negative cells with an explained mechanism is not enough to overturn a filed positive, and I did not
+re-run §3p's harness. The candidates are the trim mechanic (continuous sizing vs the zero/half/
+three-quarter steps used here), the baseline it was differenced against, and the timeframe itself.
+**Resolving it requires re-running §3p's own construction at H4 and H1 side by side; until then both
+numbers stand and the H1 verdict rests on its own nine cells.**
+
+**One secondary observation worth keeping:** every oracle cell *improves drawdown* while cutting
+Sharpe — −19.2% → −15.5% at 24h/0.5. That is the champion's own documented character (CONTROL #2:
+*"selling drawdown control, not alpha"*) reappearing one level up, in its meta-label.
+
+_Last updated 2026-10-29._
+
 ### 3bz. "Keep firing a probability, hold while high, flip on the opposite" — the HYSTERESIS works, the PROBABILITY does not (2026-10-21, `scripts/v5_prob_hysteresis.py`)
 
 User request, from two TradingView charts (1-day and 5-day XAUUSD): *"a prediction of the market
