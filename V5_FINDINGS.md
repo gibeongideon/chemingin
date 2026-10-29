@@ -5512,6 +5512,97 @@ does not extend to BTC, the crypto sleeve is crippled and the book must be re-si
 
 _Last updated 2026-10-28._
 
+### 3cc. OCTOBER A1 — candle structure AS A LANGUAGE: the sequence information is REAL and it is not money (2026-10-29, `scripts/v5_bar_language.py`)
+
+The user's central idea: discretise candles into an alphabet and model the SEQUENCE rather than
+feeding a window to a classifier. Pre-registered in `data/v5_runs/october/PREREGISTRATION.md`.
+Full design in `OCTOBER.MD`.
+
+**IT WAS ALREADY BUILT AND HAD NEVER BEEN RUN.** `src/features/bar_tokenizer.py` (334 lines) is a
+**45-symbol alphabet**, `TOKEN = DIR_SIZE_WICK` over `{UP,DN,DJ} × {XS,SM,MD,LG,XL} × {BW,NW,TW}`;
+`src/models/bar_lm_model.py` (440 lines) is a 4-layer Transformer over that exact vocabulary,
+registered in `model_registry.py`, configured in `config.yaml`, handled by `walk_forward.py` — with
+**no checkpoint on disk and zero mentions in 6,232 lines of findings.**
+
+**WHY §3ao DOES NOT CLOSE IT** — three reasons from the repo's own text. (1) §3ao's window is
+`[z-return, normalised range] × 64`: **no open, no body/range ratio, no wick asymmetry**, so the
+alphabet is *not* a measurable function of `W` and `I(Y;R(W)) ≤ I(Y;W)` does not bind it. (2) That
+argument fixes the label; **CONTROL #8's own scope note exempts programmes that change the TARGET**,
+and next-symbol prediction changes it. (3) §3ao was a FEATURE test — `f_ceiling` emits 128
+independent lagged columns into i.i.d.-row classifiers and nothing consumes order.
+
+**Markov and n-grams first, transformer only on a positive.** 270,458 M15 bars (single-provenance —
+`XAUUSD_M15_long.csv` is the one file §3ba establishes was never refreshed; `intrabar_leak` 0.0166).
+Tokenizer SIZE bins fit on fold-1 training only, then frozen. Vocabulary sanity passed: **33 of 47
+symbols used, top symbol 9.1%, top-3 26.0%** — not collapsed.
+
+#### STAGE 1 — held-out NLL per token, 6 expanding folds
+
+| order | real | shuffled | gain vs o0 | **vs shuffled** |
+|---|---|---|---|---|
+| 0 | 3.13545 | 3.14096 | — | **+0.00552** |
+| **1** | **3.12590** | 3.14603 | **+0.00954** | +0.02013 |
+| 2 | 3.21456 | 3.24367 | −0.07911 | +0.02911 |
+| 3 | 3.57606 | 3.59999 | −0.44061 | +0.02394 |
+
+> **Order-1 context is REAL: +0.00954 nats/token over knowing only the frequencies.** Orders 2-3
+> collapse on sparsity exactly as pre-registered (47³ = 103,823 cells against 270k bars).
+>
+> **The order-0 shuffled gap of +0.00552 is the noise floor of this comparison and is the most
+> useful number in the table.** Order-0 holds *no* sequence information by construction, so
+> whatever separates it from its own shuffle is non-stationarity. Order-1's +0.02013 is therefore
+> worth about **+0.0146 net of that floor** — and without the order-0 row there would have been no
+> way to know.
+
+#### STAGE 2 — economics (CONTROL #8), 175,797 scored bars
+
+| rule | fires | hit | base | EV bp | **net EV** |
+|---|---|---|---|---|---|
+| always long | 175,797 | 0.5053 | 0.5053 | +0.076 | −0.680 |
+| P(up) > base+0.01 | 49,601 | 0.5136 | 0.5053 | +0.060 | −0.696 |
+| P(up) > base+0.02 | 36,809 | 0.5137 | 0.5053 | +0.057 | −0.699 |
+| **P(up) > base+0.04** | 16,904 | **0.5228** | 0.5053 | +0.132 | **−0.624** |
+
+**The directional lift is real and monotone in confidence** — 0.5136 → 0.5137 → **0.5228** against a
+0.5053 base. It is also **below the 0.5343 M15 breakeven**, and every arm is net-negative, because
+at M15 the 0.76bp round trip is **ten times gold's per-bar drift (+0.076bp)**.
+
+#### STAGE 3 — the fair test: let cost amortise over a longer hold
+
+| bars | hours | hit | net EV | **vs HOLD-N** |
+|---|---|---|---|---|
+| 1 | 0.25 | 0.5228 | −0.624 | +0.057 |
+| 4 | 1.0 | 0.5299 | −0.286 | +0.168 |
+| 16 | 4.0 | 0.5212 | **+0.078** | **−0.371** |
+| 48 | 12.0 | 0.5365 | **+2.914** | +0.054 |
+| 96 | 24.0 | 0.5384 | **+5.025** | **−1.431** |
+
+> **This is the kill, and it is the cleanest form of it.** Net EV turns positive from 16 bars
+> onward — but *only because the spread is paid once while gold's drift accumulates*. Against
+> simply **holding for the same N bars** the signal adds +0.057 / +0.168 / −0.371 / +0.054 /
+> **−1.431** — noise around zero, worst at the longest horizon. §3bh's identity again:
+> `excess(LONG) + excess(SHORT) = −2·base`, so any rule that is not always-long starts from a
+> deficit against the drift. **A positive net EV that is negative against hold-N is the drift
+> wearing the signal's clothes.**
+
+**VERDICT: CLOSED, exactly as pre-registered** (*"the most likely to show something and the most
+likely to be unmonetisable — expect a real perplexity lift that dies at EV/fire"*). The bar
+alphabet carries genuine order-1 sequence information that §3ao's window could not have contained,
+and none of it survives contact with either the cost wall or the drift benchmark. **The transformer
+is not run: if an order-3 n-gram cannot beat an order-1 chain, a 200k-parameter model over the same
+alphabet is fitting noise with more parameters.**
+
+**TWO BUGS IN MY OWN HARNESS, both caught by a control rather than by inspection.**
+1. **Asymmetric smoothing.** The numerator added `α` while the denominator added `α·V = 23.5`,
+   biasing every probability downward — 500 UP of 1,000 returned 0.489. Fixed to `α·n_up`.
+2. **Thresholds set at 0.5 instead of at the base rate.** `p_hat` is P(next *token* is UP), and
+   ~20% of bars are DOJI, so it centres at **0.4222** — the first grid fired on **0 of 175,797 bars**
+   above 0.50 while the "short" arm fired on 142,203. **This is `xau-drift-baseline-inverts-3r`'s
+   rule — "thresholds must sit around the base rate, never 0.5" — and I broke it in the same script
+   that cites it.** The tell was the absurd fire-count split, not the arithmetic.
+
+_Last updated 2026-10-29._
+
 ### 3bz. "Keep firing a probability, hold while high, flip on the opposite" — the HYSTERESIS works, the PROBABILITY does not (2026-10-21, `scripts/v5_prob_hysteresis.py`)
 
 User request, from two TradingView charts (1-day and 5-day XAUUSD): *"a prediction of the market
