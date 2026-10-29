@@ -5603,6 +5603,48 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cg. OCTOBER A5 — forward MAX ADVERSE EXCURSION: perfect foresight of ANY risk quantity fails, not just volatility (2026-10-29, `scripts/v5_mae_regression.py`)
+
+The second regression target ever used here, and the only approach in the round aimed at the
+**conversion step** that `BEST_FINDINGS` #5 names as the real binding constraint (*"not model
+capacity or feature representation... the conversion step"*). MAE is what a stop actually faces:
+for a long opened at t, the worst drawdown reached within the next h bars, taken from the running
+minimum of LOW — the path, not the close-to-close outcome.
+
+**Champion control: Sharpe +1.293, maxDD −16.5%.** Forward MAE while long: median **0.478%** at 1
+day, **1.061%** at 5 days, p95 1.946% / 4.147%, max 14.30% / 20.68%.
+
+| oracle arm (uses the TRUE forward MAE) | h=6 dSharpe | t | h=30 dSharpe | t |
+|---|---|---|---|---|
+| A — size ∝ 1/MAE, floor 0.2% | −0.049 | −0.25 | −0.115 | −0.56 |
+| A — size ∝ 1/MAE, floor 0.5% | **+0.085** | +0.68 | −0.091 | −0.50 |
+| B — skip MAE worse than p90 | +0.068 | +0.51 | **+0.038** | +0.28 |
+| B — skip MAE worse than p75 | −0.222 | −1.22 | −0.023 | −0.13 |
+| B — skip MAE worse than p50 | −0.044 | −0.17 | −0.322 | −1.29 |
+
+**Best oracle dSharpe +0.085, best t +0.68** — against CONTROL #5's gate of +0.20 at t ≥ 2.5. **The
+regression was never fitted.** Third closure in this round bought for one oracle run.
+
+> **THE NEW FACT, AND WHY THIS IS NOT A RESTATEMENT OF §3at.** The obvious objection is that MAE is
+> just volatility in disguise, already spent by the champion's `wilder_atr` sizing — in which case
+> §3at's verdict (*"perfect vol foresight makes the book WORSE"*, ORACLE-VOL −0.146) would simply
+> transfer. **It is not: `corr(forward MAE, trailing vol × √h)` is only +0.3472 at h=6 and +0.3189
+> at h=30.** MAE is genuinely a different, path-dependent, one-sided risk quantity.
+>
+> **So the finding generalises.** It is not that volatility specifically is already priced into the
+> position. It is that **perfect foresight of ANY risk quantity — symmetric or path-dependent —
+> fails to improve a vol-targeted trend book.** Two independent risk oracles, correlated only 0.33
+> with each other, both land at nothing. That is a statement about the *book's structure*, not
+> about either forecast.
+
+**The familiar shape appears again.** Every arm that helps Sharpe at all also improves drawdown
+(−16.5% → −14.2% at A/0.5%, → −16.0% at B/p90) — de-risking, not alpha. And arm A at a 0.2% floor
+takes drawdown to **−26.5%**, far worse than the incumbent, because sizing on 1/MAE with a tight
+floor produces enormous positions precisely when the realised drawdown happens to be small. **A risk
+oracle used as a sizing multiplier is a leverage dial, which §3y already established for scale-in.**
+
+_Last updated 2026-10-29._
+
 ### 3cf. OCTOBER A4 — volume-derived supply/demand: the premise is BACKWARDS, and a correlation trap caught in my own analysis (2026-10-29, `scripts/v5_volume_zones.py`)
 
 The one row in `OCTOBER.MD` with **no prior in this repo at all**: a grep over all 6,232 lines and
