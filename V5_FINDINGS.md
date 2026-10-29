@@ -5603,6 +5603,68 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3ci. OCTOBER A6 explored — the prior-high break DECOMPOSED: 47% of it is a fill assumption (2026-10-29)
+
+§3ch filed the long-only prior-high break as a real, unproven lead at **+10.161bp, t +4.71**, with
+the open items being a valid DSR, a principled PBO, walk-forward weight selection and *"a measured
+fill on a live stop order"*. Exploring it has answered the fill question analytically, and it
+**reorders the open items**: execution is not one concern among four, it is **47% of the result**.
+
+#### FIRST, A CONTROL I MIS-READ AND CORRECTED
+
+On the 1,446 break days, buying at the **open** instead earns **+37.748bp (t +16.19, hit 0.6929)**
+against the break's +10.161bp — a paired difference of **−27.587bp at t −31.74**. My first reading
+was that this kills the strategy. **It does not, and the distinction matters:** you do not know at
+the open whether the prior high will break, so buy-at-open-on-break-days is a **hindsight bound, not
+a competing strategy.** What it legitimately establishes is that the break is a **late entry into a
+move already in progress** — it captures ~27% of the day. That is the confirmation-detector shape
+(§3as: *"a detector with a positive mean offset is a CONFIRMATION detector"*), not a refutation.
+
+#### THE RIGHT CONTROL — excess over the drift of the same remaining hours
+
+For each break at bar *k*, compare against gold's **unconditional** mean return from bar *k* to the
+close, which removes time-of-day and bars-remaining drift. Median break at **bar 2 of 20**, 18 bars
+left:
+
+| component | mean bp | t |
+|---|---|---|
+| BREAK, filled at the prior-high LEVEL, net | +10.161 | +4.71 |
+| hold from the breaking bar's **CLOSE**, net | +5.432 | +2.70 |
+| unconditional drift, same bars-left | **+2.807** | +203.13 |
+| **EXCESS over drift — level fill** | **+8.111** | **+3.76** |
+| **EXCESS over drift — close fill** | **+3.382** | **+1.68** |
+| **FILL ADVANTAGE (level vs bar close)** | **+4.729** | **+7.45** |
+
+> **THE RESULT HINGES ENTIRELY ON THE FILL, AND THE SPLIT IS NOW EXACT.** Of the +10.161bp:
+> **+2.807bp is free drift**, **+4.729bp is the gap between the prior-high level and where the
+> breaking bar closed**, and only ~+2.6bp is genuine conditional excess. **The fill advantage is 47%
+> of the headline and it is an ASSUMPTION, not a forecast.**
+>
+> **And the two execution paths give different verdicts:**
+> - **Resting stop order at the prior-day high** → fills near the level → excess over drift
+>   **+8.111bp at t +3.76. Clears.**
+> - **Detect the break on the H1 close, then enter at market** → excess over drift **+3.382bp at
+>   t +1.68. FAILS the +2.0 gate.**
+>
+> A backtest that reads the break from a bar's HIGH only knows it at bar close, by which point price
+> has already travelled 4.729bp past the level. **Assuming a level fill is assuming a resting stop
+> was placed in advance** — which is achievable, but it is an operational commitment, not a
+> modelling choice.
+
+**THIS ALSO REFRAMES §3ch's SLIPPAGE LADDER.** That ladder showed the strategy surviving ~4bp of
+extra slippage. It now reads differently: **4bp of slippage consumes almost exactly the 4.729bp fill
+advantage**, which is why the edge collapses there rather than degrading gracefully. The slippage
+tolerance and the fill advantage are the same quantity viewed from two sides.
+
+**REVISED VERDICT.** Still a lead, but a narrower and better-specified one: **a resting-stop
+breakout entry at the prior-day high, long-only, exit at the session close**, whose edge is ~+2.6bp
+of genuine conditional excess plus ~+4.7bp of level-fill capture, against ~+2.8bp of drift it would
+have earned anyway. **The single thing that decides it is whether a live stop order fills at the
+level**, and no amount of further backtesting can answer that. Everything else — DSR, PBO,
+walk-forward weight — is downstream of a question only a real order answers.
+
+_Last updated 2026-10-29._
+
 ### 3ch. OCTOBER A6 — re-pricing at the live spread, and the LONG-ONLY prior-high break: the round's one survivor (2026-10-29, `scripts/v5_intraday_reprice.py`)
 
 §3bx measured the live quote at **0.504bp** against the **1.5bp floor** BEST_FINDINGS #7's cost wall
