@@ -1,0 +1,7 @@
+[Unit]
+Description=OCTOBER A6 fill probe — measure resting buy-stop slippage at the prior-day high (DEMO)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/fill-probe.sh

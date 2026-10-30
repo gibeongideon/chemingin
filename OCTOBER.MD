@@ -117,6 +117,32 @@ plumbing in the repo.
 
 ---
 
+## 4b. TIER D — the FILL-CAPTURE family, opened by §3ci (2026-10-30)
+
+§3ci split A6's +10.161bp into **+2.807bp of free drift, +4.729bp of level-fill capture and ~+2.6bp
+of genuine conditional excess**. The middle term is a new *mechanism*, not a new signal: a resting
+order at a price known in advance owns the distance price travels past that level before any bar
+closes. That is execution geometry, and it is the only thing in this round that is not a forecast.
+Everything below is that same mechanism aimed somewhere else — **and D21 must run before any of the
+others, because it can kill the whole family in one afternoon.**
+
+| # | approach | route | why it is open — and what would kill it |
+|---|---|---|---|
+| **D21** ⚠️**RUN FIRST** | **The PLACEBO LEVEL control.** Re-run the prior-high break against a resting buy-stop at an *arbitrary* level the same distance above the day's open, same bars-left, same drift adjustment. | — | **The +4.729bp fill advantage is measured CONDITIONAL ON THE LEVEL BEING CROSSED, and any level that gets crossed has price travelling past it by construction.** §3ci controlled for *unconditional* drift, not for *conditional-on-crossing* drift. This is the shape that has already killed five findings here — `window-extremes-are-tautology`, `extreme-timing-patterns-are-drift`, `measure-the-skipped-sample`, `waiting-for-a-dip-selects-losers`, `volume-zones-premise-backwards`. If a placebo level captures the same +4.729bp, then "prior-day high" is decoration and A6 is intraday momentum with a path selection on it. **Cost: one script. Prize: it decides whether D22–D26 are worth writing.** |
+| **D22** | **Resting BUY LIMIT at the prior-day LOW** (not the sell-stop, which is the dead leg at −1.545bp). | — | The short *stop* leg is closed; a long *limit* at the same level has never been tested. §3bc's killer control was **a flat 0.5-ATR limit that beat every ICT zone on gain-per-fill AND filled 2.4× as often** — so the honest form of this is "daily level vs flat offset", and the flat offset is the favourite. ⚠️ `waiting-for-a-dip-selects-losers` (t −5.23) says limit fills are adversely selected; this is the test of whether a *pre-known* level escapes that. |
+| **D23** | **Prior-WEEK high, resting buy-stop, exit Friday close.** | P→weaker | Same geometry on a slower clock: the gap past a weekly level should be larger, because it takes more momentum to reach one. **But the sample collapses from ~1,446 days to ~290 weeks**, which runs straight into CONTROL #7 — so the pre-registered question is whether the per-event fill advantage scales *faster* than √n shrinks the t-statistic. Also must respect `xau-weekly-cycle-disproven` (exit Thursday, not Friday). |
+| **D24** | **Stop-entry overlay on the CHAMPION.** Convert each position *increase* from a market order at the H4 close into a resting buy-stop a fixed ATR fraction above it; unfilled increases are simply not taken. | **T** (execution, not signal) | The champion rebalances at market. If level-fill capture is a general property rather than a property of prior-day highs, it should show up here — and this is the one place in the book where it would be worth real money rather than 1,446 measurement trades. It is also a **confirmation filter** in §3as's sense ("a detector with a positive mean offset is a CONFIRMATION detector"), and the pullback mirror of it is already known to lose. ⚠️ Gate at matched vol per `xau-champion-five-lifts-fail`, and expect turnover to fall, which must not be credited as edge. |
+| **D25** | **The opening-range high as the resting level** — B15's ORB, re-asked as a fill question. | — | §3bx-D destroyed §3be's statistical basis, so the ORB is **unmeasured rather than closed**. It was always tested as a *signal*; the level-fill vs close-fill split was never applied to it, and the ORB high is the one other level in this repo that is known in advance and sits above price. Merge with B15 — do not run them separately. |
+| **D26** | **Round numbers and the session-open price as resting levels.** | — | Lowest prior in the family. §3bi #6 filed round-number stop runs at −3.03bp, still −1.45bp re-netted at the live quote — but that tested them as a *signal*. Only worth touching if D21 survives and D22–D24 show the mechanism generalises past a single level type. |
+
+**The one operational fact all six depend on** is now being measured live: `scripts/v5_fill_probe.py`
+(magic 360599, FundingPips-Trial demo, bridge 18816, one minimum-lot resting buy-stop per day at the
+prior-day high) records the requested level against the actual fill price. **§3ch's slippage ladder
+says the strategy survives ~4bp and dies at ~8bp, and 4bp is almost exactly the fill advantage** —
+so the probe is not a nice-to-have, it is the measurement that sets the whole family's ceiling.
+
+---
+
 ## 5. Non-negotiable controls for every row
 
 1. **Pre-register before the first fit**, git hash recorded in the results file.

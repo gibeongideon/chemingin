@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly run of the OCTOBER A6 fill probe
+
+[Timer]
+OnCalendar=*-*-* *:38:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target
