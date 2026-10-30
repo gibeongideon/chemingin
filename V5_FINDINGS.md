@@ -5603,6 +5603,73 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3ck. OCTOBER D21 part 3 — the ACTUAL YIELD: it beats holding gold on risk, loses on return, and the slippage budget is HALF what was filed (2026-10-30, `scripts/v5_break_yield.py`)
+
+§3ch and §3cj argued in basis points and p-values. Neither said what the thing **makes**. Over the
+full M15 window — 2015-01-01 to 2026-06-15, 11.5 years, gold **+264.5%** from 1,186.66 to 4,325.45:
+
+| | CAGR | Sharpe | maxDD | Calmar | ×account | exposure |
+|---|---|---|---|---|---|---|
+| **BUY AND HOLD GOLD** (CONTROL #2) | **+11.96%** | +0.784 | −26.6% | 0.45 | ×3.65 | 100% |
+| break, prior-day high + cancel, **0bp slip** | +11.06% | **+1.193** | **−11.0%** | **1.00** | ×3.32 | **26.7%** |
+| break, **2bp slip** | +8.34% | +0.923 | −14.1% | 0.59 | ×2.50 | 26.7% |
+| break, **4bp slip** | +5.70% | +0.653 | −17.0% | 0.34 | ×1.89 | 26.7% |
+| break, **8bp slip** | +0.59% | +0.110 | −35.8% | 0.02 | ×1.07 | 26.7% |
+
+> **AT A PERFECT FILL IT IS A BETTER SLEEVE THAN GOLD AND A WORSE INVESTMENT.** Sharpe +1.193 vs
+> +0.784, drawdown −11.0% vs −26.6%, Calmar 1.00 vs 0.45 — on 124 trades a year and **26.7% of
+> calendar hours**. And it still ends at ×3.32 against holding's ×3.65. That combination is exactly
+> what a blend component should look like, and exactly what a replacement should not.
+
+#### The slippage budget is 3.5bp, not 8bp — §3ch's ladder was measured against zero
+
+| slip | CAGR | Sharpe | Calmar | beats HOLD? |
+|---|---|---|---|---|
+| 0.0–3.0bp | +11.06% → +7.01% | +1.193 → +0.788 | 1.00 → 0.45 | **YES** |
+| **3.5bp** | +6.35% | +0.721 | 0.39 | **no** |
+| 8.0bp | +0.59% | +0.110 | 0.02 | no |
+
+**It stops beating buy-and-hold at ~3.5bp on Sharpe AND on Calmar** (the two cross at the same
+place). §3ch's ladder — *"survives roughly 4bp and dies around 8bp"* — was scored against **zero**,
+which `cot-positioning-disproven` and `external-playbook-exhausted` both established is the wrong
+benchmark for a long-only gold rule. **Against the right benchmark the usable budget is about
+half what was filed: 3.5bp = $1.40/oz at $4,000 gold = 6.7 times the live $0.21 spread.** That is
+now the single number `v5_fill_probe.py` has to beat, and it is a much tighter target than §3ch's.
+
+#### What the LEVEL actually buys — and it is not return
+
+| variant | fires/yr | exposure | CAGR @0bp | Sharpe | maxDD |
+|---|---|---|---|---|---|
+| **prior-day HIGH + cancel** | 124 | 26.7% | +11.06% | **+1.193** | **−11.0%** |
+| prior-day HIGH, no cancel | 151 | 31.5% | +11.30% | +1.145 | −13.1% |
+| **PLACEBO 0.25 ATR over open** | 193 | 38.3% | **+11.69%** | +1.053 | −17.6% |
+| PLACEBO 0.50 ATR over open | 122 | 19.3% | +6.19% | +0.752 | −11.9% |
+
+**The placebo earns MORE raw CAGR than the real rule and keeps less of it.** 0.25 ATR above the
+open returns +11.69% against the prior-day high's +11.06%, with a worse Sharpe (+1.053 vs +1.193),
+a 60% deeper drawdown (−17.6% vs −11.0%) and 43% more exposure. This sharpens §3cj rather than
+contradicting it: the prior-day high's advantage over an arbitrary level is **risk quality and
+capital efficiency, not return.** A statistic in basis points per trade could not have shown that.
+
+#### Year by year — it is a bull-participation vehicle that underperforms the bull
+
+| | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **break @0bp** | +3.5 | +0.8 | +5.5 | +0.1 | +12.2 | +24.8 | **−7.0** | **+12.7** | +7.6 | +8.8 | +52.1 | **+15.5** |
+| **HOLD** | −10.6 | +8.4 | +13.2 | −1.6 | +18.3 | +25.1 | −3.6 | −0.3 | +13.1 | +27.2 | +64.6 | +0.2 |
+
+**Positive in 11 of 12 years at a perfect fill, but it beats holding in only 4 of 12** (3 of 12 at
+4bp). Where it wins is where gold does not: 2015 (−10.6% hold), 2022 (−0.3%) and 2026 YTD (+0.2%
+hold vs +15.5%). Where it loses is the strong trend years it only partly participates in — 2024
+(+8.8 vs +27.2), 2017, 2016. The one genuinely bad year is **2021 at −7.0% against hold's −3.6%**.
+
+**VERDICT — the lead survives as a BLEND COMPONENT and is refuted as a standalone.** It does not
+beat owning gold, it was never going to, and §3ch's blend table was always the right frame for it.
+What §3ck adds is the operating budget: **3.5bp of entry slippage**, not 8, and the live probe now
+has a pass mark rather than a curiosity.
+
+_Last updated 2026-10-30._
+
 ### 3cj. OCTOBER D21 — the PLACEBO LEVEL control: an arbitrary level at a matched distance earns 60% of it (2026-10-30, `scripts/v5_placebo_level.py`, `scripts/v5_break_blend_recheck.py`)
 
 §3ci put 47% of the prior-high break's +10.161bp in a **fill advantage** — the gap between the
