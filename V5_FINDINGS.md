@@ -5603,6 +5603,86 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cn. OCTOBER B9 — the BTC two-cell speed test: the decision is indistinguishable, and DSR was the wrong instrument all along (2026-10-30, `scripts/v5_btc_two_cell.py`)
+
+§3bp filed BTC trend as a real, unproven lead and named its own promotion path: *"a pre-registered
+2-cell test (incumbent 1/6 vs one declared alternative), not a wider sweep."* B9 is that test.
+
+#### The trap, stated before running it
+
+§3bp had **already swept the grid** and found SLOW 1/12 to be the full-sample argmax. Declaring
+1/12 as "the one alternative" now and pricing the result at K=2 would launder a completed search
+through a pre-registration — §3s's rule is that *"DSR's trial count must reflect the ENTIRE
+search."* **A 2-cell framing cannot retroactively undo a 5-cell sweep.** So B9 asks the three
+questions that *are* answerable instead.
+
+Control cell: 1/6 at **+1.602** and 1/12 at **+1.750** against §3bp's filed +1.626 / +1.719 (the
+BTC file has since extended to 2026-10-21), and the walk-forward reproduces at **+1.448** against
+§3bp's **+1.401**.
+
+#### PART 1 — the decision is not distinguishable, so the incumbent stands for free
+
+| test | result |
+|---|---|
+| matched-vol paired t, 1/12 vs 1/6, full sample | **+1.682** over 3,982 days — under the +2.0 bar |
+| first half / second half | +0.752 / +1.639 |
+| **return-stream correlation between the two speeds** | **+0.9720** |
+
+> **At a correlation of 0.972 these are not two strategies, they are one object at two settings.**
+> The book keeps **1/6**, the decision costs nothing, and §3bp's instruction — *"do not change the
+> book's incumbent"* — is now backed by a direct test rather than by the instability warning alone.
+
+#### PART 2 — DSR is near-vacuous here, in EITHER framing
+
+| framing | benchmark SR\* (per obs) | DSR |
+|---|---|---|
+| K=2, the "declared" fiction | 0.00284 | **1.0000** |
+| K=5, the grid actually swept | 0.00607 | **1.0000** |
+| on the walk-forward stream (+1.448) | 0.00607 | **1.0000** |
+
+The five speeds produce per-observation Sharpes of **0.0798 to 0.0916** — so tightly clustered that
+the cross-trial variance, which is the only thing deflation consumes, collapses toward zero.
+**Deflation only bites when trials DISAGREE.** This is `xau-scalein-is-leverage`'s lesson in a new
+costume: *"DSR is vacuous for overlays, use paired-t."* It is equally vacuous for a parameter grid
+whose cells all say the same thing.
+
+⚠️ **AND §3bp's DSR 0.743 IS NOT REPRODUCIBLE FROM WHAT IT RECORDED.** My walk-forward stream
+matches its to 0.047 Sharpe, yet the DSR differs by 0.257. Since DSR depends entirely on the
+dispersion of the trial array, §3bp's array must have been far more dispersed than the five-speed
+grid — and **§3bp never recorded what it was.** That is the same defect as §3ch's fabricated trial
+array, one step less visible: *a DSR without its trial array is not a number anyone can check.*
+**New rule: record the trial Sharpes beside any DSR, or do not quote the DSR.**
+
+#### PART 3 — the replication fails, and the two win-counts disagree
+
+Common 5bp round trip for every instrument. **BTC does not get a vote — it is the instrument 1/12
+was chosen on.**
+
+| symbol | 1/6 Sharpe | 1/12 Sharpe | diff | matched-vol paired t | wins on SR / on t |
+|---|---|---|---|---|---|
+| BTC *(contaminated)* | +1.601 | +1.760 | +0.159 | +1.63 | YES / YES |
+| ETH | +1.165 | +1.201 | +0.036 | +0.73 | YES / YES |
+| LTC | +0.719 | +0.593 | −0.125 | −1.62 | no / no |
+| SOL | +1.346 | +1.415 | +0.069 | **−0.40** | **YES / no** |
+
+**On raw Sharpe 1/12 wins 2 of 3. On matched-vol paired t — the statistic this repo gates on — it
+wins 1 of 3, and none reaches |t| ≥ 2.** SOL is the instructive row: a +0.069 Sharpe advantage that
+*reverses* once the streams are vol-matched, which is exactly why `xau-champion-five-lifts-fail`
+made matched-vol gating a method rule.
+
+The walk-forward picks still wander — **5 distinct speeds across 8 years** (2019:1/3, 2020:1/48,
+2021:1/48, 2022:1/12, 2023:1/6, 2024:1/24, 2025:1/24, 2026:1/24) — confirming §3bp's warning sign
+on fresh data.
+
+**VERDICT: B9 CLOSED, and it closes §3bp's promotion path with it.** The alternative is
+indistinguishable from the incumbent (t +1.682, ρ +0.972), fails to replicate where it was not
+chosen (1 of 3 on the gating statistic), and **DSR cannot adjudicate this question at all** because
+the cells agree too closely for deflation to have anything to consume. BTC stays at speed **1/6**
+and at **1/6 book weight**. The durable outputs are the DSR-vacuity result and the new rule that a
+DSR must be published with its trial array.
+
+_Last updated 2026-10-30._
+
 ### 3cm. OCTOBER A7 — TradingView's 26 Technical Ratings are about FIVE opinions, and the vote loses to the champion (2026-10-30, `scripts/v5_tv_ratings.py`)
 
 All 26 components built exactly — 11 oscillators (RSI14, Stoch, CCI20, ADX14, Awesome, Momentum10,
