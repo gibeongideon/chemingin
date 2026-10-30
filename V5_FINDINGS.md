@@ -5603,6 +5603,83 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cm. OCTOBER A7 — TradingView's 26 Technical Ratings are about FIVE opinions, and the vote loses to the champion (2026-10-30, `scripts/v5_tv_ratings.py`)
+
+All 26 components built exactly — 11 oscillators (RSI14, Stoch, CCI20, ADX14, Awesome, Momentum10,
+MACD, StochRSI, Williams %R, Bull-Bear Power, Ultimate) and 15 moving averages (EMA/SMA at
+10/20/30/50/100/200, VWMA20, HMA9, Ichimoku) — with TradingView's own Buy/Sell/Neutral rules, on
+H1, H4 and D1 all rebuilt from the clean M15 file. Ichimoku uses TV's **cloud** rule rather than a
+price-vs-base shortcut, because the shortcut would make it behave like the other MAs and bias the
+effective rank *toward* this script's own stated prior.
+
+#### (a) THE MULTIPLICITY BOUND — the primary deliverable, and it is frame-stable
+
+| block | nominal | participation ratio | eigenvalues for 90% var | top eigenvalue |
+|---|---|---|---|---|
+| **all 26 components** | 26 | **4.81 – 5.00** | 14 | 41–42% of the matrix |
+| **the 15 moving averages** | 15 | **2.71 – 2.77** | 6 | **57–58%** |
+| the 11 oscillators | 11 | 6.03 – 6.43 | 9 | 32–34% |
+
+H1 / H4 / D1 agree to within 0.2 on every row. The MAs agree **unanimously on ~12% of bars** and
+carry a mean pairwise |corr| of **0.50**.
+
+> **"26 INDICATORS AGREE" IS WORTH ABOUT FIVE OPINIONS.** The user's screenshot showed EMA and SMA
+> at 10/20/30/50/100/200 all reading Sell because price sat below every one — one fact counted
+> twelve times. Measured, the whole 15-MA block is **2.7 independent directions**, and the full
+> 26-component vote is **~4.9**. Any significance computed as though a 22-of-26 consensus were 26
+> pieces of evidence is overstated by roughly **5×**. The oscillators are the genuinely diverse
+> half; the MA block is one idea with fifteen window lengths.
+
+#### (b) It is largely a restatement of one trivial indicator
+
+**corr(rating, close-vs-SMA50) = +0.7939 (H1), +0.7985 (H4), +0.7982 (D1)** — about **63% of the
+rating's variance is a single price-versus-average test**. By contrast corr(rating, champion
+forecast) is only **+0.444 / +0.457 / +0.500**, so the rating is *not* a champion clone; it is an
+SMA50 clone with decoration.
+
+#### (c) EV/fire against HOLDING gold, and against the incumbent
+
+| frame | strong-buy bucket (long) | vs HOLD | strong-sell bucket (short) | vs HOLD |
+|---|---|---|---|---|
+| H1 | +9.474bp, fires 19.2% | **+4.386** | −3.093bp | **−8.181** |
+| H4 | +9.214bp, fires 20.3% | **+4.503** | −2.915bp | **−7.626** |
+| D1 | +3.546bp, fires 25.1% | −0.503 | +2.457bp | −1.592 |
+
+The short side is catastrophic against holding — **§3bh's identity again**
+(`excess(LONG) + excess(SHORT) = −2·base`), for the Nth time in this file. The long side is real
+at H1/H4 and vanishes at D1.
+
+**The comparison that decides it is the champion, not holding:**
+
+| frame | best TV cell vs HOLD | top champion bucket vs HOLD | verdict |
+|---|---|---|---|
+| H1 | +5.450 | +3.446 | TV beats it by 2.004 — **but see the caveat** |
+| **H4** | +4.854 | **+6.814** | **TV LOSES by 1.961** |
+| D1 | −0.060 | +5.339 | **TV LOSES by 5.400** |
+
+⚠️ **The one frame where the rating wins is the frame where the champion comparison is
+degenerate.** At H1 the champion's forecast is pinned at its 0.15 floor on **22.8%** of bars, so
+its "quintiles" collapse to four unequal buckets (Q1 is the single value [0.15, 0.15]). The
+champion is an H4 model; bucketing it at H1 is off-design. **H4 is the fair comparison and the
+rating loses there.** 1-of-3 frames, and that one compromised, is the signature of noise.
+
+#### The "sweet spot" the user asked for does not exist as a separate dial
+
+The threshold sweep is **monotonic** at H1 and H4 — EV rises all the way to the highest threshold
+tested (0.6, firing 11.7–12.8%). So the sweet spot is simply "the strongest consensus", which is
+"the strongest trend", which is what the champion already trades. There is no interior optimum to
+find. And CONTROL #7 applies to the search itself: **21 cells** (7 thresholds × 3 frames) were
+examined, so the argmax carries a best-of-21 floor that the +4.854bp H4 advantage does not clear
+against an incumbent already beating it.
+
+**VERDICT: A7 CLOSED.** The vote-counting aggregator — the one thing here never tested before — is
+**~5 effective opinions dressed as 26**, is **0.80 correlated with a single moving average**, loses
+to the champion on the frame the champion is built for, and has no interior threshold optimum. The
+durable output is the multiplicity bound, which now applies to any future consensus-of-indicators
+construction in this repo.
+
+_Last updated 2026-10-30._
+
 ### 3cl. A6 READINESS LEDGER — what "0bp" is, and the four operational facts measured on the way (2026-10-30, `scripts/v5_fill_probe.py`)
 
 §3ck's headline row is **break @ 0bp slip: CAGR +11.06%, Sharpe +1.193, maxDD −11.0%**. This
