@@ -1,0 +1,7 @@
+[Unit]
+Description=Intraday trail-follower (INTRADAY-TRAIL-SPEC) — Switch demo, magic 360600
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trail-runner.sh

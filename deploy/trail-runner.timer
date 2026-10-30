@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly run of the intraday trail-follower
+
+[Timer]
+OnCalendar=*-*-* *:52:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

@@ -108,3 +108,38 @@ process, a watchdog, and a new class of failure.
   strategy.
 
 **Deploy to a demo to observe execution. Do not size it as a validated edge.**
+
+---
+
+## 6. Deployment — LIVE on the Switch demo since 2026-10-30
+
+| | |
+|---|---|
+| account | **40080430 SwitchMarkets-Live — `trade_mode 0`, a DEMO** (the server is named `-Live`; the account is not) |
+| bridge | 18815 |
+| symbol | **XAUUSDs** (plain `XAUUSD` does not resolve at Switch) |
+| magic | **360600** — clear of 360595 book · 360597 zigzag · 360598 FP book · 360599 fill probe |
+| runner | `scripts/v5_trail_runner.py` · wrapper `deploy/trail-runner.sh` |
+| schedule | `trail-runner.timer`, hourly at **:52** (staggered off the fill probe's :38) |
+| risk | **0.5%** of equity per trade; at $130.6k equity and a $71.83 daily ATR that is ~0.06 lots |
+| log | `data/v5_runs/trail_runner_log.csv` · state `data/v5_runs/trail_runner_state.json` |
+
+**Safety properties, by construction rather than by care:**
+
+- refuses unless the **account** reports `trade_mode 0` and the **symbol** reports `trade_mode 4`
+- the protective stop is attached to the **pending order**, so it is server-side from the instant
+  of the fill — this process only ever *ratchets* an existing stop and never has to be alive to
+  protect a position
+- **one decision per server day**, held in a state file, so a vanished order is recorded rather
+  than silently re-placed (three fill-probe orders were deleted from outside the terminal on a
+  hand-traded account before this guard existed)
+- a **market-open gate** that asks whether the tick *advances*, not whether a server-stamped
+  quote looks old against `utcnow()` — hour 00 is XAUUSD's daily break and `hour >= 23` is false
+  at hour 0, so without it the runner would place into a closed market every night
+- `tp=0.0` is passed explicitly: **no take-profit, by design, not by omission**
+
+**What to watch first, in order:** that the resting stop is not deleted from outside the terminal
+(the failure that moved the fill probe off FundingPips) · the fill price against the requested
+level, which is the **3.5bp** question · that the ratchet actually moves the stop, whose broken
+signature is several near-identical losses · and only then the P&L, which at this sample size is
+noise.
