@@ -1,0 +1,7 @@
+[Unit]
+Description=ZigZag bottom detector + 3xATR trail — Switch demo, magic 360601
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/zigzag-trail-switch.sh

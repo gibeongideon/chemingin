@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly run of the Switch ZigZag trail bot
+
+[Timer]
+OnCalendar=*-*-* *:19:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target
