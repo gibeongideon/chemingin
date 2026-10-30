@@ -46,7 +46,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
 from v5_xau_champion_lifts import champion_recipe                     # noqa: E402
-from src.v5 import mtf_frames                                         # noqa: E402
+# `mtf_frames` is imported INSIDE main(), not here: `votes()` and `eff_rank()` are the reusable
+# parts and `v5_trade_helper.py` imports them on the VPS, where src/v5 is a thinner copy that
+# does not ship mtf_frames. A module-level import would make the helper unimportable there.
 
 OUT = ROOT / "data" / "v5_runs" / "october"
 RT_BP = 0.504 * 1.5
@@ -200,6 +202,7 @@ def eff_rank(X: pd.DataFrame) -> tuple:
 
 
 def main() -> int:
+    from src.v5 import mtf_frames                                     # noqa: E402
     OUT.mkdir(parents=True, exist_ok=True)
     m15 = pd.read_csv(ROOT / "data/XAUUSD_M15_long.csv", parse_dates=["time"], index_col="time")
     m15 = m15[~m15.index.duplicated(keep="last")].sort_index()

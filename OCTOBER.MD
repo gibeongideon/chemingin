@@ -152,6 +152,66 @@ so the probe is not a nice-to-have, it is the measurement that sets the whole fa
 
 ---
 
+## 4c. TIER E — the intraday "secure then follow" trail (requested 2026-10-30)
+
+User request, verbatim in substance: *catch an intraday trend and follow it · tight initial SL ·
+**once it reaches breakeven, move the SL to breakeven** · then trail slowly, far enough away to
+let the trend run · **day** trend, not weekly or monthly · **no TP, exit on SL only** · the bot
+monitors price in **real time, every 15 seconds***. Prompted by an M1 OANDA chart of today's gold
+move, roughly **4,038 → 3,877, i.e. −4.0% intraday and DOWNWARD**.
+
+### Decomposing the request against what is already measured
+
+| element of the spec | status in this repo |
+|---|---|
+| catch an intraday trend and follow it | **MEASURED** — `fast-trend-runner-spread-gated`: real, but Sharpe **0.50 at a $0.34 spread** and **0.85 at $0.12**. Deployable on raw/ECN only |
+| tight initial SL | **MEASURED, badly** — §3r swept **80 SL/TP cells, 79 of 80 Sharpe-negative, DSR 0.0000**; and `gold-range-exploded-fixed-brackets-dead` requires brackets in **ATR, never percent** |
+| **move the SL to breakeven once in profit** | **🟢 NEVER TESTED HERE. This is the entire research content of the request.** |
+| then trail, wide enough to let it run | **MEASURED and VALIDATED** — §3bn: `trail_atr` 3.0 peaks with smooth decay both sides (1.5/2/3/4/6 → 1.005/1.044/**1.091**/0.992/0.877), and **ratcheting beats not-ratcheting by +0.077 Sharpe**, +0.263 over signal-flip |
+| no take-profit | **AGREES with the repo** — §3bl: a fixed bracket costs even the **ORACLE** −0.94 to −1.43bp against simply holding, *"because barriers truncate the moves that pay for the losers"*. The live zigzag config already omits TP entirely for this reason |
+| 15-second real-time monitoring | **ENGINEERING, not research** — and the SL belongs **server-side on the order** regardless (`"does not need the bot alive"`, already the repo's pattern) |
+
+### The three things that decide this before any code is written
+
+1. **THE FAMILY HAS A PROVEN CEILING, AND THE BREAKEVEN MOVE RUNS AWAY FROM IT.** §3bn:
+   *"a wide trail approaches buy-and-hold FROM BELOW and can never beat it, because the limit of
+   an infinitely wide trail IS holding."* Every tightening of the stop moves **away** from that
+   ceiling. A breakeven stop is a tightening.
+2. **A BREAKEVEN STOP IS THE MOST AGGRESSIVE BARRIER IN THE FAMILY.** §3bl measured what barriers
+   do and found they cost even a perfect-foresight oracle. A breakeven stop guarantees that from
+   that point on the trade can only *not-lose* — it truncates precisely the right tail that pays
+   for the losers. The repo has the same result twice more: `overnight-ban-is-turnover-not-gaps`
+   found a **+$200 TP costs 0.26 Sharpe and 0.89× sizing beats it at matched DD**. **If the goal
+   is less risk, size down — do not truncate.** That is the control this study must beat.
+3. **⚠️ THE MOVE IN THE SCREENSHOT IS A SHORT, AND THE SHORT LEG IS NOW REFUTED SIX TIMES** —
+   most recently by §3bn **on this exact trail engine**: long-only 1.091 vs long/short 0.954,
+   **both halves negative** for the short leg (−0.223 / −0.072). A validated version of this bot
+   **would have sat out the entire 4% move being pointed at.** This tension is the single most
+   decision-relevant fact in the request and must not be designed around quietly.
+
+### 🔴 HARD DATA PREREQUISITE — M15 CANNOT TEST THIS
+
+The finest gold data here is **M15**. A 1-ATR intraday stop resolves *inside* an M15 bar, and
+`order-of-events-needs-intraday` is exactly this failure: the NR7 first-break scored **+8.23 Sharpe
+on D1 and +0.43 on M15 — 19×** — from an unresolvable intrabar convention. **Backtesting a tight
+stop on M15 bars produces a flattering number that measures the convention, not the rule.**
+So step 0 is to pull **M1 (ideally tick) history from the broker** and screen it with
+`intrabar_leak()`. Without that, this tier does not run.
+
+| # | the study | gate |
+|---|---|---|
+| **E27** | **The breakeven move, isolated.** Hold the signal and the trail at their §3bn-validated settings (long-only, `trail_atr` 3.0, ratcheting, no TP) and vary ONE thing: the stop-to-breakeven rule — off / at +1 ATR of profit / at +2 ATR — plus a softer variant that moves to **breakeven − k·ATR** rather than exact breakeven, which truncates less. | **Matched-risk, not raw.** `xau-champion-five-lifts-fail` makes this mandatory: a de-risking overlay always flatters raw drawdown. The control is **plain trail 3.0 sized down to the breakeven variant's realised vol** — if sizing down wins, E27 is dead, exactly as the +$200 TP was. Plus CONTROL #2 vs holding, both halves, and cost at the $0.12 ECN gate. |
+| **E28** | **Does 15-second management beat bar-close management?** Same rule, stop moved every 15s against every M15 close, on M1/tick data. | Report the difference in bp **and** the extra execution risk. A gain under ~1bp does not justify a persistent process. |
+| **E29** | **The engineering.** Persistent 15s loop, **server-side SL on the order** so a dead bot cannot orphan a position, watchdog, crash-state guard (`account-switch-and-crash-state-traps`: a stale guard kept the OLD initial_balance and put an 8% halt off by $400), all clock comparisons on the **server** clock (`mt5-server-clock-vs-host-clock`). | Dry-run on the Switch demo, magic separate from 360595/360597/360598/360599. |
+
+**HONEST PRIOR.** E27 fails at matched risk — it is in the barrier family, and the barrier family
+has lost three times here including against a perfect oracle. The part of the request that is
+*already validated* is the part the user arrived at independently: **no take-profit, and a wide
+ratcheting trail.** That is the live zigzag's exact shape. The genuinely open question is narrow,
+and worth one clean test rather than a build.
+
+---
+
 ## 5. Non-negotiable controls for every row
 
 1. **Pre-register before the first fit**, git hash recorded in the results file.
