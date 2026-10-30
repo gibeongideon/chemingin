@@ -42,7 +42,11 @@ STATE = ROOT / "data" / "v5_runs" / "october" / "a6_fill_probe_state.json"
 MAGIC = 360599
 FIELDS = ["utc", "event", "symbol", "level", "fill_price", "slip_px", "slip_bp", "volume",
           "ticket", "retcode", "comment", "bid", "ask", "spread_px", "prev_day_high", "note"]
-EXIT_HOUR = 20          # server time; gold's daily break is ~21:00-23:00, so exit before it
+# Server time. MEASURED from the broker's own H1 bars on 2026-10-30: XAUUSD trades server hours
+# 01:00-23:59 and hour 00 is the daily break. The backtest exits at the SESSION CLOSE, i.e. the
+# 23:xx bar, so 23 is what matches it -- an earlier exit measures a different trade. (An earlier
+# comment here guessed the break at 21:00-23:00, which was wrong.)
+EXIT_HOUR = 23
 
 
 def record(**kw) -> None:
@@ -160,7 +164,13 @@ def main() -> int:
             record(**base, event="fill", level=pdh, fill_price=p.price_open,
                    slip_px=round(slip, 3), slip_bp=round(slip / pdh * 1e4, 3),
                    ticket=p.ticket, note="recorded on first sight, not at exit")
-        if srv_now.hour >= EXIT_HOUR:
+        # A position that survived midnight must go NOW, not wait for hour 23 of the new day.
+        # Without the staleness test `srv_now.hour >= EXIT_HOUR` is false at hour 0-22, so a
+        # position carried through the 00:00 break would be held ~23 extra hours and pay a swap --
+        # turning the one trade this probe is supposed to replicate into a different one.
+        opened = pd.to_datetime(int(p.time), unit="s").date()
+        stale = opened < srv_now.date()
+        if srv_now.hour >= EXIT_HOUR or stale:
             if a.execute:
                 t2 = m.symbol_info_tick(sym)
                 rr = m.order_send(dict(action=m.TRADE_ACTION_DEAL, symbol=sym, volume=p.volume,
@@ -170,9 +180,12 @@ def main() -> int:
                 print(f"  EXIT at session close: retcode {rr.retcode}")
                 record(**base, event="exit", level=pdh, fill_price=p.price_open,
                        slip_px=round(slip, 3), slip_bp=round(slip / pdh * 1e4, 3),
-                       ticket=p.ticket, retcode=rr.retcode, note=f"exit_hour>={EXIT_HOUR}")
+                       ticket=p.ticket, retcode=rr.retcode,
+                       note="STALE: opened %s, forced out" % opened if stale
+                            else f"exit_hour>={EXIT_HOUR}")
             else:
-                print(f"  would EXIT (hour {srv_now.hour} >= {EXIT_HOUR}); --execute to send")
+                print(f"  would EXIT ({'STALE' if stale else f'hour {srv_now.hour}'}); "
+                      f"--execute to send")
         else:
             print(f"  holding until hour {EXIT_HOUR} server (now {srv_now.hour})")
         m.shutdown(); return 0

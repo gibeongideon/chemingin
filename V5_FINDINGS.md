@@ -5603,6 +5603,62 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cl. A6 READINESS LEDGER — what "0bp" is, and the four operational facts measured on the way (2026-10-30, `scripts/v5_fill_probe.py`)
+
+§3ck's headline row is **break @ 0bp slip: CAGR +11.06%, Sharpe +1.193, maxDD −11.0%**. This
+section exists so that row is never quoted as a result.
+
+#### "0bp" IS THE UPPER BOUND OF A FICTION, NOT AN ACHIEVABLE OUTCOME
+
+It assumes **every resting buy-stop fills exactly at the level**. The 0.756bp round-trip spread is
+already inside the number, so "0bp" means *nothing beyond the spread* — and a buy-stop is the one
+order type for which that assumption is least defensible: it converts to a market order the instant
+it triggers, and it triggers precisely when price is moving through the level fast. §3ag recorded
+CSV spreads understating live fills by **20–50×**. Gold stop-order slippage has **never been
+measured on these accounts**, which is the entire reason the probe exists. Choosing the 0bp row is
+choosing the most flattering cell of a range nobody has bounded.
+
+| gate | status |
+|---|---|
+| beats buy-and-hold on CAGR | **NO, at any slippage** — +11.06% vs +11.96% even at a perfect fill |
+| beats buy-and-hold on Sharpe/Calmar | yes, but only below **~3.5bp** of entry slippage (§3ck) |
+| entry slippage measured | **NO — probe running, 0 fills so far** |
+| Bar 1: DSR ≥ 0.90, PBO < 0.30 | **NO — §3ch fed a fabricated trial array, and D21 widened the trial set from one hypothesis to a level-placement family** |
+| Bar 2: matched-vol paired t | yes (§3ch), unaffected by the convention audit (§3cj) |
+| blend weight walk-forward selected | **NO — chosen after seeing the result.** §3bz cut cross-asset divergence 0.55 → 0.24 on exactly this step |
+| financing drag | **none** — flat before the 00:00 rollover, so no swap. Against the book's −3.79%/yr (`financing-is-the-live-lever`) this is a real and rare advantage |
+
+**The defensible sentence remains §3ch's: an unproven lead with a known test pending.**
+
+#### FOUR OPERATIONAL FACTS, MEASURED RATHER THAN ASSUMED
+
+1. **The XAUUSD session is server hours 01:00–23:59; hour 00 is the daily break.** Derived from 720
+   of the broker's own H1 bars, not from documentation. A comment in the probe had guessed the
+   break at 21:00–23:00 and was wrong.
+2. **The backtest exits into the THINNEST hour of the gold day.** Median tick counts by server
+   hour: **hour 23 = 4,594** against **hour 17 = 17,878** — the exit lands at roughly a quarter of
+   peak liquidity. "Exit at the session close" is therefore another unpriced cost sitting inside
+   the 0bp row, and it is on the side the spread table does not cover.
+3. **The probe's `EXIT_HOUR` was 20, three hours before the session close — a different trade from
+   the one being validated.** Corrected to 23. The same edit added a staleness guard: a position
+   surviving midnight would have failed `srv_now.hour >= EXIT_HOUR` at hours 0–22 and been held
+   ~23 extra hours, paying the swap the strategy is specifically designed to avoid.
+4. **Three of three probe orders were cancelled from outside the terminal.** The terminal log
+   carries cancel lines for the two orders the diagnostic script cancelled itself (#17112544,
+   #17112546) and **none** for #17112033, #17112147 or #17113283. The account is being hand-traded
+   heavily in parallel — magic-0 fills at 15:43, 16:25, 16:32, 16:33 ×2, 16:35, 16:42 and **five at
+   once at 16:47**. A near/far diagnostic pair survived 3 minutes untouched and `trade_stops_level`
+   is 0, so it is not a broker distance rule.
+
+> **⚠️ THE PROBE CANNOT COLLECT ITS SAMPLE ON A HAND-TRADED ACCOUNT.** This is
+> `manual-trading-trips-the-bot-guard` in a milder form, on the same account that also carries the
+> zigzag (360597) and the XAU+BTC book (360598). The one-per-day state guard is doing its job —
+> it records `vanished` instead of re-placing — but a `vanished` row is not a fill measurement.
+> **The probe needs an account nobody is trading by hand, or the 3.5bp question stays open
+> indefinitely.**
+
+_Last updated 2026-10-30._
+
 ### 3ck. OCTOBER D21 part 3 — the ACTUAL YIELD: it beats holding gold on risk, loses on return, and the slippage budget is HALF what was filed (2026-10-30, `scripts/v5_break_yield.py`)
 
 §3ch and §3cj argued in basis points and p-values. Neither said what the thing **makes**. Over the
