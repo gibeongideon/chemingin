@@ -5603,6 +5603,101 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cj. OCTOBER D21 — the PLACEBO LEVEL control: an arbitrary level at a matched distance earns 60% of it (2026-10-30, `scripts/v5_placebo_level.py`, `scripts/v5_break_blend_recheck.py`)
+
+§3ci put 47% of the prior-high break's +10.161bp in a **fill advantage** — the gap between the
+level and where the crossing bar closed — and called it *"an assumption, not a forecast."* It is
+worse than that: the fill advantage is measured **conditional on the level being crossed**, and
+*any* level that gets crossed has price travelling past it by construction. §3ci controlled for
+gold's **unconditional** drift over the same bars-left. It never controlled for
+**conditional-on-crossing** drift, which is the benchmark that matters.
+
+That omission is the shape of five kills already in this file — `window-extremes-are-tautology`,
+`extreme-timing-patterns-are-drift`, `measure-the-skipped-sample`, `waiting-for-a-dip-selects-losers`,
+`volume-zones-premise-backwards`. Each was a property of the selection, not of the location.
+
+#### The control: the same strategy, the level moved
+
+For every day, a placebo buy-stop at the same distance above the open **in ATR units**, the
+distance drawn from a different day by circular shift (≥ 20 days). ATR units rather than percent
+because the prior-day high's distance is correlated with yesterday's range and so with today's
+volatility — a raw-percent permutation hands easy levels to volatile days and silently changes the
+fill rate. The placebo gets **both** levels permuted and the **same cancel-if-the-low-breaks-first
+rule**, so it is the identical strategy with only the location replaced. 200 draws, both clean
+frames (XAUUSD M15 and H1 are the §3bb pair that agrees at 1.00).
+
+| statistic | H1 observed | H1 placebo p50 | **H1 P(placebo ≥ obs)** | M15 observed | M15 placebo p50 | **M15 P** |
+|---|---|---|---|---|---|---|
+| FILL ADVANTAGE bp | +3.124 | +1.249 | **0.0000** | +2.457 | +1.461 | **0.0000** |
+| **EXCESS over drift bp** | +5.697 | +3.552 | **0.0900** | +6.040 | +3.472 | **0.0500** |
+| level-arm net bp | +8.470 | +6.240 | **0.0800** | +8.810 | +6.217 | **0.0500** |
+
+> **THE STORY WAS WRONG; THE STRATEGY IS SMALLER BUT NOT DEAD.** The prior-day high is
+> unambiguously special on the **fill** axis — the bar that crosses it travels further past it than
+> the bar that crosses an arbitrary matched-distance level, at **p 0.0000 in both frames**. Breaks
+> of yesterday's high really are more violent. But on the axis that pays, an arbitrary level
+> already delivers **~60% of the excess over drift and ~71% of the net return**, and the prior-day
+> high's advantage sits at **p 0.05–0.09** — outside this file's own bar.
+>
+> So the finding is **not** "yesterday's high is a meaningful level." It is **"a resting buy-stop
+> placed above the open captures intraday up-drift,"** with yesterday's high a modest refinement of
+> where to put it. §3ch's gross null tested against *no edge at all*; the right null is *any level
+> at a matched distance*, and against that null the result is marginal.
+
+The fixed-distance grid shows the shape — nearer levels fire far more often and capture almost no
+fill advantage; the advantage grows with distance while the excess does not:
+
+| placebo level | fires | fill rate | fill adv bp | excess bp | t |
+|---|---|---|---|---|---|
+| 0.25 ATR above open | 2,177 | 62.1% | +0.512 | **+3.223** | +1.87 |
+| 0.50 ATR | 1,378 | 39.3% | +1.246 | +2.330 | +1.13 |
+| 0.75 ATR | 823 | 23.5% | +1.572 | +3.193 | +1.25 |
+| 1.00 ATR | 510 | 14.5% | +0.856 | +0.048 | +0.01 |
+| 1.50 ATR | 168 | 4.8% | +0.320 | −0.768 | −0.13 |
+
+The prior-day high sits at a **median 0.338 ATR** above the open, i.e. right where the best fixed
+cell is. It beats that cell (+6.040 vs +3.223 excess), which is the part that is genuinely its own.
+
+#### The control cell, and two conventions that turned out to be an H1-FILE artefact
+
+§3ch's loop reproduces **exactly**: 2,768 trades, LONG n=1,446, **+10.161bp, t +4.71**. Inside it:
+
+- **45 single-bar days** — Sundays, one 23:00 H1 bar — at **+25.519bp**. "Exit at the session
+  close" is one hour later and the fill is a weekend gap, not a level. Worth **+0.493bp**.
+- **35 outside days** where the same bar takes out both levels. §3ch's `side = 1 if fu < fd else -1`
+  sends every one **SHORT**; a resting buy-stop would have **filled**, and as longs they average
+  **−26.6bp**. Worth **+0.860bp**.
+
+Together 13% of the headline — **on H1**. I wrote that down as a haircut and then checked M15,
+where there are **8 tie days and no single-bar days**, and the two streams differ by **0.153bp and
+0.06 t-units**. The conventions are a property of the *measurement frame*, not of the strategy, and
+they shrink as the frame gets finer: `order-of-events-needs-intraday` confirming itself from the
+other side. **§3ch's Bar 2 verdict survives the convention audit.** Filed as a null result because
+a plausible-looking correction that evaporates is worth as much as one that lands — and because
+the H1-only version of the claim was written before M15 was checked.
+
+⚠️ **The blend table in `v5_break_blend_recheck.py` is a DIFFERENT CONSTRUCTION from §3ch's**, which
+was never committed: it gives the champion **+1.111** against §3ch's **+1.042** and weight 0.50 at
+**t +1.70** against **+2.08**. Its PASS/FAIL marks describe that construction and must not be quoted
+as a re-verdict on §3ch's blend. Only the *delta* between its two streams (≈0.06 t) is meaningful.
+
+#### Where this leaves A6
+
+| item | status |
+|---|---|
+| Bar 1 (DSR ≥ 0.90, PBO < 0.30) | **still uncomputed** — §3ch's DSR was fed a fabricated trial array |
+| Bar 2 (matched-vol paired t) | survives the convention audit; unaffected by D21 |
+| **conditional-on-crossing null** | **NEW, and the binding one: p 0.05–0.09** |
+| live stop-order fill | **being measured** — `v5_fill_probe.py`, magic 360599, running since 2026-10-30 |
+
+**VERDICT: the lead survives, materially re-described and materially smaller.** What is real is
+resting-order geometry on a level above the open; what is marginal is the choice of *that* level.
+D22–D26 in `OCTOBER.MD` §4b are re-motivated rather than killed — but they are now questions about
+**where to rest an order**, a one-parameter family whose multiplicity has to be priced, not
+questions about whether yesterday's high is special.
+
+_Last updated 2026-10-30._
+
 ### 3ci. OCTOBER A6 explored — the prior-high break DECOMPOSED: 47% of it is a fill assumption (2026-10-29)
 
 §3ch filed the long-only prior-high break as a real, unproven lead at **+10.161bp, t +4.71**, with
