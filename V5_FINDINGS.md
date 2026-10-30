@@ -5603,6 +5603,90 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3co. OCTOBER E27 — the move-to-breakeven stop COSTS, the confound that hid it, and M15/M30/H1 are the same timeframe (2026-10-30, `scripts/v5_breakeven_move.py`)
+
+User-requested design: catch an intraday trend, tight initial stop, **move the stop to breakeven
+once in profit**, then trail, no take-profit. Five of six elements were already measured
+(OCTOBER.MD §4c); the breakeven move is the one this repo had never tested, so it is the only
+thing varied. Everything else is pinned validated: long-only, no TP, ratcheting **3.0-ATR** trail,
+brackets in **daily ATR** never percent, initial stop 1.5 ATR, max hold 5 days.
+
+#### The result, on identical event sets — 1,783 trades per variant
+
+| variant | mean bp | hit | Sharpe | maxDD | **t vs A** |
+|---|---|---|---|---|---|
+| **A — no breakeven move** (§3bn control) | **+33.578** | 0.5345 | +2.071 | −39.5% | — |
+| **B — → exact breakeven at +1.0 ATR** | **+27.218** | **0.4044** | +1.805 | −40.0% | **−3.55** |
+| C — → exact breakeven at +2.0 ATR | +33.633 | 0.5222 | +2.082 | −40.4% | +0.14 |
+| D — → entry −0.5 ATR at +1.0 ATR | +32.342 | 0.4992 | +2.036 | −40.0% | −1.24 |
+| E — → entry −1.0 ATR at +1.5 ATR | +33.393 | 0.5328 | +2.061 | −39.8% | −0.75 |
+
+> **THE "FREE TRADE" STOP COSTS 6.36bp PER TRADE AT t −3.55.** Its mechanism is visible in the hit
+> rate: **0.5345 → 0.4044**. The breakeven stop converts trades that went up, came back, and would
+> have recovered under the 3.0-ATR trail into flat exits. Every softer variant is neutral or
+> negative. **No variant is positive.** The earlier the move and the tighter the destination, the
+> worse it gets — C at +2.0 ATR is the only one that does not lose, and it is indistinguishable
+> from doing nothing (t +0.14).
+
+**This also corrects a distinction I drew and the data refuted.** I argued a breakeven stop was
+*not* in §3bl's barrier family, because a take-profit truncates the upside while a breakeven stop
+only protects the downside. That is wrong: with a ratcheting trail already in place, the path a
+breakeven stop cuts is the **drawdown-then-recovery** path, and those recoveries are what pay for
+the losers. §3bl's *"barriers truncate the moves that pay for the losers"* **generalises to the
+breakeven stop**, which is precisely what `overnight-ban-is-turnover-not-gaps` found for a TP
+(0.26 Sharpe) and what `xau-scalein-is-leverage` found for averaging in.
+
+#### ⚠️ THE CONFOUND THAT PRODUCED THE OPPOSITE ANSWER FIRST
+
+The first run reported the breakeven move as **mildly positive** — B at Sharpe 1.044 vs A's 0.989,
+drawdown −12.5% vs −16.1%, every t positive. It was an artefact. The entry loop advanced to the
+day after the **exit**, so a variant that exits earlier frees capital and takes **more trades**:
+**492 for A against 522 for B.** The variants were being scored on *different event sets*, and the
+"improvement" was substantially extra exposure rather than a better exit. Forcing one entry per
+qualifying day for every variant — identical 1,783 events — **flipped the sign from +0.20 to
+−3.55**.
+
+> **METHOD RULE: an exit-rule comparison must hold the EVENT SET fixed.** Otherwise it measures
+> exposure, not the exit. This is the same family as §3aa's 64 exit cells resolving on closes and
+> `window-extremes-are-tautology`'s selection effects: the comparison must differ in exactly one
+> thing.
+
+#### PART 3 — the timeframe question: M15, M30 and H1 are the same timeframe
+
+Entry (prior-day high) and stop (daily ATR) are both frame-independent by construction, so the
+frame changes exactly one thing — how finely the stop resolves.
+
+| frame | bars | trades | mean bp | hit | Sharpe | maxDD |
+|---|---|---|---|---|---|---|
+| M15 | 270,458 | 1,783 | +33.578 | 0.5345 | **+2.071** | −39.5% |
+| M30 | 135,314 | 1,783 | +33.501 | 0.5345 | +2.067 | −39.5% |
+| **H1** | 67,747 | 1,783 | **+33.642** | 0.5311 | +2.068 | −39.2% |
+| H4 | 18,307 | 1,783 | +30.795 | 0.5306 | +1.931 | −38.4% |
+
+**M15, M30 and H1 agree to within 0.004 Sharpe.** H4 alone is worse (−0.14), which is the
+granularity cost of resolving a stop on 4-hour bars. So the operational answer to *"must not be
+M1, it can be 15M or 1H"* is: **run it on H1** — statistically identical to M15, a quarter of the
+polling, and a quarter of the execution surface. 20 cells were examined (4 frames × 5 variants)
+and the control variant's spread across frames is +1.931 to +2.071, so any frame preference
+smaller than that spread is a coin flip.
+
+**Also settled: the intrabar convention is not the binding issue here**, because the stop is in
+*daily* ATR (~$103) rather than bar ATR (~$7.54 at M15) — **20.5 M15 bar-ranges from entry**. A
+convention only bites when the bracket is comparable to one bar's range, and M15/M30/H1 agreeing
+to 0.004 confirms it empirically. (An M1 pull was made and is kept at
+`data/XAUUSDs_M1_switch.csv`: the broker caps M1 at **100,000 bars = 73 dates from 2026-07-22**,
+which does not overlap the M15 history ending 2026-06-15. M1 is not needed.)
+
+⚠️ **THE SHARPE LEVELS ABOVE ARE NOT DEPLOYABLE NUMBERS.** Holding the event set fixed means
+overlapping trades stack exposure, which is why maxDD reads −39.5%. The **comparison** is valid;
+the **level** is not a strategy result.
+
+**VERDICT: E27 CLOSED. The move-to-breakeven is refuted** — significantly so in its exact form
+(t −3.55), neutral at best in any softer form. The parts of the user's design that survive are the
+parts already validated: **long-only, no take-profit, and a wide ratcheting trail**, run on **H1**.
+
+_Last updated 2026-10-30._
+
 ### 3cn. OCTOBER B9 — the BTC two-cell speed test: the decision is indistinguishable, and DSR was the wrong instrument all along (2026-10-30, `scripts/v5_btc_two_cell.py`)
 
 §3bp filed BTC trend as a real, unproven lead and named its own promotion path: *"a pre-registered

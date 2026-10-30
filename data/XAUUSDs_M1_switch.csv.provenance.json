@@ -1,0 +1,10 @@
+{
+  "source": "Switch Markets 40080430 (DEMO) bridge 18815, symbol XAUUSDs",
+  "timeframe": "M1",
+  "fetched": "2026-10-30",
+  "bars": 100000,
+  "first": "2026-07-22 06:15:00",
+  "last": "2026-10-30 22:42:00",
+  "clock": "SERVER (UTC+3)",
+  "note": "capped at exactly 100,000 bars by the terminal's max-bars setting = 73 trading dates. Enough to CALIBRATE the M15 intrabar stop convention, not enough for a significance test. Single provenance: never append another broker."
+}
