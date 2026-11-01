@@ -124,14 +124,57 @@ def notify(subj: str, body: str) -> bool:
     return _send_one(channel(e), e, subj, body)
 
 
+# Telegram hard-caps `text` at 4096 CHARACTERS and returns 400 "message is too long" — it does
+# not truncate. Discovered 2026-11-01 when the xau-advisor's full reading (its caveat block alone
+# runs past 4k) was silently lost to Telegram while the same message mailed fine. A notifier that
+# drops the LONGEST messages is worse than one that drops none: length correlates with how much
+# the model had to say. So long bodies are split and sent as numbered parts.
+TG_LIMIT = 4096
+TG_BODY = 3600                 # leaves room for the subject line and the code fence
+
+
+def _tg_chunks(body: str) -> list[str]:
+    """Split on line boundaries where possible; hard-split any single line over the limit."""
+    out, cur = [], ""
+    for ln in body.splitlines(keepends=True):
+        while len(ln) > TG_BODY:                    # a single monstrous line
+            if cur:
+                out.append(cur); cur = ""
+            out.append(ln[:TG_BODY]); ln = ln[TG_BODY:]
+        if len(cur) + len(ln) > TG_BODY:
+            out.append(cur); cur = ""
+        cur += ln
+    if cur or not out:
+        out.append(cur)
+    return out
+
+
+def _telegram(e: dict, subj: str, body: str) -> tuple[int, str]:
+    """Send, splitting if needed. Returns the LAST failure, or the last success if all passed."""
+    url = f"https://api.telegram.org/bot{e['TELEGRAM_TOKEN']}/sendMessage"
+    parts = _tg_chunks(body)
+    code, resp = 200, "OK"
+    for i, part in enumerate(parts, 1):
+        head = subj if len(parts) == 1 else f"{subj}  ({i}/{len(parts)})"
+        payload = {"chat_id": e["TELEGRAM_CHAT_ID"],
+                   "text": f"*{head}*\n```\n{part}\n```", "parse_mode": "Markdown"}
+        c, r = _post(url, payload, {})
+        if c == 400:
+            # An unbalanced `*`, `_` or backtick in the body is a parse error, not a content
+            # error, and it fails the whole send. Plain text always goes through.
+            payload.pop("parse_mode")
+            payload["text"] = f"{head}\n\n{part}"
+            c, r = _post(url, payload, {})
+        if not (200 <= c < 300):
+            code, resp = c, r
+    return code, resp
+
+
 def _send_one(ch: str, e: dict, subj: str, body: str) -> bool:
     """One channel. Never raises — a notifier that crashes takes its own timer down with it."""
     try:
         if ch == "telegram":
-            code, resp = _post(
-                f"https://api.telegram.org/bot{e['TELEGRAM_TOKEN']}/sendMessage",
-                {"chat_id": e["TELEGRAM_CHAT_ID"],
-                 "text": f"*{subj}*\n```\n{body}\n```", "parse_mode": "Markdown"}, {})
+            code, resp = _telegram(e, subj, body)
         elif ch == "resend":
             code, resp = _post(
                 "https://api.resend.com/emails",

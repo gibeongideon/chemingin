@@ -26,7 +26,14 @@ echo "===== $(date -u +%FT%TZ) =====" >> "$LOG"
 # The compute step is allowed to fail: it writes `broken` into its own state file and the
 # notifier turns that into a NO READING alert. Swallowing the exit code here would replace a
 # visible alert with silence, which is the one outcome the heartbeat exists to prevent.
-$PY scripts/v5_xau_advisor.py --port 18814 >> "$LOG" 2>&1
+#
+# MOVED OFF BRIDGE 18814 ON 2026-11-01. The FTMO demo behind it stopped answering at
+# 2026-10-28 16:43 UTC and every run since raised ConnectionRefusedError, so the advisor had
+# been reporting NO READING for 3.9 days. The heartbeat did its job -- the alert was correct and
+# arrived ten times -- but an alert nobody acts on is an outage, so it now reads the Switch
+# bridge, which is the same feed the intraday advisor and the zigzag harness already use.
+# `s` SUFFIX: every Switch symbol carries it, XAUUSD does not resolve there.
+$PY scripts/v5_xau_advisor.py --port 18815 --symbol XAUUSDs >> "$LOG" 2>&1
 $PY scripts/v5_xau_advisor_notify.py >> "$LOG" 2>&1
 
 # keep the log from growing without bound (288 runs/day)
