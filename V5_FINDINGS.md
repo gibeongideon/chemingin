@@ -5603,6 +5603,81 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cp. The multi-timeframe panel — an 8.2-sigma hit-rate signal at M15 that is economically INVERTED, and the entry/trend premise is backwards (2026-11-01, `scripts/v5_mtf_signal.py`)
+
+Requested: one combined BUY/SELL signal with a 0–100 probability from the TradingView ratings plus
+the ZigZag, across M15/M30/H1/H4/H6/H12/D1, *"lower timeframe for entry and bigger for trend"*,
+with a low reading meaning reverse/sell. Built, with **two departures stated before running**:
+
+1. **A weak reading means FLAT, never SHORT.** §3bh's identity
+   (`excess(LONG) + excess(SHORT) = −2·base`) plus six refutations of the short leg, and §3cm
+   measured this exact rating's short side at **−7.6 to −8.2bp against simply holding gold**.
+2. **The 0–100 is a counted frequency, not a confidence.** Every cell is P(up | state) beside its
+   **own base rate**, with the SE computed from **episodes (contiguous runs), not bars** — bars
+   overlap at a 6-bar horizon and the rating persists, so the raw bar count overstated
+   significance by ~1.7× (M15 strong-sell read +13.7 SE on bars, **+8.2 SE** on episodes).
+
+#### The hit-rate table: a real, monotone, highly significant signal at the fast frames
+
+| frame | strong_sell | sell | neutral | buy | strong_buy |
+|---|---|---|---|---|---|
+| **M15** | **+2.9pp / +8.2se** | +0.5 / +1.8 | −0.8 / −2.1 | −1.0 / −3.6 | **−1.8 / −5.4se** |
+| M30 | +1.7 / +3.5 | +0.6 / +1.4 | +0.6 / +1.2 | −1.0 / −2.5 | −1.3 / −2.9 |
+| H1 | +1.6 / +2.3 | +0.6 / +1.0 | −0.9 / −1.2 | −0.6 / −1.0 | −1.0 / −1.6 |
+| H4 → D1 | all inside ±2.2se | | | | |
+
+Monotone across all five buckets **and** decaying monotonically M15 → M30 → H1 → noise. That is a
+much harder shape to produce by chance than a single lucky cell. **And the rating is INVERTED:
+"strong sell" is followed by more ups than base, "strong buy" by fewer.**
+
+#### The EV ladder, which reverses it completely
+
+| frame | base EV | strong_sell | sell | neutral | buy | strong_buy |
+|---|---|---|---|---|---|---|
+| **M15** | +0.32 | **+0.29 / −0.46** | +0.19 / −0.57 | +0.00 / −0.75 | +0.33 / −0.43 | **+0.59 / −0.17** |
+| M30 | +0.64 | +0.28 / −0.47 | +0.05 / −0.70 | +0.94 / +0.18 | +0.68 / −0.07 | +1.39 / +0.63 |
+| H1 | +1.28 | +0.61 / −0.15 | +0.13 / −0.63 | +0.41 / −0.34 | +1.93 / +1.18 | **+2.60 / +1.84** |
+| H4 | +5.05 | +2.09 | +3.11 | +5.15 | +5.70 | **+8.43** |
+| D1 | +28.38 | +11.44 | +29.21 | +19.17 | +26.89 | **+39.08** |
+
+*(EV bp / net of the 0.756bp round trip)*
+
+> **THE HIT RATE AND THE MONEY POINT IN OPPOSITE DIRECTIONS, AND THE MONEY WINS.** At M15 the
+> bucket with the **best** hit rate (strong_sell, 53.9%) has **below-base** EV (+0.29 against the
+> base's +0.32), and the bucket with the **worst** hit rate (strong_buy, 49.2%) has the **best**
+> EV (+0.59). **Every single M15 cell loses net of cost.** The mechanism is plain: after a
+> strong-sell reading the up-moves are frequent and *small* while the down-moves are *large*.
+>
+> This is `auc-is-payoff-blind-control-8` reproduced live — *"a 5.9-sigma AUC lift gave −0.702
+> Sharpe"* — at **8.2 sigma**. A probability without a payoff beside it is not a signal, and this
+> is the cleanest demonstration of it in the file.
+
+From H1 upward the EV ladder becomes **monotone-correct** (strong_buy highest at every frame from
+H1 to D1) exactly where the hit-rate edge vanishes into noise. **The usable information is in EV at
+slow frames, not in probability at fast frames.**
+
+#### ⚠️ This reverses the request's own premise
+
+*"Lower timeframe for entry, bigger for trend"* assumes the fast frames carry the actionable
+signal. **M15 is precisely where the probability looks best and the money is worst** — it is the
+only frame where no bucket survives the spread. `intraday-breakeven-table` already said it from
+the other side: the spread demands a **0.587** hit rate at M15 against 0.510 at D1, and the best
+cell here reaches 0.539.
+
+#### The composite, and what the panel is for
+
+Nine trend × entry cells on the D1 clock, base P(up) 55.0%: best is UP/DOWN at **+4.8pp but only
++1.4 SE on n=204**; worst DOWN/UP at −7.5pp / −1.8 SE. **All nine are inside noise**, and with
+**44 cells** in the document the best-of-44 floor is higher still (§3ak).
+
+**VERDICT.** The panel is a good *instrument* and the ingredients remain what §3cm and §3bv said
+they were — the rating is ~5 opinions dressed as 26 and 0.80 correlated with one moving average,
+and the ZigZag's oracle is 0.497 against a required 0.503. **It replaces a feeling with a counted
+frequency; it does not forecast.** Its real output is the EV ladder, and the lesson that the
+timeframe you want for entries is the one whose probabilities you must trust least.
+
+_Last updated 2026-11-01._
+
 ### 3co. OCTOBER E27 — the move-to-breakeven stop COSTS, the confound that hid it, and M15/M30/H1 are the same timeframe (2026-10-30, `scripts/v5_breakeven_move.py`)
 
 User-requested design: catch an intraday trend, tight initial stop, **move the stop to breakeven
