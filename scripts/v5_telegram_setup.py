@@ -62,25 +62,44 @@ def get(token: str, method: str, params: dict | None = None, timeout: int = 30) 
             return {"ok": False, "description": f"HTTP {exc.code}"}
 
 
-def discover(token: str, bot_user: str) -> str | None:
+def discover(token: str, bot_user: str, prefer: str | None = None) -> str | None:
     """Scan recent updates for anything that names a destination.
 
     Three shapes arrive here, and a channel only ever produces the first two:
       * `channel_post`        — a post made in a channel the bot administrates
       * `forward_from_chat`   — a channel message forwarded into the bot's private chat
       * `message.chat`        — the private chat itself
+
+    `prefer` resolves the common ambiguity without another round trip: once you have messaged
+    the bot privately AND given it a channel, both are in the update list forever, so plain
+    discovery would stop and ask every time.
     """
     upd = get(token, "getUpdates")
     if not upd.get("ok"):
         print(f"getUpdates failed: {upd.get('description')}")
         return None
-    found = {}
+    found, kinds = {}, {}
     for u in upd.get("result", []):
         msg = u.get("channel_post") or u.get("edited_channel_post") or u.get("message") or {}
         for ch in (msg.get("forward_from_chat"), msg.get("chat")):
             if ch and ch.get("id"):
                 who = ch.get("title") or ch.get("username") or ch.get("first_name") or "?"
                 found[str(ch["id"])] = f"{who} ({ch.get('type')})"
+                kinds[str(ch["id"])] = ch.get("type")
+    if prefer and found:
+        want = ("channel", "supergroup", "group") if prefer == "channel" else ("private",)
+        hits = [k for k, t in kinds.items() if t in want]
+        if len(hits) == 1:
+            print(f"destination discovered: {hits[0]}  {found[hits[0]]}  (--prefer {prefer})")
+            return hits[0]
+        if len(hits) > 1:
+            print(f"several {prefer} destinations found; re-run with --chat-id to choose:")
+            for k in hits:
+                print(f"   {k}  {found[k]}")
+            return None
+        print(f"no {prefer} destination in recent updates "
+              f"(found: {', '.join(found.values()) or 'nothing'})")
+        found = {}
     if not found:
         print("\nNo destination found in recent updates. Pick whichever applies:\n"
               f"  CHANNEL : add @{bot_user} to the channel as an ADMINISTRATOR with "
@@ -139,16 +158,30 @@ def verify(token: str, chat_id: str, bot_id: int, bot_user: str) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--token-file", required=True,
-                    help="file containing ONLY the BotFather token")
+    ap.add_argument("--token-file",
+                    help="file containing ONLY the BotFather token; omit to reuse the token "
+                         "already in .env.notify")
     ap.add_argument("--channel", help="@username of a public channel, or its numeric -100... id")
     ap.add_argument("--chat-id", help="any chat id you already know (same as --channel)")
+    ap.add_argument("--prefer", choices=("channel", "private"),
+                    help="when discovery finds several, take this kind")
     ap.add_argument("--telegram-only", action="store_true",
                     help="let telegram REPLACE email instead of adding to it")
     ap.add_argument("--dry", action="store_true", help="do not write .env.notify")
     a = ap.parse_args()
 
-    tok = Path(a.token_file).read_text().strip()
+    sys.path.insert(0, str(ROOT))
+    from scripts.v5_notify import env as notify_env                   # noqa: E402
+
+    # Changing WHERE messages go should not need the token again. It is already in .env.notify
+    # at mode 600, and re-asking for it means it gets pasted somewhere a second time.
+    if a.token_file:
+        tok = Path(a.token_file).read_text().strip()
+    else:
+        tok = notify_env().get("TELEGRAM_TOKEN", "")
+        if not tok:
+            print("no --token-file and no TELEGRAM_TOKEN in .env.notify"); return 1
+        print("reusing the token already in .env.notify")
     if ":" not in tok or len(tok) < 20:
         print("that does not look like a BotFather token"); return 1
 
@@ -159,7 +192,7 @@ def main() -> int:
     bot_user = bot.get("username")
     print(f"bot verified: @{bot_user} ({bot.get('first_name')})")
 
-    chat_id = a.channel or a.chat_id or discover(tok, bot_user)
+    chat_id = a.channel or a.chat_id or discover(tok, bot_user, a.prefer)
     if not chat_id:
         return 1
     if not verify(tok, chat_id, bot["id"], bot_user):
@@ -190,7 +223,6 @@ def main() -> int:
         elif had_mail:
             print("  --telegram-only -> telegram now REPLACES the email channel")
 
-    sys.path.insert(0, str(ROOT))
     from scripts.v5_notify import notify, channel, env, channels_all   # noqa: E402
     e = env()
     print(f"channels now configured: {channels_all(e)}  (primary: {channel(e)})")
