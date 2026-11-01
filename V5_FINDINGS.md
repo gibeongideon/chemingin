@@ -5603,6 +5603,75 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cr. FUTURES LAB — every swap-free future that would help is an ORPHAN, and both that can be rolled cost MORE than spot (2026-11-01, `scripts/v5_futures_lab.py`)
+
+§3by filed the swap-free gold future as worth **+0.05 to +0.11 book Sharpe for no new signal**,
+with "the roll has no successor listed" as an open item. This prices the whole family and the
+open item turns out to be the finding.
+
+#### F1 — roll continuity: 5 of 21 families, and the pattern is stark
+
+| rollable (≥2 contracts listed) | orphans (one contract, nothing to roll into) |
+|---|---|
+| **BRN, CC, CL, KC, LCC** — Brent, cocoa, crude, coffee, London cocoa | **GC, SI, NQ100, US30, ES500, DE40, EU50, FRA40, JP225, UK100, DX, HG, NG, CT, SB, LRC** |
+
+**Every financial future — gold, silver and every index — is an orphan. Only softs and energy
+can be rolled.** A contract you cannot roll is not a position you can hold.
+
+#### F2/F3 — the basis IS the carry, and it needs two estimators
+
+| sleeve | bars | window | corr | TE bp | basis now | **realised** | **forward** |
+|---|---|---|---|---|---|---|---|
+| gold GC.Z6s | 1,688 | 101d | 0.9991 | 1.18 | +0.239% | **−4.61%** | **−1.59%** |
+| silver SI.Z6s | 1,103 | 66d | 0.9993 | 1.84 | −0.051% | −6.43% | +0.34% |
+| nasdaq NQ100.Z6s | 805 | 46d | 0.9995 | 0.71 | +0.548% | −3.91% | −3.63% |
+| dow US30.Z6s | 805 | 46d | 0.9987 | 0.81 | +0.343% | −3.92% | −2.28% |
+| brent BRN.F7s | 476 | 30d | 0.9945 | 5.70 | +0.722% | **+32.43%** | −3.07% |
+| wti CL.Z6s | 652 | 38d | 0.9948 | 5.58 | +0.765% | **+34.31%** | −5.08% |
+
+**The energy rows are why two estimators are necessary.** *Realised* carry (observed basis decay,
+annualised) printed **+32%/yr** for Brent — which is not carry at all, it is the oil curve
+steepening over a 30-day window. *Forward* carry (basis ÷ days-to-expiry, which must reach zero at
+expiry) is immune to curve moves and returns a sane −3.07%. On short windows the realised
+estimator measures term structure, not convergence.
+
+Gold reproduces §3by independently on fresh data: **−4.61% realised / −1.59% forward** against its
+**−4.13% / −2.60%**. Tracking is excellent on the financials (corr 0.9987–0.9995, TE 0.53–1.84bp)
+and materially worse on energy (0.9945, TE 5.6bp).
+
+#### F4 — THE INVERSION, and it is exact
+
+| sleeve | spot %/yr | future %/yr | **saving** | rollable? |
+|---|---|---|---|---|
+| silver | −9.29% | +0.34% | **+9.63pp** | **NO** |
+| gold | −6.13% | −1.59% | **+4.54pp** | **NO** |
+| dow | −6.13% | −2.28% | +3.85pp | **NO** |
+| nasdaq | −5.24% | −3.63% | +1.60pp | **NO** |
+| sp500 | −4.35% | −2.77% | +1.59pp | **NO** |
+| **brent** | −0.08% | −3.07% | **−2.98pp** | yes |
+| **wti** | −0.06% | −5.08% | **−5.02pp** | yes |
+
+> **FIVE OF SEVEN FUTURES SAVE AGAINST THEIR SPOT. NONE OF THOSE FIVE CAN BE ROLLED. BOTH THAT CAN
+> BE ROLLED COST MORE THAN SPOT.** The inversion is exact and it is not a coincidence: the
+> rollable contracts are energy and softs, whose *spot* swap at this venue is near zero (−0.08%,
+> −0.06%), so there is nothing for swap-free to save — while the basis still charges 3–5%/yr.
+
+#### ⚠️ A BUG IN MY OWN FIRST VERSION, FIXED AND WORTH KEEPING
+
+F4 originally compared each spot swap against **zero** and concluded *"spot pays carry → swap-free
+is a saving"* for **all seven**, Brent and WTI included. That is the wrong comparison: **the
+alternative to paying a swap is not paying nothing, it is paying the future's basis.** The
+pairwise version reverses the verdict on exactly the two sleeves that are actually available.
+
+**VERDICT: the swap-free futures route is CLOSED at Switch — on AVAILABILITY, not on economics.**
+The economics are good and confirmed (gold +4.54pp, silver +9.63pp, and silver is the largest
+single carry saving measured anywhere in this project). There is simply nothing to roll into.
+§3by's "+0.05 to +0.11 Sharpe for no new signal" stands as a measurement and **is not deployable
+past December 2026**. The one actionable item is not research: **ask Switch whether successor
+contracts will be listed.** If they are, this reopens immediately and silver joins gold.
+
+_Last updated 2026-11-01._
+
 ### 3cq. THE REVERSAL AUDIT — "find the worst rule and flip it" has an exact criterion, and 0 of 35 meet it (2026-11-01, `scripts/v5_reversal_audit.py`)
 
 Asked whether we could search for the *worst* strategy and reverse it. It is a good question with
