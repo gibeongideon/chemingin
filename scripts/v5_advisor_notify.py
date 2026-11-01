@@ -58,6 +58,20 @@ def short_body(out: str) -> str:
     g = re.search(r"drift from here to the close.*?:\s*([-+][\d.]+bp)\s*\(P\(up\) ([\d.]+%)", out)
     if g:
         S.append(f"drift to close {g.group(1)} (P(up) {g.group(2)}) <- the number to beat")
+
+    # TRADINGVIEW TECHNICAL RATING, per frame (user request 2026-11-01). Already computed in the
+    # advisor's section 4 — `v5_tv_ratings.py` replicates all 26 components — so this surfaces
+    # it rather than adding a model. The NET column comes with it on purpose: §3cm measured
+    # these 26 components as carrying about 5 independent opinions, correlating 0.80 with plain
+    # close-vs-SMA50, and losing to the champion on H4 and D1. Showing the rating beside what it
+    # is worth AFTER COST is the difference between a reading and a recommendation.
+    g = re.search(r"^\s+TV GENERALIZED\s+(.+)$", out, re.M)
+    if g:
+        S.append(f"TV overall {g.group(1).strip()}")
+    g = re.search(r"^\s+TV ALL-FRAME\s+(.+)$", out, re.M)
+    if g:
+        S.append(g.group(1).strip())
+
     g = re.search(r"spread (\$[\d.]+).*?round trip ([\d.]+bp)", out)
     if g:
         S.append(f"spread {g.group(1)} · round trip {g.group(2)}")

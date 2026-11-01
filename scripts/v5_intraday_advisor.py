@@ -56,6 +56,21 @@ RANGE_BUCKETS = [(0.0, 0.5), (0.5, 0.8), (0.8, 1.1), (1.1, 1.5), (1.5, 99.0)]
 # hour 23 (4,594) -- a quarter of peak, which is where "exit at the session close" lands.
 SESSIONS = [(1, 9, "ASIA"), (9, 16, "LONDON"), (16, 22, "NEW YORK"), (22, 24, "LATE / THIN")]
 
+# (name, MT5 timeframe constant, bars to request). TradingView publishes a rating per timeframe
+# and traders read the column, so all of them are computed; only M15..D1 have a calibration
+# behind them, and the ones that do not are shown WITHOUT a P(up) or an EV rather than given a
+# borrowed one. M1/M5 are deliberately absent: §3cp measured the M15 hit rate and EV pointing
+# OPPOSITE ways, and going finer makes that worse, not better.
+TV_FRAMES = [("M15", 15, 5000), ("M30", 30, 5000), ("H1", 16385, 5000), ("H2", 16386, 5000),
+             ("H4", 16388, 5000), ("D1", 16408, 3000), ("W1", 32769, 1500),
+             ("MN1", 49153, 600)]
+
+
+def tv_label(r: float) -> str:
+    """TradingView's own cut points on the mean vote. Replicated in `v5_tv_ratings.py` (§3cm)."""
+    return ("strong_sell" if r <= -0.5 else "sell" if r <= -0.1 else
+            "neutral" if r < 0.1 else "buy" if r < 0.5 else "strong_buy")
+
 
 def load_m15() -> pd.DataFrame:
     d = pd.read_csv(ROOT / "data/XAUUSD_M15_long.csv", parse_dates=["time"], index_col="time")
@@ -155,6 +170,7 @@ def main() -> int:
     srv = pd.Timestamp.utcnow().tz_localize(None)
     px = spread = np.nan
     si = None
+    native: dict = {}
     if not a.offline:
         try:
             from mt5linux import MetaTrader5
@@ -174,6 +190,23 @@ def main() -> int:
                                      columns=["ts", "open", "high", "low", "close", "tick_volume"])
                     b["time"] = pd.to_datetime(b.ts, unit="s")
                     m15 = b.set_index("time").drop(columns=["ts"])
+                # NATIVE BARS PER FRAME, not resampled (user request: all timeframes).
+                # 40,000 M15 bars is ~14 months, which cannot produce an SMA200 on W1 or MN1 —
+                # resampling would silently give those frames a rating built from far too few
+                # bars. Asking the broker for each frame's own history is the only way the long
+                # frames mean anything, and it costs one bridge call each on an hourly timer.
+                for _nm, _tf, _n in TV_FRAMES:
+                    try:
+                        rr = m.copy_rates_from_pos(a.symbol, _tf, 0, _n)
+                    except Exception:                            # noqa: BLE001
+                        continue
+                    if rr is None or len(rr) < 220:              # SMA200 needs 200 closed bars
+                        continue
+                    bb = pd.DataFrame([(x[0], x[1], x[2], x[3], x[4], x[5]) for x in rr],
+                                      columns=["ts", "open", "high", "low", "close",
+                                               "tick_volume"])
+                    bb["time"] = pd.to_datetime(bb.ts, unit="s")
+                    native[_nm] = bb.set_index("time").drop(columns=["ts"])
                 m.shutdown()
         except Exception as e:
             print(f"(broker read failed: {str(e)[:60]})")
@@ -239,34 +272,61 @@ def main() -> int:
         print(f"     (no calibration at {bars_left} bars left)")
 
     # ---- 4. THE TAPE ------------------------------------------------------------------------
-    print(f"\n  4. WHAT THE TAPE SAYS")
-    if mtf:
-        print(f"     {'frame':>5} {'rating':>7} {'label':<12} {'P(up)':>7} {'edge pp':>8} "
-              f"{'EV bp':>8} {'net':>8}")
-        for tf in ("M15", "M30", "H1", "H4", "D1"):
-            pf = mtf["per_frame"].get(tf)
-            if not pf:
-                continue
-            d = m15 if tf == "M15" else None
-            if d is None:
-                rule = {"M30": "30min", "H1": "1h", "H4": "4h", "D1": "1D"}[tf]
+    print(f"\n  4. WHAT THE TAPE SAYS — TradingView technical rating, every frame")
+    print(f"     {'frame':>5} {'rating':>7} {'label':<12} {'P(up)':>7} {'edge pp':>8} "
+          f"{'EV bp':>8} {'net':>8}")
+    ratings = {}
+    for tf, _tfc, _n in TV_FRAMES:
+        d = native.get(tf)
+        if d is None:
+            # Fall back to resampling the M15 panel. Valid for frames COARSER than M15 and
+            # only those: aggregating finer bars into a closed coarse bar adds no information
+            # the bar did not already contain by its own close.
+            rule = {"M15": None, "M30": "30min", "H1": "1h", "H2": "2h", "H4": "4h",
+                    "D1": "1D"}.get(tf)
+            if rule is None and tf != "M15":
+                continue                                   # W1/MN1 need the broker's own bars
+            if tf == "M15":
+                d = m15
+            else:
                 gg = m15.groupby(m15.index.floor(rule))
                 d = pd.DataFrame(dict(open=gg["open"].first(), high=gg["high"].max(),
                                       low=gg["low"].min(), close=gg["close"].last(),
                                       tick_volume=gg["tick_volume"].sum()))
-            d = d.iloc[:-1]
-            W = votes(d)
-            if W.empty:
-                continue
-            r = float(W.mean(axis=1).iloc[-1])
-            lab = ("strong_sell" if r <= -0.5 else "sell" if r <= -0.1 else
-                   "neutral" if r < 0.1 else "buy" if r < 0.5 else "strong_buy")
-            s = pf["states"].get(lab, {})
+        d = d.iloc[:-1]                                    # never rate a bar still forming
+        if len(d) < 220:
+            continue
+        W = votes(d)
+        if W.empty:
+            continue
+        r = float(W.mean(axis=1).iloc[-1])
+        lab = tv_label(r)
+        ratings[tf] = (r, lab)
+
+        pf = (mtf or {}).get("per_frame", {}).get(tf)
+        s = pf["states"].get(lab, {}) if pf else {}
+        if "p_up" in s:
             rt = 0.756
-            if "p_up" in s:
-                print(f"     {tf:>5} {r:>+7.3f} {lab:<12} {100*s['p_up']:>6.1f}% "
-                      f"{100*(s['p_up']-pf['base_p']):>+7.1f} {s['ev_bp']:>+8.2f} "
-                      f"{s['ev_bp']-rt:>+8.2f}")
+            print(f"     {tf:>5} {r:>+7.3f} {lab:<12} {100*s['p_up']:>6.1f}% "
+                  f"{100*(s['p_up']-pf['base_p']):>+7.1f} {s['ev_bp']:>+8.2f} "
+                  f"{s['ev_bp']-rt:>+8.2f}")
+        else:
+            # No calibration for this frame. Printing the rating with EMPTY economics is the
+            # point: a rating is an opinion until something measures what it was worth.
+            print(f"     {tf:>5} {r:>+7.3f} {lab:<12} {'—':>7} {'—':>8} {'—':>8} {'—':>8}")
+
+    if ratings:
+        print("     TV ALL-FRAME  " + " · ".join(f"{k} {v[1]}" for k, v in ratings.items()))
+        gen = sum(v[0] for v in ratings.values()) / len(ratings)
+        agree = sum(1 for v in ratings.values() if (v[0] > 0) == (gen > 0))
+        print(f"     TV GENERALIZED  {gen:+.3f} {tv_label(gen)}   "
+              f"({agree}/{len(ratings)} frames agree on the sign)")
+        print("     the generalized reading is the MEAN of the frame ratings, which is how the "
+              "column is read,")
+        print("     not a measured combination — §3cm: the 26 components carry about 5 "
+              "independent opinions")
+        print("     and correlate 0.80 with plain close-vs-SMA50.")
+    if mtf:
         print(f"     ⚠️ at M15 the hit rate and the EV point OPPOSITE ways and every bucket loses "
               f"net (§3cp).")
 
