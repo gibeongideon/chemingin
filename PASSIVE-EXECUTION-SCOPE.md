@@ -1,4 +1,16 @@
-# Passive execution — scope
+# Passive execution — ⛔ STOOD DOWN 2026-11-01, NOT RUN
+
+> **CLOSED BEFORE PHASE 1 BY STANDING INSTRUCTION: "if something a retail trader cannot do, do
+> not do it."** §0's feasibility check had already established that market making is structurally
+> impossible on every account held — all venues are `trade_exemode = MARKET`, dealer execution
+> with no book, no queue and no maker rebate. Phases 2–4 required an exchange account, colocation-
+> adjacent latency and queue priority, none of which is retail-reachable. Running Phase 1 would
+> have measured a quantity we could never harvest.
+>
+> **Kept as a record of the feasibility finding, which is durable:** the mechanism that
+> demonstrably pays intraday (earning the spread) is unavailable on CFD/dealer venues by
+> construction. That closes the whole liquidity-provision branch for this project, permanently,
+> and it is a better reason than a failed backtest.
 
 The one untested mechanism that the firms which demonstrably profit intraday actually use:
 **earning the spread instead of paying it.** Everything this project has tested took liquidity.
