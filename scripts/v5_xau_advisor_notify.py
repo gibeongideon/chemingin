@@ -47,7 +47,8 @@ def main() -> None:
     if ch == "smtp":
         print("  WARNING: only SMTP is configured and this host cannot reach SMTP. "
               "Add an HTTPS provider key to .env.notify.")
-    send = (lambda s, b: print(f"[dry] {s}\n\n{b}")) if a.dry else notify
+    send = ((lambda s, b, sh=None: print(f"[dry] {s}\n\n{sh or b}"))
+            if a.dry else notify)
 
     meta = load()["meta"]
     seen = load_seen(SEEN)
@@ -96,7 +97,7 @@ def main() -> None:
     print(f"\ntrigger={m['trigger']}  should_send={m['should_send']}")
 
     if m["should_send"] or a.always:
-        ok = send(m["subject"], m["body"])
+        ok = send(m["subject"], m["body"], m.get("short"))
         if ok is False:
             sys.exit("send FAILED — seen NOT advanced, will retry next run")
         if not a.dry:

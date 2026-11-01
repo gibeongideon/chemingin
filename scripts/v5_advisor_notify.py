@@ -33,6 +33,43 @@ STATE = ROOT / "data" / "v5_runs" / "advisor_notify_state.json"
 HEARTBEAT_HOURS = 4
 
 
+def short_body(out: str) -> str:
+    """The phone version: price, clock, the number to beat, and the four action lines.
+
+    Requested 2026-11-01 ("super short, only what I need to know"). What survives the cut is
+    chosen, not truncated. Section 3's unconditional drift STAYS even though it is not an
+    instruction, because it is the benchmark every idea has to clear (CONTROL #2) and §3ci
+    measured it as most of what an intraday setup appears to earn. Dropping it would leave a
+    SIZE and a STOP with nothing to judge them against, which is the opposite of short.
+
+    What goes: the tape panel (§3cm — about five opinions dressed as twenty-six), the
+    breakeven ladder, and the prose. All of it is still in the email, unchanged.
+
+    Every line is optional. A regex that stops matching must cost that line, never the message.
+    """
+    S = []
+    g = re.search(r"ADVISOR — (\S+) @ ([\d,.]+)", out)
+    head = f"{g.group(1)} {g.group(2)}" if g else "advisor"
+    g = re.search(r"session ([A-Z /]+)\s+·.*?\(([\d.]+)h\) to the", out, re.S)
+    if g:
+        head += f"   {g.group(1).strip()}   {g.group(2)}h to close"
+    S.append(head)
+
+    g = re.search(r"drift from here to the close.*?:\s*([-+][\d.]+bp)\s*\(P\(up\) ([\d.]+%)", out)
+    if g:
+        S.append(f"drift to close {g.group(1)} (P(up) {g.group(2)}) <- the number to beat")
+    g = re.search(r"spread (\$[\d.]+).*?round trip ([\d.]+bp)", out)
+    if g:
+        S.append(f"spread {g.group(1)} · round trip {g.group(2)}")
+
+    for tag in ("SIZE", "STOP", "EXIT", "SIDE"):
+        g = re.search(rf"^\s+{tag}\s+(.+)$", out, re.M)
+        if g:
+            txt = re.sub(r"\s*\(§.*?\)", "", g.group(1))          # citations live in the email
+            S.append(f"{tag} {txt.split(' — ')[0].split('. ')[0].strip()}")
+    return "\n".join(S)
+
+
 def signature(text: str) -> str:
     """The tape states and the session — what a reader would call 'the situation'.
 
@@ -54,7 +91,8 @@ def main() -> int:
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
 
-    send = (lambda s, b: print(f"[dry] {s}\n\n{b}")) if a.dry else notify
+    send = ((lambda s, b, sh=None: print(f"[dry] {s}\n\n{sh or b}"))
+            if a.dry else notify)
     py = sys.executable
     cmd = [py, str(ROOT / "scripts" / "v5_intraday_advisor.py"),
            "--port", str(a.port), "--symbol", a.symbol, "--risk-pct", str(a.risk_pct)]
@@ -99,7 +137,7 @@ def main() -> int:
     body = (f"{out}\n\n--\nsent because: {why}"
             f"\nchannel: {channel(env())}"
             f"\nthis is a decision instrument, not a forecast — {verdict}\n")
-    ok = send(subj, body)
+    ok = send(subj, body, short_body(out))
     if ok is not False and not a.dry:
         STATE.parent.mkdir(parents=True, exist_ok=True)
         STATE.write_text(json.dumps(dict(sig=sig, last_sent=now.isoformat(), why=why), indent=2))

@@ -59,25 +59,28 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.v5_notify import channel, env, notify  # noqa: E402
 from scripts.v5_zigzag_message import build, load_band, save_band  # noqa: E402
-from scripts.v5_zigzag_results import closed_trades, render  # noqa: E402
+from scripts.v5_zigzag_results import closed_trades, render, render_short  # noqa: E402
 
 RUNS = ROOT / "data" / "v5_runs"
 STALE_ALERT_H = 6
 
 
-def results_block(port: int, magic: int, seen_path: Path, dry: bool) -> tuple[str, list]:
-    """(rendered results, newly-closed trades). Never fatal — a dead bridge must not silence
-    the signal half of the message, so a failure degrades to a one-line note."""
+def results_block(port: int, magic: int, seen_path: Path, dry: bool) -> tuple[str, str, list]:
+    """(full results, short results, newly-closed trades). Never fatal — a dead bridge must not
+    silence the signal half of the message, so a failure degrades to a one-line note."""
     try:
         from src.core.mt5_connector import get_mt5          # noqa: PLC0415 — slow, keep lazy
         m = get_mt5("localhost", port)
         if not m.initialize():
-            return f"RESULTS: bridge {port} not connected — outcomes unavailable.", []
+            msg = f"RESULTS: bridge {port} not connected — outcomes unavailable."
+            return msg, f"results unavailable (bridge {port} down)", []
         acc = m.account_info()
         trades = closed_trades(m, magic)
         block = render(trades, equity=float(acc.equity) if acc else None)
+        brief = render_short(trades)
     except Exception as exc:                                # noqa: BLE001
-        return f"RESULTS: unavailable ({type(exc).__name__}: {exc}).", []
+        return (f"RESULTS: unavailable ({type(exc).__name__}: {exc}).",
+                "results unavailable", [])
 
     try:
         seen = set(json.loads(seen_path.read_text()).get("positions", []))
@@ -87,7 +90,7 @@ def results_block(port: int, magic: int, seen_path: Path, dry: bool) -> tuple[st
     if fresh and not dry:
         seen_path.parent.mkdir(parents=True, exist_ok=True)
         seen_path.write_text(json.dumps({"positions": sorted(t["position"] for t in trades)}))
-    return block, fresh
+    return block, brief, fresh
 
 
 def main() -> None:
@@ -111,13 +114,14 @@ def main() -> None:
         print("  WARNING: only SMTP is configured, and this host cannot reach SMTP. "
               "Add an HTTPS provider key to .env.notify (see the module docstring).")
 
-    send = (lambda subj, body: print(f"[dry] {subj}\n\n{body}")) if args.dry else notify
+    send = ((lambda subj, body, short=None: print(f"[dry] {subj}\n\n{short or body}"))
+            if args.dry else notify)
 
     # --- outcomes first. A trade that closed is news whether or not the detector has anything
     # to say today, and the detector may stay quiet for weeks.
-    results, fresh = ("RESULTS: skipped (--no-results).", [])
+    results, brief, fresh = ("RESULTS: skipped (--no-results).", "", [])
     if not args.no_results:
-        results, fresh = results_block(args.port, args.magic, RSEEN, args.dry)
+        results, brief, fresh = results_block(args.port, args.magic, RSEEN, args.dry)
     print(results)
 
     for t in fresh:
@@ -130,7 +134,10 @@ def main() -> None:
              f"commission {t['commission']:+.2f}\n"
              f"  NET {t['net']:+.2f}"
              + ("" if t["closed_by_us"] else "\n  (closed from outside the bot)")
-             + f"\n\n{results}\n\nmagic {args.magic}, bridge {args.port}")
+             + f"\n\n{results}\n\nmagic {args.magic}, bridge {args.port}",
+             f"{verdict} {t['net']:+.2f}   {t['side']} {t['volume']:g} {t['symbol']}\n"
+             f"{t['open_price']:.2f} -> {t['close_price']:.2f}, held {t['held_h']:.0f}h\n"
+             f"{brief}")
 
     if not STATE.exists():
         send("[zigzag] PIPELINE BROKEN",
@@ -151,6 +158,7 @@ def main() -> None:
            - datetime.fromisoformat(s["computed_utc"])).total_seconds() / 3600
     m = build(s, load_band(SEEN))
     body = f"{m['body']}\n\n{results}"
+    short = f"{m['short']}\n{brief}"
     print(m["body"])
 
     if age > STALE_ALERT_H:
@@ -162,7 +170,7 @@ def main() -> None:
         sys.exit(f"state {age:.0f}h stale — warning sent")
 
     if m["should_send"] or args.always:
-        ok = send(m["subject"], body)
+        ok = send(m["subject"], body, short)
         if ok is False:
             sys.exit("send FAILED — see the channel error above")
     else:

@@ -112,9 +112,23 @@ def main() -> None:
     reading, broken, market = None, None, None
     try:
         from mt5linux import MetaTrader5
-        mt5 = MetaTrader5(host="localhost", port=a.port)
-        if not mt5.initialize():
-            raise AdvisorUnavailable(f"bridge {a.port} init failed: {mt5.last_error()}")
+        # RETRY, BECAUSE A SHARED BRIDGE IS A CONTENDED ONE. This advisor runs every 5 minutes
+        # and, since moving off the dead FTMO bridge, shares 18815 with six other timers. A
+        # terminal already serving another client returns (-6, 'Authorization failed') on
+        # initialize() — indistinguishable from a real credential fault, and observed 2026-11-01
+        # at 13:23 between two runs that both succeeded either side of it. Without a retry each
+        # collision raises a NO READING alert, and an alert that cries wolf every few hours is
+        # worse than no alert at all. Three tries over ~9s; a genuine auth failure still fails.
+        mt5, last = None, None
+        for attempt in range(3):
+            if attempt:
+                time.sleep(3 * attempt)
+            mt5 = MetaTrader5(host="localhost", port=a.port)
+            if mt5.initialize():
+                break
+            last = mt5.last_error()
+        else:
+            raise AdvisorUnavailable(f"bridge {a.port} init failed after 3 tries: {last}")
         h4 = fetch_h4(mt5, a.symbol)
         market = market_panel(mt5, a.symbol)
         mt5.shutdown()

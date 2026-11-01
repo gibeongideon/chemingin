@@ -110,6 +110,12 @@ def build(s: dict, prev_band: str = "none") -> dict:
                      f"TP/SL are on the broker.")
         subj = f"[zigzag] {sym} no trade (P {pstr}/{thr:.2f})"
 
+    # PHONE BODY, built before the email-only material is appended. Requested 2026-11-01:
+    # short, and without the expectancy disclaimer, which the user has read and which repeats
+    # on every single message. It stays in the email, where it is read once at a desk and costs
+    # nothing — the warning is not deleted, it is moved to the channel that can carry it.
+    short = "\n".join(L[:1] + [x for x in L[1:] if x.strip()][:4]) if L else ""
+
     if arm_line:
         L.append(arm_line)
     # a silently degraded model is the failure mode that matters, so surface it
@@ -121,4 +127,4 @@ def build(s: dict, prev_band: str = "none") -> dict:
 
     return dict(band=cur,
                 should_send=bool(s.get("actions")) or (cur == "watch" and prev_band != "watch"),
-                subject=subj, body="\n".join(L))
+                subject=subj, body="\n".join(L), short=short)

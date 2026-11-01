@@ -156,8 +156,11 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
             f"carries no new information. It has sent {int(seen.get('broken_count', 0)) + 1} "
             f"message(s) for this outage.",
         ])
+        # PHONE BODY. Same facts, no runbook: the fix needs a terminal, which a phone is not.
+        short = "\n".join([f"NO READING for {age_s}.", f"fault: {str(broken)[:120]}",
+                           "No reading = no instruction."])
         return dict(subject=f"[xau-advisor] NO READING for {age_s} — bridge/model down",
-                    body=body, should_send=due, trigger="broken",
+                    body=body, short=short, should_send=due, trigger="broken",
                     seen={**seen, "broken_since": since,
                           "broken_sent": now.isoformat() if due else last,
                           "broken_count": int(seen.get("broken_count", 0)) + (1 if due else 0)})
@@ -290,6 +293,25 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
              f"{meta.get('findings')}")
     body = "\n".join(L)
 
+    # ------------------------------------------------------------- phone body
+    # Four lines at most: the call, what it is worth, the price, and why it is not moving.
+    # The base rate stays, because a 60% call against a 49% base is the only thing that makes
+    # the number mean anything, and dropping it is how a probability becomes a promise.
+    S = [f"{name}" + (f"  P={obs_pct} (base {100*base:.0f}%)" if observed is not None else "")
+         + ("  HELD" if frozen else "")]
+    if flipped:
+        S[0] += f"   was {prev}"
+    S.append(m.get("advice", "no reading"))
+    if market:
+        bid, spread = market.get("bid"), market.get("spread")
+        if bid is not None:
+            S.append(f"bid {bid}" + (f"   spread {spread}" if spread is not None else ""))
+    if market_closed:
+        S.append("market closed — no new bars due")
+    elif health != "ok":
+        S.append(f"health: {health}")
+    short = "\n".join(str(x) for x in S)
+
     # ------------------------------------------------------------------ trigger
     day = now.strftime("%Y-%m-%d")
     # A real reading ENDS the outage. Without this the age would be measured from the first
@@ -318,8 +340,8 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         trigger, should = "daily", seen.get("day") != day
 
     assert not any(b in subject.lower() for b in BANNED), f"banned phrase in subject: {subject}"
-    return dict(subject=subject, body=body, should_send=bool(should), trigger=trigger,
-                seen=new_seen)
+    return dict(subject=subject, body=body, short=short, should_send=bool(should),
+                trigger=trigger, seen=new_seen)
 
 
 def _wrap(text: str, width: int) -> list:

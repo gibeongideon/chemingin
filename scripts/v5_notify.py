@@ -108,20 +108,44 @@ def channels_all(e: dict) -> list:
     return out
 
 
-def notify(subj: str, body: str) -> bool:
+def notify(subj: str, body: str, short: str | None = None) -> bool:
     """Send via the first configured channel, or ALL of them if NOTIFY_ALL is set.
 
     *** WHY NOTIFY_ALL EXISTS. *** `channel()` is first-match-wins and telegram outranks every
     mail channel, so simply adding TELEGRAM_TOKEN to a working .env.notify SILENTLY STOPS THE
     EMAIL. That is a surprise worth preventing rather than documenting: set NOTIFY_ALL=1 and
     every configured channel receives the message. Returns True if ANY channel succeeded.
+
+    *** WHY `short` EXISTS (user request, 2026-11-01). *** The two channels are read in
+    different postures. Email is read at a desk and wants the caveats — this project's messages
+    carry them deliberately, because a number without its provenance is how a research artifact
+    turns into a live loss. Telegram is read on a phone, where a 4,000-character caveat block
+    buries the one line that matters and trains the reader to ignore the alert.
+
+    So `short` is the PHONE body and `body` stays the FULL one. Telegram takes `short` when it
+    is given; every mail channel always takes `body`. Both are built from the same state by the
+    same builder, so they cannot disagree about what fired — which is the property the shared
+    message modules exist to guarantee.
     """
     e = env()
     if str(e.get("NOTIFY_ALL", "")).strip().lower() in ("1", "true", "yes"):
         chans = channels_all(e)
         if len(chans) > 1:
-            return any(_send_one(c, e, subj, body) for c in chans)
-    return _send_one(channel(e), e, subj, body)
+            # *** A LIST, NOT A GENERATOR. *** `any(gen)` SHORT-CIRCUITS on the first True, so
+            # with a generator here the second channel is never evaluated and never sent. That
+            # is exactly backwards for NOTIFY_ALL, whose whole purpose is that adding telegram
+            # does not stop the email — and the bug hid perfectly, because it only appeared once
+            # telegram started SUCCEEDING. Found 2026-11-01: while telegram was returning 400
+            # on long messages the email went out fine, and silently stopped the moment the
+            # length fix landed. Build the list first, then reduce.
+            sent = [_send_one(c, e, subj, _body_for(c, body, short)) for c in chans]
+            return any(sent)
+    ch = channel(e)
+    return _send_one(ch, e, subj, _body_for(ch, body, short))
+
+
+def _body_for(ch: str, body: str, short: str | None) -> str:
+    return short if (short and ch == "telegram") else body
 
 
 # Telegram hard-caps `text` at 4096 CHARACTERS and returns 400 "message is too long" — it does

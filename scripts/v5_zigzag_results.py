@@ -118,6 +118,15 @@ def render(trades: list[dict], equity: float | None = None, show: int = 6) -> st
     return "\n".join(L)
 
 
+def render_short(trades: list[dict]) -> str:
+    """One line: the record and the net. Everything else is in the email."""
+    if not trades:
+        return "no closed trades yet"
+    w = sum(1 for t in trades if t["net"] > 0)
+    ln = sum(1 for t in trades if t["net"] < 0)
+    return f"record {w}W/{ln}L   net {sum(t['net'] for t in trades):+.2f}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=18815)
