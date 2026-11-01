@@ -1,0 +1,7 @@
+[Unit]
+Description=Intraday advisor email (report only — holds no order functions)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/advisor-notify.sh

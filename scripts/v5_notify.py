@@ -92,11 +92,40 @@ def channel(e: dict) -> str:
     return "none"
 
 
+def channels_all(e: dict) -> list:
+    """Every configured channel, in priority order."""
+    out = []
+    if e.get("TELEGRAM_TOKEN") and e.get("TELEGRAM_CHAT_ID"):
+        out.append("telegram")
+    if e.get("RESEND_API_KEY") and e.get("MAIL_TO"):
+        out.append("resend")
+    if e.get("BREVO_API_KEY") and e.get("MAIL_TO"):
+        out.append("brevo")
+    if e.get("SENDGRID_API_KEY") and e.get("MAIL_TO"):
+        out.append("sendgrid")
+    if e.get("SMTP_HOST") and e.get("SMTP_USER") and e.get("SMTP_PASS"):
+        out.append("smtp")
+    return out
+
+
 def notify(subj: str, body: str) -> bool:
-    """Send via the first configured channel. Returns True on success. Never raises —
-    a notifier that crashes takes its own timer down with it."""
+    """Send via the first configured channel, or ALL of them if NOTIFY_ALL is set.
+
+    *** WHY NOTIFY_ALL EXISTS. *** `channel()` is first-match-wins and telegram outranks every
+    mail channel, so simply adding TELEGRAM_TOKEN to a working .env.notify SILENTLY STOPS THE
+    EMAIL. That is a surprise worth preventing rather than documenting: set NOTIFY_ALL=1 and
+    every configured channel receives the message. Returns True if ANY channel succeeded.
+    """
     e = env()
-    ch = channel(e)
+    if str(e.get("NOTIFY_ALL", "")).strip().lower() in ("1", "true", "yes"):
+        chans = channels_all(e)
+        if len(chans) > 1:
+            return any(_send_one(c, e, subj, body) for c in chans)
+    return _send_one(channel(e), e, subj, body)
+
+
+def _send_one(ch: str, e: dict, subj: str, body: str) -> bool:
+    """One channel. Never raises — a notifier that crashes takes its own timer down with it."""
     try:
         if ch == "telegram":
             code, resp = _post(
