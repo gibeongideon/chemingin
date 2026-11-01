@@ -5603,6 +5603,78 @@ alphabet is fitting noise with more parameters.**
 
 _Last updated 2026-10-29._
 
+### 3cq. THE REVERSAL AUDIT — "find the worst rule and flip it" has an exact criterion, and 0 of 35 meet it (2026-11-01, `scripts/v5_reversal_audit.py`)
+
+Asked whether we could search for the *worst* strategy and reverse it. It is a good question with
+a provable answer, so the criterion is derived first and then every reconstructible rule is tested
+against it.
+
+#### Two identities decide it before any data is touched
+
+For a rule that goes long on some set of bars, with gross expectancy per fire `g`, round-trip cost
+`C`, and base drift over the same bars `b`:
+
+| | |
+|---|---|
+| `net(LONG) + net(REVERSE)` | **= −2C** — both sides pay; the flip does not earn the cost back |
+| `excess(LONG) + excess(REVERSE)` | **= −2b** — against HOLDING, the pair sums to minus twice the drift |
+
+Rearranged, the second gives the exact test:
+
+> ### A reversal beats holding **if and only if `g < −b`** — the original rule must underperform buy-and-hold **by more than the entire drift.**
+
+Reversing a rule that nets −5bp at a 1bp cost does *not* give +5bp; it gives +3bp. And searching
+for the worst **net** figure is biased toward high turnover, because turnover is what makes a net
+figure worst — and turnover is exactly what the reverse also pays.
+
+#### The result: 35 rules, 1 beats zero, 0 beat holding
+
+| frame | state | runs | g bp | base b | excess LONG | excess REV | net REV | beats HOLD? |
+|---|---|---|---|---|---|---|---|---|
+| **H12** | strong_sell | 358 | **−1.563** | +14.181 | **−15.744** | **−12.619** | +0.807 | **no** |
+| M15 | neutral | 18,033 | +0.003 | +0.318 | −0.316 | −0.321 | −0.759 | no |
+| M30 | sell | 15,684 | +0.051 | +0.638 | −0.586 | −0.689 | −0.807 | no |
+| H1 | sell | 7,684 | +0.128 | +1.278 | −1.150 | −1.406 | −0.884 | no |
+
+**The identity verifies numerically on the worst cell:** `−15.744 + (−12.619) = −28.363` against
+`−2b = −28.362`. The worst rule in the whole table underperforms holding by 15.7bp — and its
+reversal *still* underperforms holding, by 12.6bp. Both sides lose, because they are splitting
+−2b between them.
+
+The single worst rule would need `g < −14.181bp` for its flip to pay. It reaches −1.563bp and
+**misses by 12.619bp.** Every frame's drift is positive (+0.32 to +28.38bp), which is the whole
+problem: **on a rising asset the bar for a profitable short is the drift itself, not zero.**
+
+#### The third reason, which is not about gold at all
+
+**Multiplicity is symmetric.** Searching K rules for the minimum *is* searching K rules for the
+maximum. §3ak found the best of **21,300** triggers indistinguishable from a no-edge dataset; the
+worst of those 21,300 is equally indistinguishable, and reversing a noise-minimum yields a
+noise-maximum. This is the same reason `bootstrap-gross-not-net` requires pricing the **signed**
+maximum — a two-sided search must be nulled two-sided.
+
+#### ⚠️ What IS live in the idea, and it is not nothing
+
+A *stated premise* having the wrong **sign** is common here and worth testing directly. It has
+happened four times:
+
+| § | premise | truth |
+|---|---|---|
+| 3cp | TradingView rating reads direction | **inverted at M15, +8.2 sigma** |
+| 3cf | volume profile reverts to POC | backwards — break-**out** beat it |
+| 3bf | the first move after a release is fake | backwards |
+| 3bj | NR7 breaks run with the trend | against-trend beat with-trend across 51 assets |
+
+**Every one of those had the sign wrong AND the reversed version still failed to clear cost.**
+Finding an inversion is common; finding a *profitable* one is the hard part, and identity (2) is
+why.
+
+**VERDICT: the search-the-minimum-and-flip-it route is closed on arithmetic, not on evidence —
+but testing BOTH SIGNS of a pre-registered premise stays mandatory**, and is already what
+`bootstrap-gross-not-net`'s signed maximum enforces.
+
+_Last updated 2026-11-01._
+
 ### 3cp. The multi-timeframe panel — an 8.2-sigma hit-rate signal at M15 that is economically INVERTED, and the entry/trend premise is backwards (2026-11-01, `scripts/v5_mtf_signal.py`)
 
 Requested: one combined BUY/SELL signal with a 0–100 probability from the TradingView ratings plus
