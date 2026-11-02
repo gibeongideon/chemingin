@@ -64,6 +64,8 @@ SESSIONS = [(1, 9, "ASIA"), (9, 16, "LONDON"), (16, 22, "NEW YORK"), (22, 24, "L
 TV_FRAMES = [("M15", 15, 5000), ("M30", 30, 5000), ("H1", 16385, 5000), ("H2", 16386, 5000),
              ("H4", 16388, 5000), ("D1", 16408, 3000), ("W1", 32769, 1500),
              ("MN1", 49153, 600)]
+FRAME_HOURS = {"M15": 0.25, "M30": 0.5, "H1": 1, "H2": 2, "H4": 4, "D1": 24,
+               "W1": 168, "MN1": 730}
 
 
 def tv_label(r: float) -> str:
@@ -317,15 +319,22 @@ def main() -> int:
 
     if ratings:
         print("     TV ALL-FRAME  " + " · ".join(f"{k} {v[1]}" for k, v in ratings.items()))
-        gen = sum(v[0] for v in ratings.values()) / len(ratings)
+        # SHORT-WEIGHTED, w ∝ 1/sqrt(frame hours). Not a preference — the best of five
+        # pre-registered weightings in §3ct, which measured short_1/sqrt > short_1/h > equal >
+        # long_sqrt > long_h on both horizons tested. The ORDER is what that run established;
+        # see the line below for what the level is worth.
+        w = {k: 1.0 / np.sqrt(FRAME_HOURS[k]) for k in ratings}
+        tot = sum(w.values())
+        gen = sum(w[k] * v[0] for k, v in ratings.items()) / tot
         agree = sum(1 for v in ratings.values() if (v[0] > 0) == (gen > 0))
         print(f"     TV GENERALIZED  {gen:+.3f} {tv_label(gen)}   "
               f"({agree}/{len(ratings)} frames agree on the sign)")
-        print("     the generalized reading is the MEAN of the frame ratings, which is how the "
-              "column is read,")
-        print("     not a measured combination — §3cm: the 26 components carry about 5 "
-              "independent opinions")
-        print("     and correlate 0.80 with plain close-vs-SMA50.")
+        print("     short-weighted (w ∝ 1/sqrt hours), the best of 5 weightings in §3ct — but "
+              "the WHOLE family")
+        print("     loses to simply holding once cost is paid: best cell -0.50bp/fire at M15, "
+              "+0.95bp at H1")
+        print("     against a best-of-K floor of +7.18bp, and the first sample half is negative "
+              "everywhere.")
     if mtf:
         print(f"     ⚠️ at M15 the hit rate and the EV point OPPOSITE ways and every bucket loses "
               f"net (§3cp).")

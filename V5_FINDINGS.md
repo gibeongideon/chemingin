@@ -7413,3 +7413,49 @@ back wrong** — the same smoke alarm that caught §3bo's path-index bug. It is 
 "use 1/6 for D1".
 
 _Last updated 2026-10-19._
+
+### §3ct — One generic signal out of all TradingView frames: every weighting loses to holding
+
+**Ask.** A single reading built from all frames, "a clever summation with weight on the short
+period". Script `scripts/v5_tv_composite.py`.
+
+**Pre-registered K = 12 cells**: 7 solo frames (M15..W1) + 5 weightings (equal, `1/h`,
+`1/sqrt h`, `sqrt h`, `h`). Decision grids H1/24h and M15/4h. Costs at the live round trip
+(1.08bp). Episode SE on contiguous runs, not bars.
+
+**Alignment.** Each frame's rating is stamped at `bar_start + duration` before it touches the
+decision grid. A D1 bar stamped 00:00 is not knowable at 00:00, and plain reindex-and-ffill is
+what produced the fake AUC 0.901 in `cross-timeframe-resample-is-lookahead`. The harness carries
+a lookahead control that removes the delay and **must** score better: it does, +5.27bp against
+the honest +1.56bp at H1/24h and +3.15 against +0.42 at M15/4h. The comparison resolves.
+
+**Result — the weighting ORDER is real, the LEVEL is not.**
+
+| | H1 / 24h, vs HOLD net | M15 / 4h, vs HOLD net |
+|---|---|---|
+| short `1/sqrt h` | +0.52 | −0.60 |
+| short `1/h` | +0.48 | −0.66 |
+| equal | +0.45 | −0.84 |
+| long `sqrt h` | +0.15 | −0.81 |
+| long `h` | −0.88 | −1.06 |
+| best solo | **+0.95** (H4) | **−0.50** (H1) |
+
+Short weighting beats equal, which beats long weighting, on **both** horizons — the user's
+intuition about relative weighting is correct. But:
+
+1. **No composite beats the best SOLO frame.** Mixing frames of the same price series dilutes;
+   it does not diversify.
+2. **Nothing clears its noise floor.** Best cell +0.95bp against a best-of-K floor of **+7.18bp**.
+3. **The first sample half is negative in every cell at H1/24h.** The whole apparent edge is
+   2021-26.
+4. **At M15 every one of the 12 cells is negative after cost.** The grid the request was aimed at
+   is the one where it fails hardest.
+
+**The column that decides it.** `net` (EV − cost) flatters everything, because the alternative to
+firing is not cash — it is HOLDING, which earns the drift and pays the round trip once while a
+signal pays it on every fire. `EV − base − cost` is the number. Solo H1 at M15 shows EV +1.43,
+net +0.35, **vs-hold-net −0.50**: profitable-looking, and a worse way to own gold than owning gold.
+
+**Shipped anyway, correctly labelled.** The advisor's `TV GENERALIZED` now uses `1/sqrt h`, the
+best-measured of the five, and prints what it is worth beside it. A dashboard reading, not a
+signal.
