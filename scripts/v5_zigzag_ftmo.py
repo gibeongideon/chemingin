@@ -129,9 +129,19 @@ def main() -> None:
     trail_atr = float(cfg.get("trail_atr", 3.0))
 
     from mt5linux import MetaTrader5
-    mt5 = MetaTrader5(host="localhost", port=port)
-    if not mt5.initialize():
-        raise SystemExit(f"bridge {port} init failed: {mt5.last_error()}")
+    # RETRY: 18815 is shared by seven timers, two of them polling every 5 minutes since
+    # 2026-11-02. A terminal already serving another client returns (-6, 'Authorization failed')
+    # on initialize(), indistinguishable from a real credential fault.
+    mt5, _last = None, None
+    for _i in range(3):
+        if _i:
+            time.sleep(3 * _i)
+        mt5 = MetaTrader5(host="localhost", port=port)
+        if mt5.initialize():
+            break
+        _last = mt5.last_error()
+    else:
+        raise SystemExit(f"bridge {port} init failed after 3 tries: {_last}")
     ai = mt5.account_info()
     is_demo = "demo" in str(getattr(ai, "server", "")).lower() or getattr(ai, "trade_mode", 0) == 0
     print(f"account {ai.login} @ {ai.server}   equity ${ai.equity:,.2f}   "
@@ -141,8 +151,24 @@ def main() -> None:
     aux_syms = cfg.get("aux_symbols", list(AUX_SYMBOLS))
     aux, aux_missing = fetch_aux(mt5, aux_syms)
     st = bottom_probability(df, thr, tp_pct, sl_pct, max_hold, aux=aux)
-    info = mt5.symbol_info(symbol)
-    tick = mt5.symbol_info_tick(symbol)
+    # *** symbol_info CAN RETURN None ON A CONTENDED BRIDGE, AND DID — TWICE, 2026-11-02. ***
+    # The model trains for ~13s between the bridge calls above and these, and a second client
+    # arriving in that window made both of these return None. The old line then raised
+    # `AttributeError: 'NoneType' object has no attribute 'ask'` and the pass died. Harmless on
+    # a no-fire pass; on a FIRING pass it is the difference between an order and no order, which
+    # is the one failure here that costs a trade. Retry, then fail with a sentence that says
+    # what happened rather than an AttributeError.
+    info = tick = None
+    for _i in range(3):
+        if _i:
+            time.sleep(2 * _i)
+        mt5.symbol_select(symbol, True)
+        info, tick = mt5.symbol_info(symbol), mt5.symbol_info_tick(symbol)
+        if info is not None and tick is not None:
+            break
+    if info is None or tick is None:
+        raise SystemExit(f"{symbol}: symbol_info/tick still None after 3 tries on bridge {port} "
+                         f"— terminal busy or symbol not in Market Watch; no order attempted")
     ask = getattr(tick, "ask", 0.0) or info.ask
     # *** BUG FIXED 2026-10-28: `bid` was used by the atr_trail ratchet but NEVER DEFINED. ***
     # The ratchet block raised `NameError: name 'bid' is not defined` on EVERY pass that had an
