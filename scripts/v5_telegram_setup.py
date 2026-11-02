@@ -233,7 +233,8 @@ def main() -> int:
                 "  * zigzag detector  — on a fire, on the 0.55-0.60 watch band, on a stale feed\n"
                 "This path is REPORT ONLY — it holds no order functions.")
     print("test send:", "OK" if ok else "FAILED")
-    print("\nNow shred the token file:  shred -u", a.token_file)
+    if a.token_file:                       # nothing to shred when the token came from .env
+        print("\nNow shred the token file:  shred -u", a.token_file)
     return 0 if ok else 1
 
 
