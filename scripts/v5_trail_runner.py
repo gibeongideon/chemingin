@@ -50,6 +50,19 @@ FIELDS = ["utc", "event", "symbol", "level", "price", "sl", "volume", "ticket", 
           "atr", "hwm", "note"]
 
 
+# EVENTS WORTH A MESSAGE, and only these. The runner now wakes every 5 minutes, so notifying on
+# every pass would be 288 messages a day and the alert would stop being read — the exact failure
+# the zigzag notifier's band logic exists to avoid. `skip` is deliberately absent: "no trade
+# today" is the usual answer and is not news.
+NOTIFY_EVENTS = {
+    "place":            "order placed",
+    "ratchet":          "stop moved up",
+    "exit_maxhold":     "closed — 5-day limit",
+    "cancel_low_first": "order cancelled — prior low traded first",
+    "cancel_unfilled":  "order cancelled — unfilled at day end",
+}
+
+
 def record(**kw) -> None:
     LOG.parent.mkdir(parents=True, exist_ok=True)
     new = not LOG.exists()
@@ -58,6 +71,26 @@ def record(**kw) -> None:
         if new:
             w.writeheader()
         w.writerow({k: kw.get(k, "") for k in FIELDS})
+    announce(kw)
+
+
+def announce(kw: dict) -> None:
+    """Tell the user what the bot DID. Never fatal: a notifier that raises would take the
+    ratchet down with it, and the stop matters more than the message."""
+    ev = kw.get("event", "")
+    if ev not in NOTIFY_EVENTS or kw.get("retcode") not in (None, "", 10009, 10008):
+        return
+    try:
+        sys.path.insert(0, str(ROOT))
+        from scripts.v5_notify import notify                   # noqa: PLC0415
+        bits = [f"{k} {kw[k]}" for k in ("level", "price", "sl", "volume", "hwm", "ticket")
+                if kw.get(k) not in (None, "")]
+        line = f"{NOTIFY_EVENTS[ev]} · {kw.get('symbol', '')}"
+        body = line + "\n" + "\n".join(f"  {b}" for b in bits)
+        notify(f"[trail] {line}", body + f"\n\nmagic {MAGIC}, Switch demo, 0.5% risk",
+               body)
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"  (notify failed: {type(exc).__name__}: {exc})")
 
 
 def load_state() -> dict:
@@ -98,9 +131,22 @@ def main() -> int:
     a = ap.parse_args()
 
     from mt5linux import MetaTrader5
-    m = MetaTrader5(host="localhost", port=a.port)
-    if not m.initialize():
-        print("bridge init failed:", m.last_error()); return 2
+    # RETRY: 18815 is shared by seven timers and this one now polls every 5 minutes. A terminal
+    # already serving another client returns (-6, 'Authorization failed') on initialize(),
+    # indistinguishable from a real credential fault — observed 2026-11-01 on the advisor
+    # between two runs that both succeeded either side of it. Without this, a collision is
+    # logged as a bridge failure and the ratchet silently skips a slot.
+    import time as _t
+    m, _last = None, None
+    for _i in range(3):
+        if _i:
+            _t.sleep(3 * _i)
+        m = MetaTrader5(host="localhost", port=a.port)
+        if m.initialize():
+            break
+        _last = m.last_error()
+    else:
+        print("bridge init failed after 3 tries:", _last); return 2
     ai = m.account_info()
     if ai is None:
         print("NOT LOGGED IN"); m.shutdown(); return 2

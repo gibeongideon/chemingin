@@ -1,9 +1,25 @@
+# Every 5 minutes at :40 seconds past, stepping from :01 -> 01,06,11,...,56.
+#
+# WHY 5 MINUTES. Requested 2026-11-02 ("monitor every 5 minutes"). It is safe to do but it is
+# not an improvement: §3co measured M15/M30/H1 polling agreeing to 0.004 Sharpe, so anything in
+# that band is the same strategy. What faster polling buys is a stop that keeps up with the
+# high-water mark sooner after a new high; what it cannot buy is edge.
+#
+# WHY :01/5 AND :40 SECONDS. xau-advisor already runs *:03/5:20 on this same bridge. Stepping
+# from :01 keeps the minutes disjoint from it, and the 40-second offset keeps the two apart even
+# where a slot drifts. The flock below and the 3-try bridge retry are the real protection.
+#
+# Persistent=false: a missed 5-minute slot is worthless by the time it would fire, and the
+# entry decision is taken once per server day anyway, so there is no backlog worth replaying.
 [Unit]
-Description=Hourly run of the intraday trail-follower
+Description=Intraday trail-follower, every 5 minutes (Switch demo, magic 360600)
 
 [Timer]
-OnCalendar=*-*-* *:52:00
+OnCalendar=*-*-* *:01/5:40
+OnBootSec=180sec
 Persistent=false
+AccuracySec=10s
+Unit=trail-runner.service
 
 [Install]
 WantedBy=timers.target
