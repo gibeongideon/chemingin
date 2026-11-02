@@ -368,6 +368,33 @@ def main() -> int:
           f"NO move-to-breakeven (§3co, -6.36bp at t -3.55)")
     print(f"     SIDE  LONG or FLAT. Never short: excess(LONG)+excess(SHORT) = -2 x drift, "
           f"and the short leg is refuted six times.")
+
+    # ---- ACTION ITEM: the levels as PRICES, not as distances ---------------------------------
+    # Requested 2026-11-02. A stop quoted as "entry - $117.06" still has to be arithmetic'd on a
+    # phone, which is where the mistakes happen. These are the same numbers, resolved.
+    #
+    # Entry is the ASK, because a long is bought there — quoting the bid as the entry understates
+    # the stop distance by the whole spread and overstates size by the same. The stop is measured
+    # from the ask for the same reason.
+    if np.isfinite(px) and np.isfinite(spread):
+        ask = px + spread
+        sl = ask - stop_px
+        dgt = int(getattr(si, "digits", 2) or 2)
+        lot_txt = f"{lots:.2f}" if (equity and si is not None) else "see SIZE"
+        print("\n  ACTION ITEM — if you take a long here, these are the levels")
+        print(f"     ENTRY  {ask:,.{dgt}f}   market (ask; bid is {px:,.{dgt}f})")
+        print(f"     SL     {sl:,.{dgt}f}   = entry - ${stop_px:,.2f}, server-side on the order")
+        print(f"     LOTS   {lot_txt}")
+        print(f"     TRAIL  ${3.0*atr:,.2f} behind the high-water mark, ratchet only · NO TP")
+        # The trail is WIDER than the opening stop, so it does nothing until the high-water mark
+        # has risen far enough that (high - 3 ATR) clears the original SL. Stating that level
+        # stops the trail reading as if it tightens from the first tick.
+        arm = ask + (3.0 * atr - stop_px)
+        print(f"     the trail only starts improving the SL once price trades above "
+              f"{arm:,.{dgt}f}")
+        print("     these are LEVELS, not a recommendation — the advisor's own verdict is on the "
+              "SIDE line above,")
+        print("     and section 3 is what you give up by not simply holding.")
     print(f"""
   THE HONEST BOTTOM LINE. Nothing above forecasts anything. Section 3 is the number to beat and it
   is usually most of what an intraday idea appears to earn; section 4's ingredients have no

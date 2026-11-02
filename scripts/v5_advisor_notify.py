@@ -76,11 +76,30 @@ def short_body(out: str) -> str:
     if g:
         S.append(f"spread {g.group(1)} · round trip {g.group(2)}")
 
-    for tag in ("SIZE", "STOP", "EXIT", "SIDE"):
-        g = re.search(rf"^\s+{tag}\s+(.+)$", out, re.M)
+    # SIDE is the verdict and comes first; it is the line that says whether to act at all.
+    g = re.search(r"^\s+SIDE\s+(.+)$", out, re.M)
+    if g:
+        S.append(f"SIDE {g.group(1).split('.')[0].strip()}")
+
+    # ACTION ITEM — absolute prices, requested 2026-11-02. A stop quoted as a DISTANCE still has
+    # to be arithmetic'd on a phone, which is where the mistakes happen. If the advisor could not
+    # resolve them (no live tick) the block is simply absent and the relative lines below carry.
+    act = [(t, re.search(rf"^\s+{t}\s+(.+)$", out, re.M))
+           for t in ("ENTRY", "SL", "LOTS", "TRAIL")]
+    if all(g for _t, g in act):
+        S.append("--- ACTION ---")
+        for t, g in act:
+            S.append(f"{t} {g.group(1).strip()}")
+        g = re.search(r"^\s+the trail only starts improving the SL once price trades above "
+                      r"(.+)$", out, re.M)
         if g:
-            txt = re.sub(r"\s*\(§.*?\)", "", g.group(1))          # citations live in the email
-            S.append(f"{tag} {txt.split(' — ')[0].split('. ')[0].strip()}")
+            S.append(f"trail arms above {g.group(1).strip()}")
+    else:
+        for tag in ("SIZE", "STOP", "EXIT"):
+            g = re.search(rf"^\s+{tag}\s+(.+)$", out, re.M)
+            if g:
+                txt = re.sub(r"\s*\(§.*?\)", "", g.group(1))      # citations live in the email
+                S.append(f"{tag} {txt.split(' — ')[0].split('. ')[0].strip()}")
     return "\n".join(S)
 
 
