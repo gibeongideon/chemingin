@@ -7459,3 +7459,81 @@ net +0.35, **vs-hold-net −0.50**: profitable-looking, and a worse way to own g
 **Shipped anyway, correctly labelled.** The advisor's `TV GENERALIZED` now uses `1/sqrt h`, the
 best-measured of the five, and prints what it is worth beside it. A dashboard reading, not a
 signal.
+
+### §3cu — ZigZag training window: longer is monotonically better, and none of it pays
+
+`scripts/v5_zigzag_window.py`. Walk-forward, periodic refit (block 500), 19,995 scored bars from
+2023-06, gold-only, every config scoring the SAME bars (scoring starts only once the largest
+window could be filled — otherwise a short window gets a free head start on easier history).
+
+| window | AUC (halves) | prec@0.60 | fires | vs base |
+|---|---|---|---|---|
+| 2,500 | 0.6910 (0.7026/0.6778) | 0.5390 | 3976 | −7.87 |
+| 5,000 | 0.7037 | 0.5550 | 3353 | −10.13 |
+| 10,000 | 0.7225 | 0.5848 | 2755 | −8.24 |
+| **20,000 (live)** | 0.7392 | 0.6496 | 1755 | −4.82 |
+| 30,000 | 0.7431 | 0.6571 | 1604 | **−1.28** |
+| **EXPANDING** | **0.7455** (0.7533/0.7376) | **0.6713** | 1597 | −2.61 |
+
+**Monotone in all three metrics, same ordering in both halves.** "Retrain on fresher data" is
+exactly backwards: halving the window from 20,000 to 10,000 costs **6.5 points of precision** at
+the live threshold. This is `recency-weighting-destroys-predictive-power` reproduced on a
+different model and a different target — shortening a window shrinks N_eff, and the point
+estimate degrades with it.
+
+**But every window is NEGATIVE against the base rate.** Best is −1.28bp against a best-of-K floor
+of +12.06bp. The detector's fired bars underperform the unconditional +18.63bp 48h drift at every
+window length. Window tuning improves DETECTION (AUC +0.006, precision +2.2pp from 20,000 to
+expanding) and cannot touch the economics — consistent with §3bv closing the family on mechanism.
+
+**Action:** raise `TRAIN_BARS` to expanding or 30,000 for the classifier the user watches. Do not
+expect it to change P&L, because nothing here can.
+
+### §3cv — Session transitions: the hand-over carries nothing, and the bug that pretended otherwise
+
+`scripts/v5_session_transitions.py`. 79,999 M15 bars, 2023-06 .. 2026-11, Switch feed.
+DST-aware blocks: ASIA 9h · LONDON 6.5h · OVERLAP 2h · NY 5.5h.
+
+**THE BUG FIRST, because it produced a spectacular false positive.** Sessions were initially
+labelled by comparing each bar's LOCAL London and New York hour. The local hour WRAPS THROUGH
+MIDNIGHT: at 23:00 UTC in British Summer Time, London reads 00:00, so `london_hour < 16.5` was
+true and `ny_hour >= 9.5` was true, and the bar was labelled OVERLAP. The overlap block ran
+13:30→23:45 instead of 13:30→15:30, swallowing all of New York. `LONDON->OVERLAP` printed
+**t = 14.54, gross +52.58bp/trade**. Fixed by converting each market's open INTO UTC and
+comparing on one monotonic clock. The same cell is now **t = 0.22, gross +0.37bp**.
+
+The tell was structural, not statistical: OVERLAP had **983 days where every other block had
+873**. The script now asserts block widths before computing any statistic and refuses to report
+if OVERLAP exceeds 4h.
+
+**Hand-over, continuation trade, net of the 1.08bp round trip:**
+
+| transition | t | gross | net | halves |
+|---|---|---|---|---|
+| ASIA→LONDON | 1.72 | +4.26 | **+3.18** | +1.31 / +2.85 |
+| OVERLAP→NY | 1.34 | +2.11 | +1.03 | +0.44 / +1.69 |
+| ASIA→OVERLAP | 0.91 | +1.52 | +0.44 | +1.88 / −0.32 |
+| LONDON→OVERLAP | 0.22 | +0.37 | −0.71 | −0.29 / +0.67 |
+| LONDON→NY | −0.21 | −0.33 | −1.41 | +0.45 / −0.77 |
+
+Best is ASIA→LONDON at t 1.72 against a best-of-K floor of ~1.79 for K=5. **It does not clear.**
+
+**The sessions as strategies, against holding (CONTROL #2).** Holding all day earns +7.36bp and
+pays the spread ONCE; a session strategy pays it DAILY.
+
+| long only in | gross | net of 1 RT | vs HOLD | t |
+|---|---|---|---|---|
+| ASIA | 6.35 | 5.27 | −2.09 | −0.64 |
+| LONDON | −0.32 | −1.40 | −8.76 | −2.52 |
+| OVERLAP | 0.59 | −0.49 | −7.85 | −2.04 |
+| NY | 0.75 | −0.33 | −7.69 | −2.00 |
+
+**ASIA carries 86% of the daily drift in 9 of 23 hours** (+6.35 of +7.36), which is the one real
+structural fact here — and it still loses to holding, because one daily round trip costs more
+than the 1.01bp of drift it avoids.
+
+**The violent open is volatility, not direction.** OVERLAP's first hour runs 13.87bp per M15 bar
+against 10.33 for the rest (ratio 1.34, the most violent open of the day, and the one visible on
+a chart at 13:30 UTC) — while its first-hour mean RETURN is **+0.249bp**. That is §3bg again: the
+08:30 ET bar is 2.3x a normal one and 0 of 72 cells clear cost. A big average move with no sign
+is a cost, not an opportunity.
