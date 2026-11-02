@@ -1,0 +1,7 @@
+[Unit]
+Description=ZigZag trail ratchet, minute cadence (Switch 360601, FundingPips 360597)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/zigzag-trail-watch.sh

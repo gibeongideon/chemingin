@@ -1,0 +1,14 @@
+# Every minute at :50 seconds. The other jobs on 18815 fire at :20 (xau-advisor) and :40
+# (trail-runner) seconds past, so :50 keeps clear of both; flock and the 3-try bridge retry are
+# the real protection. Persistent=false: a missed minute is worthless a minute later.
+[Unit]
+Description=Every-minute ZigZag trail ratchet (Switch 360601, FundingPips 360597)
+
+[Timer]
+OnCalendar=*-*-* *:*:50
+Persistent=false
+AccuracySec=5s
+Unit=zigzag-trail-watch.service
+
+[Install]
+WantedBy=timers.target
