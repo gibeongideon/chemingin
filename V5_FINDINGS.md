@@ -7494,6 +7494,10 @@ expect it to change P&L, because nothing here can.
 `scripts/v5_session_transitions.py`. 79,999 M15 bars, 2023-06 .. 2026-11, Switch feed.
 DST-aware blocks: ASIA 9h · LONDON 6.5h · OVERLAP 2h · NY 5.5h.
 
+⚠️ **This feed reports `tick_volume == 0` on 60.2% of M15 bars** (see §3cw). The first version of
+this section carried a "vol share" column; it was a share of an arbitrary 40% sample and has been
+replaced by share of daily RANGE.
+
 **THE BUG FIRST, because it produced a spectacular false positive.** Sessions were initially
 labelled by comparing each bar's LOCAL London and New York hour. The local hour WRAPS THROUGH
 MIDNIGHT: at 23:00 UTC in British Summer Time, London reads 00:00, so `london_hour < 16.5` was
@@ -7528,8 +7532,8 @@ pays the spread ONCE; a session strategy pays it DAILY.
 | OVERLAP | 0.59 | −0.49 | −7.85 | −2.04 |
 | NY | 0.75 | −0.33 | −7.69 | −2.00 |
 
-**ASIA carries 86% of the daily drift in 9 of 23 hours** (+6.35 of +7.36), which is the one real
-structural fact here — and it still loses to holding, because one daily round trip costs more
+**ASIA carries 86% of the daily drift in 9 of 23 hours** (+6.35 of +7.36, and 29.6% of the daily
+RANGE), which is the one real structural fact here — and it still loses to holding, because one daily round trip costs more
 than the 1.01bp of drift it avoids.
 
 **The violent open is volatility, not direction.** OVERLAP's first hour runs 13.87bp per M15 bar
@@ -7537,3 +7541,49 @@ against 10.33 for the rest (ratio 1.34, the most violent open of the day, and th
 a chart at 13:30 UTC) — while its first-hour mean RETURN is **+0.249bp**. That is §3bg again: the
 08:30 ET bar is 2.3x a normal one and 0 of 72 cells clear cost. A big average move with no sign
 is a cost, not an opportunity.
+
+### §3cw — Conditional session triggers: 0 of 140, and the volume column that is 60% zeros
+
+`scripts/v5_session_conditional.py`. "If the market behaves a certain way just before the
+hand-over, act a certain way." Read the state of the session about to end, take a side in the one
+about to begin.
+
+**Design.** 5 transitions × 5 conditioners (return sign, range tercile, close-in-range tercile,
+last-hour momentum tercile, range-vs-20d tercile) × long/short = **K 140**. The statistic is the
+MAX over the grid, compared against the distribution of the MAX under a null that circularly
+shifts the OUTCOME by ≥20 days and **re-runs the entire search** — §3bi's design, because §3bi
+found the best of 21,300 triggers indistinguishable from the best on a no-edge dataset. The null
+is computed GROSS (§3bx-D), and the SIDE is chosen inside the null too, since letting a cell pick
+its direction after seeing the data is worth roughly a factor of two in the maximum.
+
+| transition | best cell | n | gross | net | null p | null 95% | halves |
+|---|---|---|---|---|---|---|---|
+| ASIA→LONDON | close_in_range=0 SHORT | 291 | 7.73 | 6.65 | 0.260 | 9.58 | +2.22 / +13.19 |
+| LONDON→OVERLAP | range_vs20=1 LONG | 286 | 5.39 | 4.31 | **0.177** | 6.28 | +2.08 / +8.71 |
+| OVERLAP→NY | close_in_range=2 LONG | 291 | 2.70 | 1.62 | 0.835 | 5.87 | +1.08 / +4.31 |
+| ASIA→OVERLAP | range_vs20=1 LONG | 287 | 1.65 | 0.57 | 0.995 | 6.20 | −0.05 / +3.34 |
+| LONDON→NY | range_vs20=1 LONG | 286 | 4.12 | 3.04 | 0.362 | 5.83 | +2.06 / +6.18 |
+
+**0 cells pass p<0.05 AND net>0 AND both halves positive.** Best p is 0.177. Every "best cell"
+has a positive net and positive halves — and the null's best beats it between 18% and 99% of the
+time. That gap *is* the §3bi lesson: a cell that looks tradable in isolation is the expected
+result of searching 140 of them.
+
+#### ⚠️ `tick_volume` ON THIS FEED IS 0 ON 60.2% OF M15 BARS
+
+Found because a "volume tercile" held **116 days where a real tercile holds 290** — the coverage
+check fired, not the statistics. Measured across 79,999 bars:
+
+* **60.2% of all M15 bars report `tick_volume == 0`**, and the rate is **60% in every single UTC
+  hour** — it is not a quiet-market effect.
+* **48,128 of those 48,133 zero-volume bars have a NON-ZERO high-low range.** Price moved; the
+  volume was simply not recorded.
+
+**The first run of this study chose a volume cell as its best result in 4 of 5 transitions.**
+Dropping the conditioner changed every winner. Consequences logged:
+
+* §3cv's "vol share" column is retracted and replaced by share of daily RANGE.
+* `v5_tv_ratings.py` uses volume in exactly one of 26 components — the 20-period VWAP at
+  line 158, which on this feed averages the ~8 non-zero bars in each 20-bar window. Degraded,
+  one component of 26, and now known rather than assumed.
+* **No volume-based feature should be built on this feed.** Range is the honest activity measure.

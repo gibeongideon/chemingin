@@ -186,15 +186,23 @@ def main() -> int:
     piv = piv.sort_index()
 
     # ---------- 1. WHAT EACH SESSION IS, UNCONDITIONALLY --------------------------------------
+    # *** NO VOLUME COLUMN. *** This feed reports tick_volume == 0 on 60.2% of M15 bars,
+    # uniformly across every UTC hour, while 48,128 of those 48,133 bars have a non-zero
+    # high-low range — price moved and the volume was simply not recorded. A "share of daily
+    # volume" computed on that column is a share of an arbitrary 40% sample, so it is not
+    # printed. RANGE is the honest activity measure here and is shown instead.
+    zero_share = float((df["tick_volume"] == 0).mean())
     print("1. THE SESSIONS THEMSELVES  (bp, open-to-close; range is high-low)")
+    print(f"   [tick_volume is 0 on {zero_share:.1%} of bars on this feed — volume columns "
+          f"are omitted as unusable]")
     print(f"   {'block':<9}{'days':>7}{'mean ret':>10}{'median':>9}{'P(up)':>8}"
-          f"{'mean rng':>10}{'vol share':>11}")
-    tot_vol = float(np.nansum(vol.to_numpy()))
+          f"{'mean rng':>10}{'rng share':>11}")
+    tot_rng = float(np.nansum(rng.to_numpy()))
     for k in ORDER:
         if k not in piv:
             continue
         r = piv[k].dropna()
-        share = float(np.nansum(vol[k].to_numpy())) / tot_vol if k in vol else np.nan
+        share = float(np.nansum(rng[k].to_numpy())) / tot_rng if k in rng else np.nan
         print(f"   {k:<9}{len(r):>7}{r.mean():>10.2f}{r.median():>9.2f}"
               f"{(r > 0).mean():>8.1%}{rng[k].mean():>10.1f}{share:>10.1%}")
 
