@@ -12,11 +12,16 @@ difference is resolution: the peak comes from M1 bars since entry plus the live 
 catches up within a minute of a new high instead of up to an hour later. The two jobs never
 fight: whichever sees the higher peak writes first, and the other finds nothing to raise.
 
-NO SEPARATE MOVE-TO-BREAKEVEN. §3co measured it on identical event sets: exact breakeven at
-+1.0 ATR costs 6.36bp/trade at t -3.55 (hit 0.5345 -> 0.4044) — it converts dip-then-recover
-trades into flat exits, and those recoveries pay for the losers. Breakeven at +2.0 ATR was
-neutral (t +0.14). The 3.0xATR trail reaches breakeven ON ITS OWN once price is +3 ATR above
-entry, and this watcher sends an alert when that happens.
+PROFIT LOCK (user rule, 2026-11-02: "once it is +100 move SL to +50, then trail slowly — the
+key is to secure quickly"). Config `lock_steps` is a list of [trigger, lock] pairs in
+`lock_unit` ("usd" = account profit on the position, "price" = price distance from entry).
+Once the PEAK since entry reaches a trigger, the stop is floored at entry + lock; the 3.0xATR
+trail takes over whenever it rises above that floor. Both are one-way, so the floor never drops.
+*** MEASURED COST, STATED SO IT IS NOT FORGOTTEN. *** §3co: an early lock is the breakeven
+family — exact breakeven at +1.0 ATR cost 6.36bp/trade at t -3.55 (hit 0.5345 -> 0.4044),
+because it turns dip-then-recover trades into small exits and those recoveries pay for the
+losers. +$100 on 0.06 lots is ~0.9 H1 ATR, squarely in the costly zone. Deployed because the
+user prefers securing profit over expectancy; this is a demo observation harness.
 
 CHEAP WHEN FLAT. Positions under these magics are only ever opened by the hourly job, which
 records `open_positions` in its state file after every pass. If that says 0 the watcher exits
@@ -103,6 +108,8 @@ def main() -> int:
         return 0
     port, symbol, magic = cfg["port"], cfg["symbol"], cfg["magic"]
     trail_atr = float(cfg.get("trail_atr", 3.0))
+    lock_steps = sorted(cfg.get("lock_steps", []))
+    lock_unit = cfg.get("lock_unit", "usd")
     runs = ROOT / "data" / "v5_runs"
     hourly_state = runs / cfg["state_file"]
     my_state = runs / cfg["state_file"].replace("_state.json", "_watch.json")
@@ -157,11 +164,21 @@ def main() -> int:
             mark = seen.setdefault(key, {})
             entry, cur_sl = float(p.price_open), float(p.sl)
             peak = peak_since_entry(mt5, symbol, p, bid)
-            new_sl = round(peak - trail_atr * atr, info.digits)
+            trail_sl = peak - trail_atr * atr
+            # usd -> price: $ per 1.0 price move on this position = volume x contract size
+            per_px = float(p.volume) * float(info.trade_contract_size) if lock_unit == "usd" else 1.0
+            floor, locked = None, None
+            for trig, lock in lock_steps:
+                if (peak - entry) * per_px >= trig:
+                    floor, locked = entry + lock / per_px, (trig, lock)
+            new_sl = round(max(trail_sl, floor if floor is not None else trail_sl), info.digits)
             line = (f"{now_utc()} #{p.ticket} entry {entry:.2f} bid {bid:.2f} "
-                    f"({(bid - entry) / atr:+.2f} ATR) peak {peak:.2f} ATR {atr:.2f} "
-                    f"SL {cur_sl:.2f} trail-> {new_sl:.2f}")
-            if new_sl < cur_sl + MIN_STEP_ATR * atr:
+                    f"({(bid - entry) / atr:+.2f} ATR, {(bid - entry) * per_px:+.0f} {lock_unit}) "
+                    f"peak {peak:.2f} ATR {atr:.2f} SL {cur_sl:.2f} -> {new_sl:.2f}"
+                    + (f" [lock +{locked[1]} @ +{locked[0]}]" if locked else ""))
+            # A newly-reached lock is sent at once; only the trail is held to the minimum step.
+            new_lock = locked is not None and mark.get("lock") != list(locked) and new_sl > cur_sl
+            if not new_lock and new_sl < cur_sl + MIN_STEP_ATR * atr:
                 print(line + "  hold")
                 continue
             if new_sl >= bid - min_gap:
@@ -176,7 +193,12 @@ def main() -> int:
             print(line + f"  RAISED retcode={rc}")
             if rc not in (10009, 10008):
                 continue
-            # Alert on the two moments worth a phone buzz, not on every minute's ratchet.
+            # Alert on the moments worth a phone buzz, not on every minute's ratchet.
+            if new_lock:
+                mark["lock"] = list(locked)
+                notify(f"[zigzag {magic}] profit locked +{locked[1]} {lock_unit} · {symbol}",
+                       f"#{p.ticket} reached +{locked[0]} {lock_unit}; SL {cur_sl:.2f} -> "
+                       f"{new_sl:.2f} (entry {entry:.2f}). Trail {trail_atr}xATR continues.")
             if not mark.get("first"):
                 mark["first"] = True
                 notify(f"[zigzag {magic}] trail engaged · {symbol}",
