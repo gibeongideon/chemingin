@@ -123,7 +123,8 @@ def _frame(df: pd.DataFrame) -> tuple:
 
 def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct: float,
                        max_hold: int, train_bars: int = TRAIN_BARS,
-                       aux: dict | None = None) -> ZigzagState:
+                       aux: dict | None = None,
+                       now: pd.Timestamp | None = None) -> ZigzagState:
     """Fit on a trailing window of strictly-past bars, score gold's LAST CLOSED bar.
 
     Purge: the label at bar i depends on pivots up to i+TOL, so the final TOL+1 bars of EVERY
@@ -193,7 +194,11 @@ def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct
         n_train = int(len(ytr))
 
     last = df.index[score_i]
-    stale = (pd.Timestamp.now(tz="UTC").tz_localize(None) - last).total_seconds() / 3600
+    # `now` must be in the SAME frame as df's index. MT5-fed callers pass the server tick time;
+    # the host-UTC default is right only for UTC-stamped data and reads a server-stamped feed
+    # 2-3h FRESHER than it is (v5_zigzag_ftmo's >3h entry gate could not see a 5h-stale feed).
+    ref = now if now is not None else pd.Timestamp.now(tz="UTC").tz_localize(None)
+    stale = (ref - last).total_seconds() / 3600
     return ZigzagState(asof=str(last), close=float(df["close"].iloc[score_i]),
                        prob=prob, threshold=threshold,
                        fires=bool(np.isfinite(prob) and prob >= threshold),

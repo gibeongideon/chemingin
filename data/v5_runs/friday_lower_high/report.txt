@@ -1,0 +1,71 @@
+====================================================================================================
+XAUUSD   2016-09-19 .. 2026-10-26   494 Thu/Fri/Mon weeks   C = Fri high < Thu high on 48.4%
+====================================================================================================
+
+1. HIT RATE — Monday trades at or below Friday's low
+   any time Monday            C  50.6% [44.3,56.9] n=239   notC  37.6% [31.9,43.7] n=255   all 43.9%   diff +13.0pp  Fisher p 0.00379
+   Monday NY session 09-16    C  35.1% [29.4,41.4] n=239   notC  30.2% [24.9,36.1] n=255   all 32.6%   diff  +5.0pp  Fisher p 0.25
+   Monday OPENS at/below Fri low: C 3.3%  notC 4.3%  (those count as 'visited' with no move at all)
+   NY session, NOT already hit before 09:00 NY:  C  13.9% [ 9.1,20.6] n=137   notC  10.2% [ 6.5,15.5] n=177   Fisher p 0.378
+
+2. DISTANCE CONTROL — is it the lower high, or just that the low is close?
+   median (Fri close - Fri low)/ATR:  C 0.36   notC 0.63   Fri DOWN-close: C 63.2%  notC 27.5%
+   Q1 near  dist 0.00-0.24   C 73.1% (n= 78)   notC 76.1% (n= 46)   diff  -3.0pp
+   Q2       dist 0.24-0.46   C 56.0% (n= 75)   notC 66.7% (n= 48)   diff -10.7pp
+   Q3       dist 0.47-0.76   C 33.3% (n= 60)   notC 27.0% (n= 63)   diff  +6.3pp
+   Q4 far   dist 0.76-2.95   C  7.7% (n= 26)   notC 12.2% (n= 98)   diff  -4.6pp
+   logit Y_day ~ C + dist + gap:  C coef -0.151 (z -0.68, p 0.494)   dist z -8.95   gap z -4.25
+   placebo any time Monday  C     actual 50.6%  vs a level the SAME distance away 52.1%   excess  -1.5pp  z -0.53
+   placebo any time Monday  notC  actual 37.6%  vs a level the SAME distance away 36.2%   excess  +1.5pp  z +0.62
+   placebo NY session       C     actual 35.1%  vs a level the SAME distance away 38.6%   excess  -3.5pp  z -1.66
+   placebo NY session       notC  actual 30.2%  vs a level the SAME distance away 29.6%   excess  +0.5pp  z +0.31
+
+3. WEEKDAY PLACEBO — same rule, no weekend in between (day A high > day B high -> day C)
+   Mon/Tue -> Wed  C  57.5% [51.4,63.5] n=252   notC  35.0% [29.5,40.9] n=263   diff +22.6pp
+   Tue/Wed -> Thu  C  56.1% [49.8,62.3] n=237   notC  44.8% [39.1,50.7] n=279   diff +11.3pp
+   Wed/Thu -> Fri  C  46.9% [40.8,53.0] n=254   notC  37.5% [31.8,43.6] n=256   diff  +9.4pp
+
+4. MONEY — short at the open, TP at Fri low, else exit at the close (net of $0.25 spread)
+   Monday day         C:   +2.9bp/trade (t +0.62, n=231, win 62%, total +679bp)   notC:   -3.6bp (t -0.70)   LONG same window all weeks  -1.3bp
+                      C minus notC: +6.6bp  Welch t +0.94
+   per-year C bp: 2016:-2  2017:-11  2018:+0  2019:+5  2020:+39  2021:+14  2022:+15  2023:+5  2024:-12  2025:-56  2026:+25
+   halves: first +8.5bp  second -2.6bp
+   Monday NY session  C:   -2.0bp/trade (t -0.65, n=197, win 52%, total -389bp)   notC:   -5.0bp (t -1.37)   LONG same window all weeks  +0.8bp
+                      C minus notC: +3.0bp  Welch t +0.63
+
+====================================================================================================
+BTCUSD   2019-03-18 .. 2026-10-26   394 Thu/Fri/Mon weeks   C = Fri high < Thu high on 53.6%
+====================================================================================================
+
+1. HIT RATE — Monday trades at or below Friday's low
+   any time Monday            C  46.4% [39.8,53.2] n=211   notC  40.4% [33.6,47.7] n=183   all 43.7%   diff  +6.0pp  Fisher p 0.263
+   Monday NY session 09-16    C  35.1% [29.0,41.7] n=211   notC  33.3% [26.9,40.4] n=183   all 34.3%   diff  +1.7pp  Fisher p 0.75
+   already hit Sat/Sun        C  29.9% [24.1,36.3] n=211   notC  18.6% [13.6,24.8] n=183
+   Monday, weekend missed     C  33.1% [26.0,41.0] n=148   notC  31.5% [24.6,39.4] n=149   Fisher p 0.805
+   Monday OPENS at/below Fri low: C 15.2%  notC 12.0%  (those count as 'visited' with no move at all)
+   NY session, NOT already hit before 09:00 NY:  C   9.4% [ 5.5,15.8] n=127   notC   9.8% [ 5.7,16.4] n=122   Fisher p 1
+
+2. DISTANCE CONTROL — is it the lower high, or just that the low is close?
+   median (Fri close - Fri low)/ATR:  C 0.34   notC 0.54   Fri DOWN-close: C 63.5%  notC 30.6%
+   Q1 near  dist 0.01-0.25   C 76.5% (n= 68)   notC 54.8% (n= 31)   diff +21.6pp
+   Q2       dist 0.25-0.43   C 38.6% (n= 57)   notC 53.7% (n= 41)   diff -15.1pp
+   Q3       dist 0.43-0.74   C 36.0% (n= 50)   notC 52.1% (n= 48)   diff -16.1pp
+   Q4 far   dist 0.75-2.43   C 16.7% (n= 36)   notC 15.9% (n= 63)   diff  +0.8pp
+   logit Y_day ~ C + dist + gap:  C coef -0.071 (z -0.25, p 0.799)   dist z -7.21   gap z -8.51
+   placebo any time Monday  C     actual 46.4%  vs a level the SAME distance away 48.4%   excess  -2.0pp  z -0.74
+   placebo any time Monday  notC  actual 40.4%  vs a level the SAME distance away 40.2%   excess  +0.2pp  z +0.08
+   placebo NY session       C     actual 35.1%  vs a level the SAME distance away 39.0%   excess  -3.9pp  z -1.94
+   placebo NY session       notC  actual 33.3%  vs a level the SAME distance away 32.9%   excess  +0.4pp  z +0.20
+
+3. WEEKDAY PLACEBO — same rule, no weekend in between (day A high > day B high -> day C)
+   Mon/Tue -> Wed  C  49.8% [43.1,56.5] n=211   notC  34.6% [28.1,41.8] n=182   diff +15.1pp
+   Tue/Wed -> Thu  C  54.7% [47.6,61.6] n=192   notC  34.8% [28.6,41.6] n=201   diff +19.9pp
+   Wed/Thu -> Fri  C  48.9% [42.3,55.4] n=219   notC  40.8% [33.8,48.2] n=174   diff  +8.1pp
+
+4. MONEY — short at the open, TP at Fri low, else exit at the close (net of $32.5 spread)
+   Monday day         C:  -44.2bp/trade (t -1.80, n=179, win 56%, total -7907bp)   notC:  -71.6bp (t -2.91)   LONG same window all weeks +48.8bp
+                      C minus notC: +27.5bp  Welch t +0.79
+   per-year C bp: 2019:-12  2020:-126  2021:-46  2022:+69  2023:-22  2024:-122  2025:-25  2026:-52
+   halves: first -36.0bp  second -52.2bp
+   Monday NY session  C:  -44.6bp/trade (t -2.59, n=162, win 44%, total -7231bp)   notC:  -35.6bp (t -2.32)   LONG same window all weeks +25.0bp
+                      C minus notC: -9.0bp  Welch t -0.39

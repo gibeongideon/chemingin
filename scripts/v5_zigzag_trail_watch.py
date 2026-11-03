@@ -54,17 +54,18 @@ def now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%FT%TZ")
 
 
-def h1_atr(mt5, symbol: str, n_bars: int = 400) -> float:
+def h1_atr(mt5, symbol: str, now: pd.Timestamp, n_bars: int = 400) -> float:
     """Wilder ATR(14) of CLOSED H1 bars, dropped by the same rule as fetch_h1_closed in
     v5_zigzag_ftmo.py so both jobs compute the same trail distance. 400 bars is plenty: the
-    EWM weight left on the first bar is (13/14)^400 ~ 1e-13."""
+    EWM weight left on the first bar is (13/14)^400 ~ 1e-13. `now` is the SERVER tick time —
+    bar stamps are on the broker clock, and testing them against host UTC (as this did until
+    2026-11-03) discarded the newest 2-3 closed bars."""
     r = mt5.copy_rates_from_pos(symbol, TF_H1, 0, n_bars)
     if r is None or len(r) < 50:
         raise SystemExit(f"{now_utc()} {symbol}: H1 history unavailable: {mt5.last_error()}")
     a = np.array([(x[0], x[2], x[3], x[4]) for x in r], dtype=float)
     df = pd.DataFrame(a[:, 1:], columns=["high", "low", "close"],
                       index=pd.to_datetime(a[:, 0], unit="s"))
-    now = pd.Timestamp.now(tz="UTC").tz_localize(None)
     df = df[~(df.index + pd.Timedelta(hours=1) > now)]
     pc = df["close"].shift(1)
     tr = pd.concat([df["high"] - df["low"], (df["high"] - pc).abs(),
@@ -152,7 +153,7 @@ def main() -> int:
         if info is None or tick is None:
             raise SystemExit(f"{now_utc()} {symbol}: symbol_info/tick None after 3 tries")
         bid = float(getattr(tick, "bid", 0.0) or info.bid)
-        atr = h1_atr(mt5, symbol)
+        atr = h1_atr(mt5, symbol, pd.to_datetime(int(tick.time), unit="s"))
         min_gap = (info.trade_stops_level or 0) * info.point
 
         try:

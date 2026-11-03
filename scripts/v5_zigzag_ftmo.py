@@ -60,7 +60,7 @@ TF_H1 = 16385
 FETCH_BARS = 30_000
 
 
-def fetch_aux(mt5, symbols) -> tuple[dict, list]:
+def fetch_aux(mt5, symbols, now: pd.Timestamp | None = None) -> tuple[dict, list]:
     """Auxiliary H1 series for POOLED training, from the SAME broker feed as gold.
 
     Deliberately NOT from the CSVs: the H1 CSV is >2,000 hours stale and two data files in this
@@ -73,7 +73,7 @@ def fetch_aux(mt5, symbols) -> tuple[dict, list]:
     out, missing = {}, []
     for sym in symbols:
         try:
-            d = fetch_h1_closed(mt5, sym)
+            d = fetch_h1_closed(mt5, sym, now)
             if d is None or len(d) < 6000:
                 missing.append((sym, f"only {0 if d is None else len(d)} bars"))
                 continue
@@ -83,10 +83,33 @@ def fetch_aux(mt5, symbols) -> tuple[dict, list]:
     return out, missing
 
 
-def fetch_h1_closed(mt5, symbol: str) -> pd.DataFrame:
+def server_now(mt5, symbol: str) -> pd.Timestamp | None:
+    """'Now' on the BROKER clock, from the newest tick. MT5 stamps bars and ticks at server time
+    (Switch/FTMO: NY+7, UTC+2/+3), so any 'is this bar closed / how old is it' test must be
+    written in that frame — never against the host's UTC (memory: mt5-server-clock-vs-host-clock).
+    With the market shut the last tick is Friday's, which is still the right frame: every bar
+    before it is closed. None if no tick could be read."""
+    for i in range(3):
+        if i:
+            time.sleep(2 * i)
+        mt5.symbol_select(symbol, True)
+        t = mt5.symbol_info_tick(symbol)
+        if t is not None and getattr(t, "time", 0):
+            return pd.to_datetime(int(t.time), unit="s")
+    return None
+
+
+def fetch_h1_closed(mt5, symbol: str, now: pd.Timestamp | None = None) -> pd.DataFrame:
     """Broker's own H1 history, CLOSED BARS ONLY. `copy_rates_from_pos(..,0,n)` returns the
     in-progress bar at position 0; scoring an unfinished bar would evaluate a signal that can
-    still change (the same bug caught in the manual-alert build)."""
+    still change (the same bug caught in the manual-alert build).
+
+    *** BUG FIXED 2026-11-03: `now` WAS THE HOST'S UTC against a SERVER-stamped index. ***
+    The broker runs 2-3h ahead of UTC, so `index + 1h > utcnow` threw away the newest 2-3
+    CLOSED bars as well as the forming one: at 18:19 UTC (21:19 server) the detector scored the
+    16:00 bar although 20:00 had closed. Every P(bottom), ATR and trail distance since this
+    harness was built has been computed 2-3 hours late. `now` is now the server's own tick
+    time; without one, drop only position 0 (the forming bar), which errs by one bar at most."""
     mt5.symbol_select(symbol, True)
     r = None
     for _ in range(6):
@@ -99,7 +122,8 @@ def fetch_h1_closed(mt5, symbol: str) -> pd.DataFrame:
     a = np.array([(x[0], x[1], x[2], x[3], x[4]) for x in r], dtype=float)
     df = pd.DataFrame(a[:, 1:], columns=["open", "high", "low", "close"],
                       index=pd.to_datetime(a[:, 0], unit="s"))
-    now = pd.Timestamp.now(tz="UTC").tz_localize(None)
+    if now is None:
+        return df.iloc[:-1]
     open_bars = df.index[df.index + pd.Timedelta(hours=1) > now]
     return df.drop(index=open_bars) if len(open_bars) else df
 
@@ -147,10 +171,14 @@ def main() -> None:
     print(f"account {ai.login} @ {ai.server}   equity ${ai.equity:,.2f}   "
           f"{'DEMO' if is_demo else '*** NOT FLAGGED DEMO ***'}")
 
-    df = fetch_h1_closed(mt5, symbol)
+    # One server-clock 'now' for the whole pass: closed-bar filter, staleness and max-hold age.
+    srv_now = server_now(mt5, symbol)
+    print(f"server clock {srv_now}" if srv_now is not None
+          else "server clock UNAVAILABLE — dropping only the forming bar")
+    df = fetch_h1_closed(mt5, symbol, srv_now)
     aux_syms = cfg.get("aux_symbols", list(AUX_SYMBOLS))
-    aux, aux_missing = fetch_aux(mt5, aux_syms)
-    st = bottom_probability(df, thr, tp_pct, sl_pct, max_hold, aux=aux)
+    aux, aux_missing = fetch_aux(mt5, aux_syms, srv_now)
+    st = bottom_probability(df, thr, tp_pct, sl_pct, max_hold, aux=aux, now=srv_now)
     # *** symbol_info CAN RETURN None ON A CONTENDED BRIDGE, AND DID — TWICE, 2026-11-02. ***
     # The model trains for ~13s between the bridge calls above and these, and a second client
     # arriving in that window made both of these return None. The old line then raised
@@ -254,7 +282,10 @@ def main() -> None:
                       f"already at or above the trail ({new_sl:.2f}) — no change")
 
     # ---- 1. max-hold exits (the only exit this process is responsible for) ----
-    now = datetime.now(timezone.utc).timestamp()
+    # p.time is a SERVER epoch, so age it against the server clock. Against host UTC every
+    # position read 2-3h younger than it was and max-hold closed it 2-3h late.
+    now = (srv_now.timestamp() if srv_now is not None
+           else datetime.now(timezone.utc).timestamp())
     for p in held:
         age_h = (now - p.time) / 3600.0
         if age_h >= max_hold:

@@ -2554,6 +2554,7 @@ broken or stale pipeline so silence is never ambiguous.
 - **Per-trade probability sizing / meta-labeling** — fails twice; vol-targeting only cuts drawdown, adds no return.
 - **Gold-silver spread** — corr 0.79 but z-spread edge is pre-2015-only, dead OOS 2017+.
 - **Session / regime / carry / RL single-XAU overlays** — none beat the plain trend champion.
+- **"Fri high < Thu high → Monday visits Friday's low"** (§3cz) — a DISTANCE artifact: gold's raw +13pp lift vanishes against a placebo level at the same distance (−1.5pp) and under a logit on distance (C z −0.68); not weekend-specific; no money on XAU or BTC.
 
 ---
 
@@ -7686,3 +7687,102 @@ in bp/trade while scaling out costs 5-20%. Sizing strictly dominates.
 (§3cx), partial exit (§3cy), position size (§3ao). The giveback is not a defect to be engineered
 away — it is the price of the convexity that makes the wide trail work, and every rule that
 converts open profit into closed profit earlier is buying back that convexity at a loss.
+
+### §3cz — "Friday lower-high → Monday visits Friday's low": a distance artifact
+
+`scripts/v5_friday_lower_high.py`, report `data/v5_runs/friday_lower_high/report.txt`. User
+hypothesis: *"if Friday's high is not as high as Thursday's, the odds are overwhelmingly high that
+Friday's low will be visited on Monday during the regular session."* Tested on XAUUSD and BTCUSD.
+
+**Data.** Switch's own H1 feed, pulled 2026-11-03 into `data/{XAUUSDs,BTCUSDs}_H1_switch.csv`.
+The terminal caps a request at 60,000 bars: gold from 2016-09 (**494** Thu/Fri/Mon weeks), BTC
+from 2019-03 (**394**). One broker, no splice ([[multi-broker-dataset-is-a-leak]]). The server clock
+is **NY + 7h all year** — verified, gold's daily break sits at server hour 0 in both January and
+July — so a server date is the NY 17:00→17:00 trading day and the NY regular session 09:00–16:00
+is server hours 16..22. A week is dropped if any of Thu/Fri/Mon is missing (holidays), never
+shifted. C = Friday high < Thursday high; true on 48.4% of gold weeks and 53.6% of BTC weeks.
+
+**1. The raw hit rate is not "overwhelming".** Monday trades at or below Friday's low:
+
+| | XAU C | XAU not-C | BTC C | BTC not-C |
+|---|---|---|---|---|
+| any time Monday | **50.6%** [44.3, 56.9] | 37.6% — Fisher p **0.004** | 46.4% | 40.4% — p 0.26 |
+| NY session 09–16 | 35.1% | 30.2% — p 0.25 | 35.1% | 33.3% — p 0.75 |
+| NY session, not already hit before 09:00 | 13.9% | 10.2% — p 0.38 | 9.4% | 9.8% — p 1.0 |
+
+During the regular session the claim reduces to roughly one Monday in three, on both assets,
+indistinguishable from the complement. The one significant lift is gold across the whole Monday.
+
+**2. That lift is DISTANCE, not the lower high.** A lower-high Friday is mostly a DOWN Friday
+(63% vs 28% of complement weeks) that closes NEAR its low (median 0.36 vs 0.63 ATR from the low),
+and a nearby level is touched more often whatever it is.
+
+* **Matched-distance placebo** — for each week, the probability that ANY level the same ATR
+  distance below Monday's open is touched, from the leave-one-out empirical distribution of
+  Monday's open-to-low excursion. Friday's low does *worse* than a placebo level: gold C
+  **50.6% vs 52.1%** (−1.5pp, z −0.53), BTC C 46.4% vs 48.4% (−2.0pp). In the NY session gold
+  C is −3.5pp (z −1.66) and BTC −3.9pp (z −1.94). **The Friday low is not a special level.**
+* **Logit** `Y ~ C + distance + gap`: C contributes nothing (gold z **−0.68**, BTC z −0.25), while
+  distance (z −8.95 / −7.21) and Monday's gap (z −4.25 / −8.51) carry everything.
+* **Within distance quartiles** the C-minus-not-C gap flips sign from bin to bin (gold −3.0,
+  −10.7, +6.3, −4.6pp).
+
+**3. It is not about the weekend.** The identical rule with no weekend in between gives EQUAL OR
+BIGGER raw lifts: gold Mon/Tue→Wed +22.6pp, Tue/Wed→Thu +11.3pp, Wed/Thu→Fri +9.4pp; BTC +15.1,
++19.9, +8.1pp. These are the same distance effect on every day of the week. BTC trades the weekend
+and **30% of C weeks have already reached Friday's low on Saturday or Sunday**; excluding them,
+Monday's rate is 33.1% vs 31.5% (p 0.81).
+
+**4. No money.** Short at the window open, take profit AT Friday's low, otherwise exit at the
+window close, net of the live Switch spread measured the same day ($0.25 gold, $32.5 BTC):
+
+| | C bp/trade | t | win | not-C bp | LONG same window |
+|---|---|---|---|---|---|
+| XAU Monday | **+2.9** | +0.62 | 62% | −3.6 | −1.3 |
+| XAU Monday NY | −2.0 | −0.65 | 52% | −5.0 | +0.8 |
+| BTC Monday | **−44.2** | −1.80 | 56% | −71.6 | **+48.8** |
+| BTC Monday NY | −44.6 | −2.59 | 44% | −35.6 | +25.0 |
+
+Gold's +2.9bp is +8.5 in the first half and **−2.6 in the second**, with per-year values from −56
+to +39. BTC loses because a Monday short fights a +48.8bp Monday drift
+([[xau-drift-baseline-inverts-3r]] on a second asset). **A 62% win rate with no expectancy**: the
+target is close and the losers are larger ([[intraday-breakeven-table]]).
+
+**METHOD: for any "level X will be revisited" claim, run the matched-distance placebo FIRST.**
+It is one leave-one-out lookup, it answers the question directly ("is this level special, or just
+this close?") and it would have closed this study before the money section. Same family as
+[[window-extremes-are-tautology-trail-validated]] and [[extreme-timing-patterns-are-drift]]: the condition
+selects for the outcome's geometry, not for information.
+
+### §3da — The ZigZag harness was scoring a bar 2-3 hours old (server clock vs host UTC)
+
+Found while building the minute-cadence trail watcher. `v5_zigzag_ftmo.fetch_h1_closed` dropped
+"unfinished" bars with `index + 1h > now(UTC)` — but MT5 stamps bars on the **broker** clock,
+which runs 2-3h ahead of UTC (Switch and FundingPips: NY+7). So it discarded the newest **2-3
+CLOSED** bars as well as the forming one. Example from the 2026-11-02 18:19 UTC pass (21:19
+server): the detector scored the **16:00** bar although 17:00, 18:00, 19:00 and 20:00 had closed.
+
+Three consequences, all live on magics 360601 (Switch) and 360597 (FundingPips) since deployment:
+
+1. **Every P(bottom) was computed on data 2-3h stale**, and the ATR behind the initial stop and
+   the trail used the same truncated series.
+2. **The staleness gate read the feed 2-3h FRESHER than it was.** `bottom_probability` measured
+   `utcnow − last_bar` against a server-stamped bar, so the ">3h stale → skip entry" gate could
+   not see a feed until it was ~5-6h stale. Fourth instance of [[mt5-server-clock-vs-host-clock]]:
+   a gate that cannot fire certifies what it was built to catch.
+3. **Max-hold closed positions 2-3h LATE**: `p.time` is a server epoch, aged against host UTC,
+   so every position read 2-3h younger than it was.
+
+**Fix (2026-11-03).** `server_now()` reads the newest tick's time — the broker clock — and one
+value is used for the closed-bar filter (gold AND the pooled auxiliaries), `stale_hours` (new
+optional `now=` on `bottom_probability`; CSV callers keep the old default) and the max-hold age.
+With no tick available the filter drops only position 0, wrong by one bar at most. The
+minute-cadence watcher `v5_zigzag_trail_watch.py` had copied the same rule into its ATR and now
+takes the tick time too. **Verified live, both venues:** at server 17:59 the last scored bar is
+16:00 (17:00 still forming) and staleness reads 2.0h; P(bottom) 0.096 Switch / 0.112 FundingPips,
+no fire, no position open.
+
+**Not re-measured:** the research numbers for this detector (§3x, §3bo) came from CSVs and
+`bottom_probability`'s offline path, not from `fetch_h1_closed`, so the backtests are unaffected.
+Only the live harness was late. The live W/L record before 2026-11-03 was traded on a lagged
+signal and is not a clean read of the detector.
