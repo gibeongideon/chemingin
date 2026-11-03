@@ -7631,4 +7631,18 @@ indistinguishable from doing nothing.**
 
 The mechanism is the same one §3bl and §3bn found: barriers truncate the few large winners that
 pay for the many losers, and a fractional lock truncates hardest in the profit region where most
-trades live. **Live trail stays at 3.0 ATR, unchanged.**
+trades live.
+
+**BEST-OF-K FLOOR (CONTROL #7), 2000 block sign-flip draws on the daily difference series,
+block 20d, max taken across variants within each draw so their mutual correlation is preserved:**
+
+| | paired t |
+|---|---|
+| null max, median | **+1.12** |
+| null max, 95th percentile | **+3.74** |
+| **observed max (G)** | **+0.38**, p = 0.673 |
+
+**The best of seven variants sits below the null's MEDIAN** — the same signature as §3bk, where
+the best of 761 patterns fell under its own null median. Adopting G would be adopting the maximum
+of a noise distribution. **Live trail stays at 3.0 ATR, unchanged, and that is now a measured
+decision rather than a default.**

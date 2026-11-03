@@ -170,6 +170,40 @@ def main() -> int:
 
     print(f"\nevent set held fixed: every variant takes {rows[0][1]} trades on the same days,")
     print("so the paired t measures the EXIT RULE and nothing else (§3co).")
+
+    # ---- BEST-OF-K FLOOR (CONTROL #7) --------------------------------------------------------
+    # Seven variants were tried, so the right question is not "is G's t positive" but "how large
+    # is the LARGEST of seven paired t's when none of the rules helps at all". Block sign-flip on
+    # the daily difference series: under H0 each difference is symmetric about zero, and flipping
+    # whole 20-day blocks preserves the autocorrelation that makes a naive t too generous. The
+    # max is taken ACROSS variants within each draw, so the correlation between variants (they
+    # share every trade) is preserved too.
+    rng = np.random.default_rng(0)
+    diffs = []
+    for name, f, trig in VARIANTS[1:]:
+        tr = simulate(d, f, trig)
+        diffs.append((daily(tr, idx) - base).dropna().to_numpy())
+    L, draws = 20, 2000
+    nullmax = np.empty(draws)
+    for q in range(draws):
+        mx = -np.inf
+        nb = int(np.ceil(len(diffs[0]) / L))
+        signs = np.repeat(rng.choice([-1.0, 1.0], nb), L)[:len(diffs[0])]
+        for v in diffs:
+            x = v * signs
+            s = x.std(ddof=1)
+            if s > 0:
+                mx = max(mx, float(x.mean() / (s / np.sqrt(len(x)))))
+        nullmax[q] = mx
+    obs_max = max(r[7] for r in rows[1:] if r[7] == r[7])
+    print(f"\nbest-of-K floor, K={len(diffs)}, {draws} block sign-flip draws (block {L}d):")
+    print(f"   null max paired t:  median {np.median(nullmax):+.2f}   "
+          f"95th pct {np.quantile(nullmax, 0.95):+.2f}")
+    print(f"   observed max:       {obs_max:+.2f}   "
+          f"p = {float((nullmax >= obs_max).mean()):.3f}")
+    if obs_max < np.quantile(nullmax, 0.95):
+        print("   -> the best variant does NOT clear the floor. Adopting it would be adopting")
+        print("      the maximum of a noise distribution. The incumbent 3.0-ATR trail stands.")
     best = max(rows[1:], key=lambda r: r[3]) if len(rows) > 1 else None
     if best:
         print(f"\nbest non-control by bp/trade: {best[0].strip()} at {best[3]:+.2f}bp "
