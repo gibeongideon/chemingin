@@ -7646,3 +7646,43 @@ block 20d, max taken across variants within each draw so their mutual correlatio
 the best of 761 patterns fell under its own null median. Adopting G would be adopting the maximum
 of a noise distribution. **Live trail stays at 3.0 ATR, unchanged, and that is now a measured
 decision rather than a default.**
+
+### §3cy — Scaling OUT is a sizing dial in disguise, and it is a dial you pay for
+
+`scripts/v5_partial_exit.py`. The last untested shape in the giveback family: bank part of the
+position at a target, leave the remainder on the full 3.0-ATR trail. Unlike §3cx's fractional
+lock this does NOT tighten the stop on the runner — the runner survives intact, just smaller.
+Event set fixed, 459 trades, partial filled AT the trigger level (the bar's high reached it, so a
+resting limit there is achievable; using the close would hand the variant a free look).
+
+| variant | win% | bp/trade | sd | Sharpe | maxDD | paired t |
+|---|---|---|---|---|---|---|
+| **A control, trail only** | 59.5% | **68.29** | 256.9 | 3.01 | −34.7% | — |
+| B bank 25% @ +1 ATR | 61.4% | 61.37 | 226.1 | 3.07 | −32.9% | −3.29 |
+| C bank 50% @ +1 ATR | 65.4% | 54.45 | 200.6 | 3.07 | −31.2% | −3.29 |
+| D bank 25% @ +2 ATR | 60.6% | 65.27 | 241.7 | 3.06 | −34.7% | −2.12 |
+| E bank 50% @ +2 ATR | 61.7% | 62.25 | 229.5 | 3.07 | −34.7% | −2.12 |
+| F bank 50% @ +3 ATR | 59.5% | 65.67 | 245.1 | 3.03 | −34.7% | −1.53 |
+| G bank 50% @ +2 ATR, rest to BE | 61.7% | 62.92 | 229.7 | 3.10 | −34.7% | −1.79 |
+| H bank 33% @ +1.5 ATR | 61.4% | 61.49 | 229.8 | 3.03 | −34.4% | −3.07 |
+
+**Every variant is negative. Best −1.53, p 0.928 against a best-of-K floor whose 95th percentile
+is +3.42.**
+
+**THE STRUCTURE IS THE FINDING.** Look at Sharpe: 3.01 → 3.03-3.10, flat everywhere, while EV and
+sd fall together. C cuts bp/trade to 0.797× and sd to 0.781× — a ratio of 1.02. **A partial exit
+is arithmetically a position-size reduction applied part-way through the trade**, and §3ao already
+measured size as a pure dial (Sharpe invariant +1.02 across 0.25-4% risk).
+
+So it cannot fix the giveback for the same reason sizing cannot: it scales the dollar giveback and
+the dollar profit by the same factor. **And unlike sizing it is not free** — the banked slice
+forgoes the trail's convexity, costing 5-20% of EV at t −1.5 to −3.3.
+
+**PRACTICAL CONSEQUENCE, which is the actionable part.** If the goal is smaller dollar swings,
+**reduce LOT SIZE, do not scale out.** Both shrink the swing proportionally; sizing costs nothing
+in bp/trade while scaling out costs 5-20%. Sizing strictly dominates.
+
+**THE GIVEBACK FAMILY IS NOW CLOSED, all four levers:** trail width (§3bn), fractional lock
+(§3cx), partial exit (§3cy), position size (§3ao). The giveback is not a defect to be engineered
+away — it is the price of the convexity that makes the wide trail work, and every rule that
+converts open profit into closed profit earlier is buying back that convexity at a loss.
