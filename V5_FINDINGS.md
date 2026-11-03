@@ -7587,3 +7587,48 @@ Dropping the conditioner changed every winner. Consequences logged:
   line 158, which on this feed averages the ~8 non-zero bars in each 20-bar window. Degraded,
   one component of 26, and now known rather than assumed.
 * **No volume-based feature should be built on this feed.** Range is the honest activity measure.
+
+### §3cx — Locking a fraction of peak profit: the win rate rises, the money falls
+
+`scripts/v5_profit_lock.py`. Prompted by a live observation: position 360601 sat at **+$220
+unrealised with only +$50 locked**, because the 3.0-ATR trail is ~$384 wide at 0.08 lots. The
+proposal was to drag the stop up proportionally — "at +200, move to +100".
+
+**Not the same question as §3bn**, which swept trail DISTANCE in ATR (constant width, set by
+volatility). A fractional lock's width scales with ACCUMULATED PROFIT: loose early, tightening as
+the trade works. The two cross at peak = 2× trail width. That family was unmeasured.
+
+Event set held fixed (§3co) — all 459 trades, same days, exit rule the only difference.
+
+| variant | win% | bp/trade | Sharpe | maxDD | paired t |
+|---|---|---|---|---|---|
+| **A trail only 3.0 ATR (control)** | 59.5% | **+68.29** | 3.01 | −34.7% | — |
+| B lock 25%, no trigger | 75.6% | +13.64 | 2.28 | −0.0% | **−4.63** |
+| C lock 50%, no trigger | 86.1% | +10.05 | 3.91 | −0.0% | **−4.81** |
+| D lock 75%, no trigger | 89.8% | +11.10 | 5.99 | −0.0% | **−4.71** |
+| E lock 50% after +1 ATR | 68.6% | +51.01 | 2.84 | −30.4% | −2.40 |
+| **H lock 50% after +1.5 ATR (the ask)** | 63.2% | +62.47 | 3.00 | −35.0% | **−1.22** |
+| F lock 50% after +2 ATR | 61.7% | +67.39 | 3.11 | −34.7% | −0.24 |
+| G lock 33% after +2 ATR | 61.7% | +69.17 | 3.10 | −34.7% | +0.38 |
+
+**The win rate and the money move in OPPOSITE directions, monotonically.** C lifts the win rate
+from 59.5% to 86.1% and cuts return per trade by 85%. This is the cleanest demonstration in the
+repo of why win rate is not an objective.
+
+**Sharpe and maxDD mislead in the opposite direction.** C and D show *better* Sharpe (3.91, 5.99)
+and ~zero drawdown while total return collapses from +1860% to +58%. The curve becomes smooth and
+tiny. This is why exit rules are judged on the paired t at a fixed event set, never on Sharpe.
+
+**B/C/D are degenerate and that is instructive.** With no trigger the lock is live from bar one —
+`hwm` starts at entry, so the stop is immediately lifted to ≥ entry. They are not "lock half the
+profit", they are §3co's refuted breakeven move in a stronger form, and they fail harder (t −4.6
+to −4.8 against §3co's −3.55).
+
+**At the user's actual numbers (H: 50% after ~1.5 ATR) the cost is −1.22 t** — not significant,
+but the point estimate is −5.8bp/trade. The only variants that stop hurting arm so late (+2 ATR)
+that they barely differ from the control. **No cell beats the trail; the best, G, is +0.38 t,
+indistinguishable from doing nothing.**
+
+The mechanism is the same one §3bl and §3bn found: barriers truncate the few large winners that
+pay for the many losers, and a fractional lock truncates hardest in the profit region where most
+trades live. **Live trail stays at 3.0 ATR, unchanged.**

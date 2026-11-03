@@ -94,12 +94,21 @@ def simulate(d: pd.DataFrame, lock_frac: float | None, trigger_atr: float = 0.0,
     return pd.DataFrame(trades)
 
 
+# *** B/C/D HAVE NO TRIGGER AND ARE THEREFORE DEGENERATE, WHICH IS WORTH SEEING. ***
+# With trigger 0 the lock is live from the first bar: hwm starts AT entry, so the stop is lifted
+# to entry + f*(hwm-entry) >= entry immediately. They are not "lock half the profit", they are
+# "move to breakeven on bar one and then some", i.e. §3co's refuted rule in a stronger form. The
+# faithful readings of the request are E-H, which only arm once the profit is real.
+#
+# H IS THE USER'S ACTUAL NUMBERS: +$200 on 0.08 lots of XAUUSDs is 25 price points, and daily
+# ATR was ~16, so the trigger they described is ~1.5 ATR with a 50% lock.
 VARIANTS = [
     ("A  trail only, 3.0 ATR   [§3bn control]", None, 0.0),
-    ("B  lock 25% of peak", 0.25, 0.0),
-    ("C  lock 50% of peak  <- the ask", 0.50, 0.0),
-    ("D  lock 75% of peak", 0.75, 0.0),
+    ("B  lock 25% of peak, no trigger", 0.25, 0.0),
+    ("C  lock 50% of peak, no trigger", 0.50, 0.0),
+    ("D  lock 75% of peak, no trigger", 0.75, 0.0),
     ("E  lock 50%, only after +1 ATR", 0.50, 1.0),
+    ("H  lock 50% after +1.5 ATR  <- the ask", 0.50, 1.5),
     ("F  lock 50%, only after +2 ATR", 0.50, 2.0),
     ("G  lock 33%, only after +2 ATR", 0.33, 2.0),
 ]
@@ -167,6 +176,11 @@ def main() -> int:
               f"against the control's {rows[0][3]:+.2f}bp, paired t {best[7]:+.2f}")
     print("\nWATCH THE WIN RATE COLUMN. A profit lock raises it by construction — it converts")
     print("open profit into closed profit more often — and that is not the same as making money.")
+    print("WATCH SHARPE AND maxDD TOO, FOR THE OPPOSITE REASON. A tight lock makes the curve")
+    print("smooth and small: Sharpe RISES while total return collapses, which is why these are")
+    print("judged on the paired t at a fixed event set and not on Sharpe (§3bm, matched vol).")
+    print("\nTHE ABSOLUTE COLUMNS ARE NOT A BACKTEST. `same_events` lets holds overlap so the")
+    print("daily series double-counts; only the PAIRED comparison between rows is meaningful.")
     OUT.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows, columns=["variant", "n", "win", "bp_trade", "total_pct", "sharpe",
                                 "maxdd", "paired_t"]).to_csv(OUT / "profit_lock.csv", index=False)
