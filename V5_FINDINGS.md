@@ -7786,3 +7786,51 @@ no fire, no position open.
 `bottom_probability`'s offline path, not from `fetch_h1_closed`, so the backtests are unaffected.
 Only the live harness was late. The live W/L record before 2026-11-03 was traded on a lagged
 signal and is not a clean read of the detector.
+
+### §3db — Liquidity sweep, built to the user's full recipe and tested cross-asset: no survivor
+
+`scripts/v5_liquidity_sweep.py`, report `data/v5_runs/liquidity_sweep/report.txt`, data
+`data/sweep_switch/` (Switch 40080430, single provenance, 60,000-bar cap: H1 2016+/2019+,
+M15 1.7-2.5 yrs). Pre-registered in the script docstring before the first run; 20 A/B cells.
+
+**Scope.** On XAU the ingredients were already closed (§3v EQH/EQL fade −0.44; §3bi Asian sweep
+0/12 yrs; §3bc sweep-reclaim as an entry timer). New here: BTC / USTEC / EURUSD / GBPUSD, and
+the FULL recipe as a standalone signal: an H1 candle wicks past a prior-day (PD) or fractal-swing
+(SW) level, closes back inside with a wick >= 50% of range, then within 4h an M15 close breaks
+the 2h swing before the extreme with a body >= 0.8 M15 ATR (displacement + MSS). Stop beyond the
+extreme +0.1 ATR, 2R target, 24h time stop, stop-first on two-touch bars, net of quoted spread.
+
+| cell | arm A (H1 entry) nR / t | arm B (sweep+MSS) nR / t / n | B excess vs random-time base |
+|---|---|---|---|
+| XAU PD | +0.084 / 1.35 (halves +0.18 / −0.02) | +0.158 / 0.60 / 26 | +0.16 |
+| XAU SW | −0.001 / −0.03 | −0.097 / −0.70 / 78 | −0.16 |
+| BTC PD | +0.011 / 0.20 | −0.031 / −0.18 / 36 | −0.02 |
+| BTC SW | −0.028 / −0.87 | +0.012 / 0.12 / 119 | +0.07 |
+| USTEC PD | +0.006 / 0.09 | +0.066 / 0.27 / 28 | +0.12 |
+| USTEC SW | −0.043 / −1.15 | −0.117 / −1.05 / 112 | −0.13 |
+| EURUSD PD | −0.020 / −0.16 | **+0.462 / 2.07 / 33** | +0.58 |
+| EURUSD SW | −0.084 / −1.19 | **+0.251 / 1.94 / 103** | +0.28 |
+| GBPUSD PD | −0.387 / −3.46 | −0.073 / −0.31 / 27 | −0.05 |
+| GBPUSD SW | −0.055 / −0.77 | +0.027 / 0.24 / 119 | +0.06 |
+
+**Max-stat null** (signal sets circularly shifted, 400 draws, GROSS R): best cell EURUSD PD B
++0.521 vs null p50 +0.287 / p95 +0.581 → **p 0.085. Does not survive.**
+
+**A bug of mine that briefly made it survive (p 0.043).** The first null re-used B's stop in H1
+ATR units on the M15 frame (stops ~half as wide) and held 24 M15 bars (6h) instead of 24h. A
+null with a different exit has a different spread of means; matching the exit moved p across 0.05.
+Rule: a null must re-run the IDENTICAL exit in the IDENTICAL units as the cell it prices.
+
+**A row that looks like an edge and is lookahead:** "arm A, kept only when B later confirmed"
+prints +0.8 to +1.6R at t 3-10 in every cell. A enters BEFORE the confirmation, so conditioning on
+it selects trades that had already moved the right way. The tradable version is B, which pays for
+that move by entering after it — and B is ~zero. Labelled `A|B conf (LOOKAHEAD)` in the report.
+
+**Controls:** the no-level wick placebo is ~0 on XAU/USTEC/FX and strongly NEGATIVE on BTC
+(−0.11R, t −5 to −6) — shorting BTC rejection wicks fights its drift. Breakout (acceptance) is
+also ~0 everywhere except GBP PD +0.15 (t 1.84), which is the mirror of GBP PD sweep's −0.39.
+
+**Verdict.** No cell clears the family null. The only lead is EURUSD's full recipe (both B cells
+positive, B >> A on the same window), on 33 + 103 trades over 2.3 years. It needs more M15 history
+(raise the terminal's max-bars, or another feed) as an OUT-OF-SAMPLE replication with the rules
+frozen as they are now, before it is anything more than the best of 20.

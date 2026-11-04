@@ -1,0 +1,42 @@
+{
+ "XAUUSDs": {
+  "point": 0.01,
+  "contract": 100.0,
+  "digits": 2,
+  "spread_now": 0.21000000000003638,
+  "swap_long": -66.8,
+  "swap_short": 27.9
+ },
+ "BTCUSDs": {
+  "point": 0.01,
+  "contract": 1.0,
+  "digits": 2,
+  "spread_now": 34.279999999998836,
+  "swap_long": -15.0,
+  "swap_short": -10.0
+ },
+ "USTECs": {
+  "point": 0.1,
+  "contract": 1.0,
+  "digits": 1,
+  "spread_now": 1.7999999999992724,
+  "swap_long": -40.6943,
+  "swap_short": -0.9524
+ },
+ "EURUSDs": {
+  "point": 1e-05,
+  "contract": 100000.0,
+  "digits": 5,
+  "spread_now": 0.0001500000000000945,
+  "swap_long": -9.03,
+  "swap_short": 1.73
+ },
+ "GBPUSDs": {
+  "point": 1e-05,
+  "contract": 100000.0,
+  "digits": 5,
+  "spread_now": 0.00014999999999987246,
+  "swap_long": -2.43,
+  "swap_short": -0.87
+ }
+}
