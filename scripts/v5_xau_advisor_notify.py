@@ -103,7 +103,7 @@ def main() -> None:
         if not a.dry:
             save_seen(SEEN, m["seen"])
     else:
-        print("(nothing sent — direction unchanged and today's message already went)")
+        print("(nothing sent — no confirmed direction change)")
 
 
 if __name__ == "__main__":

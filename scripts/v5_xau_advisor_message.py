@@ -72,6 +72,19 @@ def save_seen(path: Path, seen: dict) -> None:
     tmp.replace(p)
 
 
+CONFIRM_MINUTES = 30             # a direction change is announced only after holding this long
+
+
+def _held_minutes(since, now: datetime) -> float | None:
+    try:
+        s = datetime.fromisoformat(str(since))
+        if s.tzinfo is None and now.tzinfo is not None:
+            s = s.replace(tzinfo=now.tzinfo)
+        return (now - s).total_seconds() / 60
+    except (TypeError, ValueError):
+        return None
+
+
 def _hour_key(now: datetime) -> str:
     return now.strftime("%Y-%m-%dT%H")
 
@@ -324,20 +337,28 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         should = seen.get("health_day") != day or seen.get("health") != health
         new_seen = {**seen, "health_day": day, "health": health}
     elif flipped:
-        # The whole point of the product. Sent immediately, including with the market shut: the
-        # reading is real and a position may well be held over the close.
-        trigger, should = "change", True
-        new_seen = {**seen, "state": name, "day": day, "health": health}
+        # CONFIRMED CHANGES ONLY (user, 2026-11-04): a flip is announced once the new direction
+        # has held CONFIRM_MINUTES. Until then `seen` is NOT advanced, so the notice goes out on
+        # the first run past the window -- and a flip that reverts inside it sends nothing.
+        held_min = _held_minutes(state.get("since"), now)
+        trigger = "change"
+        if held_min is not None and held_min < CONFIRM_MINUTES:
+            trigger, should, new_seen = "change_pending", False, dict(seen)
+        else:
+            should = True
+            new_seen = {**seen, "state": name, "day": day, "health": health}
     else:
-        trigger = "daily"
-        should = seen.get("day") != day
-        new_seen = {**seen, "state": name, "day": day, "health": health}
+        # No daily heartbeat any more (user, 2026-11-04: "notification only when change in
+        # direction"). Outage alerts above still fire, so silence still means "unchanged".
+        trigger, should = "unchanged", False
+        new_seen = {**seen, "state": seen.get("state") or name, "day": day, "health": health}
     new_seen["observed"] = observed
     new_seen["p"] = m.get("p")
 
     # A first reading resolving UNKNOWN is initialisation, not a direction change.
-    if trigger == "change" and prev is None:
-        trigger, should = "daily", seen.get("day") != day
+    if trigger.startswith("change") and prev is None:
+        trigger, should = "unchanged", False
+        new_seen = {**seen, "state": name, "day": day, "health": health}
 
     assert not any(b in subject.lower() for b in BANNED), f"banned phrase in subject: {subject}"
     return dict(subject=subject, body=body, short=short, should_send=bool(should),

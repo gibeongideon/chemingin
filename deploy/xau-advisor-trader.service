@@ -1,0 +1,10 @@
+[Unit]
+Description=XAUUSD advisor EXECUTOR — trades the advisor state on Switch demo, magic 360602
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-advisor-trader.sh
+TimeoutStartSec=120
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xau-advisor-trader

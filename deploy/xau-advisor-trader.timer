@@ -1,0 +1,11 @@
+# Every minute at :05 seconds. Other 18815 jobs fire at :20 (xau-advisor), :40 (trail-runner)
+# and :50 (zigzag-trail-watch); flock + the 3-try bridge retry are the real protection.
+[Unit]
+Description=Every-minute XAUUSD advisor executor (Switch 360602)
+[Timer]
+OnCalendar=*-*-* *:*:05
+Persistent=false
+AccuracySec=5s
+Unit=xau-advisor-trader.service
+[Install]
+WantedBy=timers.target

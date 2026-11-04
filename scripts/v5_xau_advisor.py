@@ -104,7 +104,14 @@ def main() -> None:
                     min_dwell_h=float(adv.get("hours", 9)))
     th.validate()
 
-    state = from_dict(json.loads(STATE.read_text())) if STATE.exists() else AdvisorState()
+    # The file holds the whole `out` dict with the machine NESTED under "state". Reading the top
+    # level instead (as this did until 2026-11-04) rebuilt UNKNOWN every run, so the machine was
+    # re-born every 5 minutes: hysteresis, dwell and thrash guard never engaged.
+    if STATE.exists():
+        saved = json.loads(STATE.read_text())
+        state = from_dict(saved.get("state") if isinstance(saved.get("state"), dict) else saved)
+    else:
+        state = AdvisorState()
     now = utcnow()
     out = {"computed_utc": now.isoformat(timespec="seconds"), "model_id": meta.get("model_id"),
            "cell": adv["cell"], "port": a.port}

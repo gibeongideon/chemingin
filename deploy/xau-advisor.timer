@@ -1,4 +1,5 @@
-# Every 5 minutes at :20 seconds past.
+# Every 15 minutes at :20 seconds past (was 5 min until 2026-11-04; the reading only changes
+# on an H4 close, so 15 min loses at most 15 min of detection latency).
 #
 # WHY :03/5 AND NOT :00/5. Stepping by 5 from 3 gives 03,08,13,...,58 -- alternating parity, so
 # half the slots still land on the same minute as the repo's every-2-minute units. The :20-second
@@ -8,9 +9,9 @@
 # Persistent=false: a missed 5-minute slot is worthless by the time it would fire, and catching
 # up a backlog on boot would step the state machine repeatedly for bars long since closed.
 [Unit]
-Description=Timer for the XAUUSD advisor (every 5 minutes)
+Description=Timer for the XAUUSD advisor (every 15 minutes)
 [Timer]
-OnCalendar=*-*-* *:03/5:20
+OnCalendar=*-*-* *:03/15:20
 OnBootSec=120sec
 Persistent=false
 AccuracySec=10s

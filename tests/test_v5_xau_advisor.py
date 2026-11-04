@@ -170,40 +170,60 @@ def test_both_tails_are_declared_validated(meta):
 def test_direction_change_sends_immediately_and_names_both_states(meta):
     """The user's ask: tell me when the direction changes."""
     seen = {"state": "UP", "day": "2026-09-19"}     # today's message already went
-    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+    held = str(NOW - timedelta(minutes=31))
+    m = build({"name": "DOWN", "health": "ok", "since": held},
               _reading(0.72, meta), meta, seen, now=NOW)
     assert m["trigger"] == "change" and m["should_send"], "a flip must send even after the daily"
     assert "DOWN" in m["subject"] and "was UP" in m["subject"]
     assert "CHANGED from UP" in m["body"]
-    again = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+    again = build({"name": "DOWN", "health": "ok", "since": held},
                   _reading(0.72, meta), meta, m["seen"], now=NOW)
     assert not again["should_send"], "the same direction must not resend"
 
 
 def test_a_flip_sends_even_with_the_market_closed(meta):
     seen = {"state": "NEUTRAL", "day": "2026-09-19"}
-    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+    m = build({"name": "DOWN", "health": "ok", "since": str(NOW - timedelta(minutes=45))},
               _reading(0.72, meta), meta, seen, now=NOW, market_closed=True)
     assert m["should_send"] and m["trigger"] == "change"
 
 
-def test_unchanged_direction_sends_once_a_day(meta):
+def test_unchanged_direction_never_sends(meta):
+    """User, 2026-11-04: notify ONLY on a change of direction -- no daily heartbeat."""
     seen = {"state": "UP", "day": "2026-09-18"}
-    m = build({"name": "UP", "health": "ok", "since": str(NOW)},
-              _reading(0.20, meta), meta, seen, now=NOW)
-    assert m["trigger"] == "daily" and m["should_send"]
-    m2 = build({"name": "UP", "health": "ok", "since": str(NOW)},
-               _reading(0.20, meta), meta, m["seen"], now=NOW)
-    assert not m2["should_send"]
-    m3 = build({"name": "UP", "health": "ok", "since": str(NOW)},
-               _reading(0.20, meta), meta, m["seen"], now=NOW + timedelta(days=1))
-    assert m3["should_send"], "the daily liveness message must resume the next day"
+    for d in range(3):
+        m = build({"name": "UP", "health": "ok", "since": str(NOW)},
+                  _reading(0.20, meta), meta, seen, now=NOW + timedelta(days=d))
+        assert m["trigger"] == "unchanged" and not m["should_send"]
+        seen = m["seen"]
+
+
+def test_a_flip_waits_30_minutes_then_sends_once(meta):
+    seen = {"state": "UP", "day": "2026-09-19"}
+    st = {"name": "DOWN", "health": "ok", "since": str(NOW)}
+    early = build(st, _reading(0.72, meta), meta, seen, now=NOW + timedelta(minutes=15))
+    assert early["trigger"] == "change_pending" and not early["should_send"]
+    assert early["seen"].get("state") == "UP", "a pending flip must not advance seen"
+    late = build(st, _reading(0.72, meta), meta, early["seen"], now=NOW + timedelta(minutes=30))
+    assert late["trigger"] == "change" and late["should_send"]
+    after = build(st, _reading(0.72, meta), meta, late["seen"], now=NOW + timedelta(minutes=45))
+    assert not after["should_send"]
+
+
+def test_a_flip_that_reverts_inside_30_minutes_sends_nothing(meta):
+    seen = {"state": "UP", "day": "2026-09-19"}
+    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)},
+              _reading(0.72, meta), meta, seen, now=NOW + timedelta(minutes=15))
+    back = build({"name": "UP", "health": "ok", "since": str(NOW + timedelta(minutes=15))},
+                 _reading(0.20, meta), meta, m["seen"], now=NOW + timedelta(minutes=30))
+    assert not m["should_send"] and not back["should_send"]
 
 
 def test_first_run_does_not_announce_a_direction_change(meta):
     m = build({"name": "NEUTRAL", "health": "ok", "since": str(NOW)},
               _reading(0.50, meta), meta, {}, now=NOW)
-    assert m["trigger"] == "daily", "UNKNOWN->first state is initialisation, not news"
+    assert m["trigger"] == "unchanged" and not m["should_send"], \
+        "UNKNOWN->first state is initialisation, not news"
     assert "was" not in m["subject"]
 
 
