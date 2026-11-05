@@ -7834,3 +7834,61 @@ also ~0 everywhere except GBP PD +0.15 (t 1.84), which is the mirror of GBP PD s
 positive, B >> A on the same window), on 33 + 103 trades over 2.3 years. It needs more M15 history
 (raise the terminal's max-bars, or another feed) as an OUT-OF-SAMPLE replication with the rules
 frozen as they are now, before it is anything more than the best of 20.
+
+### §3dc — Ghost-limit refusal: the §3bc adverse-selection law as a signal — p 0.953, and an underpowered design
+
+`scripts/v5_ghost_limit.py` (pre-registered in its docstring; plan
+`~/.claude/plans/soft-mapping-rabin.md`), report `data/v5_runs/ghost_limit/report.txt`, Switch
+H1 `data/sweep_switch/`. Idea: §3bc found pullback limits fill on the losers; treat a resting
+(never-sent) buy limit that is NOT filled within N hours as a buy signal. Long-only, ghost at
+day-close − K×D1 ATR14, K {0.5,1.0} × N {4,8} H1 bars × hold H {1,5} days × XAU/BTC/USTEC =
+24 cells. Decisive control: excess vs ALL day-close entries in the same window-return decile.
+
+**Result:** matched excess between −2.1 and +2.9bp in every cell, best t **+0.21** vs a
+within-bucket permutation max-null p50 +0.37 / p95 +0.63 → **p 0.953**. Refused ≈ all entries
+everywhere (XAU H5: 15.5 vs 15.9bp; BTC: 59-66 vs 58-61; USTEC: 20-22 vs 22-23).
+
+**Why it could not have worked as specified — a design flaw caught by the plan's own sanity
+check:** refuse rate **0.86-0.996**. The N bars after the day close are the quiet overnight
+session, which almost never travels 0.5-1.0 D1 ATR, so "refused" is nearly every day and the
+filled set is a few dozen outliers. §3bc's limits filled 28-61%. The test had no contrast to
+measure. A fair version needs the ghost calibrated to a ~50% fill rate (e.g. K in H1-ATR, or a
+trailing fill-rate quantile) — that would be a NEW registration, not a re-tune of this one.
+
+**Rule earned:** for any "conditional on X" signal, check X's base rate BEFORE reading results; a
+condition true 96% of the time is the unconditional trade with a new name.
+
+### §3dd — Trial lab: 675 logged trials, a locked holdout, and the composite that went t 4.09 → 0.12
+
+`scripts/v5_trial_lab.py`; `data/v5_runs/trial_lab/{trials,finalists,holdout}.csv`. User asked
+for extensive trial-and-error "until something makes sense". Guards: (1) everything from
+**2024-07-01** locked out of discovery; (2) every trial logged, K = 675, noise bar = p95 of
+max|t| over K = **3.95**; (3) score = Newey-West alpha of daily P&L vs **holding the asset at this
+broker, swap included** (first pass benchmarked frictionless holding and scored buy-and-hold
+t −170 on carry alone — fixed), net of max(quoted, 2025-26 median) spread.
+
+**15 families × XAU/BTC/USTEC (+ cross-asset):** ghost-limit at ~50% fill and its momentum twin,
+volatility-compression breakout, same-hour seasonality, walk-forward hour-of-day, spread spikes
+(no quotes pre-2025 → unscoreable), session-gap fade/follow, turn-of-month, dip/no-dip exposure,
+lead-lag between the three assets, BTC weekend → Monday gold/NDX, daily move continuation, close
+location, higher-lows runs, down-runs, NR7 / inside-day breaks.
+
+**Discovery:** best single trial t **2.56** (BTC gap-follow) vs bar 3.95. Hourly-turnover families
+are reliably NEGATIVE (lag24 to t −9.3, hourWF −5.6) — cost, not inverse information. Family
+means positive only for BTC continuation-type rules (dmove +1.24, tom +1.73, higherlows +0.96).
+
+**Holdout (3 one-shot tests, nothing else ever read the locked period):**
+
+| finalist | discovery t | holdout t |
+|---|---|---|
+| ≥2-ATR up day → long 5d, XAU (pre-declared rule: same trial t≥2 on ≥2 assets) | 2.08 | **−0.89** |
+| same, BTC | 2.39 | **+1.34** (alpha +11%/yr, ~8 events) |
+| BTC continuation composite (4 best-in-family rules, declared after discovery) | **4.09**, Sharpe 1.91 | **0.12**, Sharpe 0.15 |
+
+**No survivor.** The composite is the lesson: averaging four best-in-family picks cleared the
+K-trial bar on its own and was pure selection. A discovery t that clears the max-stat bar is
+still not evidence when the candidate was ASSEMBLED from the winners after looking.
+
+**Data defect found on the way:** the Switch H1 `spread` column is **0 for every bar before
+2025** on all three assets. §3db (liquidity sweep) therefore charged no cost pre-2025; its
+verdict (no survivor) only strengthens. Any study on `data/sweep_switch` must floor the spread.

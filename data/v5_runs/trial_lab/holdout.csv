@@ -1,0 +1,3 @@
+asset,trial,family,alpha_ann,t,beta,sharpe,exposure,turns_yr,h1,h2,yrs_pos,n_days,active_days
+XAUUSDs,dmove x2.0 H5d LO,dmove,-0.0607,-0.89,0.161,-0.3,0.017,1.7,-0.0476,-0.0738,0/3,607,12
+BTCUSDs,dmove x2.0 H5d LO,dmove,0.113,1.34,0.083,0.94,0.041,4.3,0.0611,0.1647,2/3,845,40

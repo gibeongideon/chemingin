@@ -191,6 +191,35 @@ def best_since(m, sym: str, p, tick) -> float:
     return max(best, float(tick.bid)) if p.type == BUY else min(best, float(tick.ask))
 
 
+# Every other job that talks to bridge 18815, by its wrapper's flock file.
+BRIDGE_PEERS = ("/tmp/xau-advisor.lock", "/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock",
+                "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/fill-probe.lock",
+                "/tmp/advisor-notify.lock")
+
+
+def busy_peer() -> str | None:
+    """Name of a bridge peer that is running RIGHT NOW, else None.
+
+    WHY. 18815 is ONE MetaTrader5 session shared by every client through rpyc. Any client's
+    shutdown() drops it for all, and this every-minute job used to call shutdown() in the middle
+    of the hourly zigzag run (:19:27, ~20s) and the book's market check (:50:27): zigzag got None
+    for XAUUSDs and the book saw BTC 'static' on a 24/7 market, from 2026-11-04 12:50 onward.
+    A minute skipped here costs nothing; a corrupted book or harness run costs an hour.
+    Test-and-release only: HOLDING a peer's lock would make that peer skip its own run."""
+    import fcntl
+    for path in BRIDGE_PEERS:
+        try:
+            with open(path, "a") as fh:
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    fcntl.flock(fh, fcntl.LOCK_UN)
+                except BlockingIOError:
+                    return path
+        except OSError:
+            continue
+    return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=18815)
@@ -198,6 +227,10 @@ def main() -> int:
     ap.add_argument("--risk-frac", type=float, default=RISK_FRAC)
     ap.add_argument("--execute", action="store_true")
     a = ap.parse_args()
+    peer = busy_peer()
+    if peer:
+        print(f"{datetime.now(timezone.utc):%H:%M:%SZ}  bridge peer running ({peer}); skipping")
+        return 0
 
     now = datetime.now(timezone.utc)
     adv_name, episode, adv_note = read_advisor(now)
@@ -231,11 +264,16 @@ def main() -> int:
             print(f"no quote for {sym}"); return 1
         if si.trade_mode != 4:
             print(f"REFUSING: {sym} trade_mode {si.trade_mode} is not FULL"); return 1
-        # Market open = the tick ADVANCES. Never compare server-stamped ticks to host UTC.
-        time.sleep(6)
-        tick = m.symbol_info_tick(sym) or t0
-        if int(tick.time) == int(t0.time) and float(tick.bid) == float(t0.bid):
-            print(f"  {sym} quote static over 6s -> market closed; nothing to do"); return 0
+        # MARKET OPEN, WITHOUT HOLDING THE BRIDGE. 18815 is a single-client bridge shared by
+        # ~8 timers; the old "sleep 6s and see if the tick moved" check held it long enough that
+        # zigzag-trail-switch (:19:07) got None for XAUUSDs every hour from 11:19 to 18:19 on
+        # 2026-11-04. Instead compare the gold tick to BTC's -- BTC ticks 24/7 on the SAME server
+        # clock, so a gold tick >10 min behind BTC means gold is closed. Never use host UTC here.
+        tick = t0
+        ref = m.symbol_info_tick("BTCUSDs")
+        if ref is not None and int(ref.time) - int(tick.time) > 600:
+            print(f"  {sym} last tick {int(ref.time) - int(tick.time)}s behind BTCUSDs -> "
+                  "market closed; nothing to do"); return 0
 
         atr = h4_atr(m, sym)
         if not (atr == atr and atr > 0):
@@ -341,7 +379,9 @@ def main() -> int:
             save_state(st)
         return 0
     finally:
-        m.shutdown()
+        # NO m.shutdown(): it tears down the terminal session for EVERY client on 18815.
+        # Closing our rpyc connection (by exiting) is enough.
+        pass
 
 
 if __name__ == "__main__":
