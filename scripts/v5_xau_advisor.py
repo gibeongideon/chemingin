@@ -42,6 +42,7 @@ from src.v5.xau_advisor_state import (  # noqa: E402
 STATE = ROOT / "data" / "v5_runs" / "xau_advisor_state.json"
 CACHE = ROOT / "data" / "v5_runs" / "xau_advisor_cache.json"
 TF_H4, TF_M5 = 16388, 5
+BIAS_AT = 0.5        # raw P(down-first) below -> BUY bias, at/above -> SELL bias
 
 
 def _atomic(path: Path, obj: dict) -> None:
@@ -138,10 +139,12 @@ def main() -> None:
             raise AdvisorUnavailable(f"bridge {a.port} init failed after 3 tries: {last}")
         h4 = fetch_h4(mt5, a.symbol)
         market = market_panel(mt5, a.symbol)
-        mt5.shutdown()
+        # NO mt5.shutdown(): bridge 18815 is ONE MT5 session shared by every Switch job, and a
+        # shutdown from any client drops it for all of them (the 2026-11-04 zigzag outage).
 
         cache = json.loads(CACHE.read_text()) if CACHE.exists() else {}
-        key = f"{h4.index[-1].isoformat()}|{meta.get('model_id')}"
+        # "|raw" versions the cache: readings cached before p_raw existed must be recomputed.
+        key = f"{h4.index[-1].isoformat()}|{meta.get('model_id')}|raw"
         if cache.get("key") == key:
             reading = cache["reading"]
             reading["asof"] = pd.Timestamp(reading["asof"])
@@ -174,6 +177,14 @@ def main() -> None:
     asof = (reading or {}).get("decision_time")
     asof = pd.Timestamp(asof).tz_localize(timezone.utc) if asof is not None else None
 
+    # OVERALL BUY/SELL BIAS (user, 2026-11-05): a two-state lean that always has a side, so the
+    # executor can trade and the notifier can announce a switch the moment it happens. BUY when
+    # the raw P(down-first) < 0.5, SELL otherwise. It re-scores only on a new closed H4 bar, so a
+    # switch is visible within one advisor run (5 min) of the bar close. NOT a measured edge: the
+    # validated calls are only the extreme UP/DOWN buckets of the 3-state machine below.
+    bias = dict((json.loads(STATE.read_text()).get("bias") or {}) if STATE.exists() else {})
+    p_raw = (reading or {}).get("adverse", {}).get("p_raw")
+
     # step ONLY on a new closed bar
     stepped = False
     if reading is not None and (state.asof is None or asof > state.asof):
@@ -181,6 +192,14 @@ def main() -> None:
         stepped = True
     elif health != "ok":
         state = step(state, None, None, th, now, health=health)
+    # the bias moves on a new bar, or initialises on the first reading it ever sees
+    if p_raw is not None and health == "ok" and (stepped or not bias.get("side")):
+        side = "BUY" if p_raw < BIAS_AT else "SELL"
+        if side != bias.get("side"):
+            bias = {"side": side, "since": now.isoformat(), "prev": bias.get("side"),
+                    "bar": str(asof)}
+        bias["p_raw"] = p_raw
+        bias["asof"] = str(asof)
 
     # The displayed figure is oriented to the STATE, not to the label: an UP state must quote
     # P(up-first) = 1 - observed, or the card shows 40% where the measurement says 60%.
@@ -188,6 +207,7 @@ def main() -> None:
                        float(adv["measured"]["base_rate"]))
           if (reading is not None and p is not None) else {})
     obs = od.get("pct")
+    out.update(bias=bias, p_raw=p_raw)
     out.update(state=to_dict(state), health=health, stepped=stepped, broken=broken,
                market=market, market_closed=closed, p=p, observed=obs,
                observed_n=od.get("n"), observed_base=od.get("base"),
@@ -210,6 +230,9 @@ def main() -> None:
         print(f"p {p:.4f}  state {state.name}  displayed {shown} (base {shown_base})  "
               f"health {health}  stepped {stepped}")
         print(f"STATE: {out['headline']}")
+        if bias:
+            print(f"BIAS: {bias.get('side')}  p_raw {bias.get('p_raw', float('nan')):.4f}  "
+                  f"since {bias.get('since')}  (was {bias.get('prev')})")
         if state.last_transition:
             print(f"  transition {state.last_transition[0]} -> {state.last_transition[1]}")
     if a.show and market:

@@ -328,3 +328,36 @@ def test_a_recovered_reading_clears_the_outage_age(meta):
     # and a fresh fault afterwards must start its clock from zero, not from three days ago
     again = build(st, None, meta, r["seen"], now=NOW + timedelta(minutes=5), broken=fault)
     assert "0 min" in again["subject"] or "min" in again["subject"], again["subject"]
+
+
+# ---------------------------------------------------------------- BUY/SELL bias (2026-11-05)
+def _bias(side, since=NOW, p_raw=0.45):
+    return {"side": side, "since": str(since), "p_raw": p_raw}
+
+
+def test_a_bias_switch_sends_immediately(meta):
+    seen = {"state": "NEUTRAL", "bias": "BUY", "status_sent": NOW.isoformat()}
+    m = build({"name": "NEUTRAL", "health": "ok", "since": str(NOW)}, _reading(0.50, meta),
+              meta, seen, now=NOW + timedelta(minutes=5), bias=_bias("SELL", NOW, 0.53))
+    assert m["trigger"] == "switch" and m["should_send"]
+    assert "SWITCH -> SELL" in m["subject"] and "was BUY" in m["subject"]
+    assert m["seen"]["bias"] == "SELL"
+
+
+def test_status_every_30_minutes_and_not_between(meta):
+    seen = {"state": "NEUTRAL", "bias": "BUY", "status_sent": NOW.isoformat()}
+    st = {"name": "NEUTRAL", "health": "ok", "since": str(NOW)}
+    mid = build(st, _reading(0.50, meta), meta, seen, now=NOW + timedelta(minutes=15),
+                bias=_bias("BUY"))
+    assert not mid["should_send"]
+    due = build(st, _reading(0.50, meta), meta, mid["seen"], now=NOW + timedelta(minutes=30),
+                bias=_bias("BUY"))
+    assert due["trigger"] == "status" and due["should_send"]
+
+
+def test_status_is_daily_while_market_closed(meta):
+    seen = {"state": "NEUTRAL", "bias": "BUY", "status_sent": NOW.isoformat(),
+            "status_day": NOW.strftime("%Y-%m-%d")}
+    m = build({"name": "NEUTRAL", "health": "ok", "since": str(NOW)}, _reading(0.50, meta),
+              meta, seen, now=NOW + timedelta(hours=2), market_closed=True, bias=_bias("BUY"))
+    assert not m["should_send"]

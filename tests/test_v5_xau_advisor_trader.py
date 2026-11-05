@@ -74,3 +74,17 @@ def test_lots_risk_half_percent():
     lots = lots_for(100_000, 0.005, 40.0, 100.0, 0.01, 100.0, 0.01)
     assert abs(lots - 0.12) < 0.011
     assert lots_for(100, 0.005, 40.0, 100.0, 0.01, 100.0, 0.01) == 0.01   # floors at vmin
+
+
+def test_executor_trades_the_bias_not_the_three_state(tmp_path, monkeypatch):
+    import json
+    from datetime import datetime, timezone
+    import scripts.v5_xau_advisor_trader as T
+    now = datetime(2026, 11, 5, 17, 0, tzinfo=timezone.utc)
+    f = tmp_path / "s.json"
+    f.write_text(json.dumps({"computed_utc": now.isoformat(), "health": "ok",
+                             "state": {"name": "NEUTRAL"},
+                             "bias": {"side": "SELL", "since": "x1", "p_raw": 0.53}}))
+    monkeypatch.setattr(T, "ADVISOR_STATE", f)
+    name, ep, _ = T.read_advisor(now)
+    assert (name, ep) == ("DOWN", "x1")

@@ -91,7 +91,7 @@ def main() -> None:
                       f"{s['computed_utc']}). A direction this old is not a current call.")
         m = build(s.get("state", {}), reading, meta, seen, now=now,
                   market=s.get("market"), broken=broken,
-                  market_closed=bool(s.get("market_closed")))
+                  market_closed=bool(s.get("market_closed")), bias=s.get("bias"))
 
     print(m["body"])
     print(f"\ntrigger={m['trigger']}  should_send={m['should_send']}")
@@ -103,7 +103,7 @@ def main() -> None:
         if not a.dry:
             save_seen(SEEN, m["seen"])
     else:
-        print("(nothing sent — no confirmed direction change)")
+        print("(nothing sent — no switch, and the 30-min status is not due)")
 
 
 if __name__ == "__main__":

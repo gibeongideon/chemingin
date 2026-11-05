@@ -37,7 +37,7 @@ $PY scripts/v5_xau_advisor.py --port 18815 --symbol XAUUSDs >> "$LOG" 2>&1
 $PY scripts/v5_xau_advisor_notify.py >> "$LOG" 2>&1
 
 # The ORDER EXECUTOR runs on its own every-minute timer (xau-advisor-trader.timer) and reads
-# the state file this writes. Kept out of this wrapper so trailing is not tied to the 15-min cadence.
+# the state file this writes. Kept out of this wrapper so trailing is not tied to the 5-min cadence.
 
-# keep the log from growing without bound (96 runs/day)
+# keep the log from growing without bound (288 runs/day)
 if [ "$(wc -l < "$LOG")" -gt 20000 ]; then tail -8000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"; fi

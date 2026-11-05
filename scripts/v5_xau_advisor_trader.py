@@ -54,7 +54,7 @@ SL_ATR = 1.0        # initial stop = the advisor's own barrier (1.0 x H4 ATR20)
 TRAIL_ATR = 1.0     # ratchet distance from the best price since entry
 RISK_FRAC = 0.005   # per entry; Sharpe-invariant dial, 0.5% under a 10% wall (risk_frac table)
 MAX_SPREAD = 0.80   # $ — skip ENTRIES above this; Switch quotes ~$0.28 in normal hours
-MAX_STATE_AGE_MIN = 35       # advisor runs every 15 min; allow one missed slot
+MAX_STATE_AGE_MIN = 16       # advisor runs every 5 min; allow two missed slots
 BUY, SELL = 0, 1    # MT5 POSITION_TYPE_BUY / _SELL
 FIELDS = ["utc", "event", "side", "price", "sl", "volume", "ticket", "profit", "retcode",
           "advisor", "atr", "note"]
@@ -152,10 +152,16 @@ def save_state(d: dict) -> None:
 
 
 def read_advisor(now: datetime) -> tuple[str, str | None, str]:
-    """(state name, episode id, note). Anything stale/broken/frozen reads as UNKNOWN."""
+    """(state name, episode id, note). Anything stale/broken/frozen reads as UNKNOWN.
+
+    TRADES THE BUY/SELL BIAS (user, 2026-11-05), not the 3-state UP/NEUTRAL/DOWN machine, which
+    sat in NEUTRAL for 30h and so never placed an order. BUY -> "UP", SELL -> "DOWN"; the
+    episode is the bias's own `since`, so each switch allows exactly one entry."""
     a = load_json(ADVISOR_STATE)
     st = a.get("state") or {}
-    name, since = st.get("name") or "UNKNOWN", st.get("since")
+    b = a.get("bias") or {}
+    name = {"BUY": "UP", "SELL": "DOWN"}.get(b.get("side"), "UNKNOWN")
+    since = b.get("since")
     try:
         age = (now - datetime.fromisoformat(a["computed_utc"])).total_seconds() / 60
     except Exception:
@@ -164,7 +170,8 @@ def read_advisor(now: datetime) -> tuple[str, str | None, str]:
         return "UNKNOWN", None, f"advisor state {age:.0f} min old"
     if a.get("broken") or st.get("frozen") or a.get("health") not in ("ok", "thrashing"):
         return "UNKNOWN", None, f"advisor unhealthy ({a.get('health')}, {a.get('broken')})"
-    return name, since, f"advisor {name} p={a.get('p')} since {since}"
+    return name, since, (f"bias {b.get('side')} raw p={b.get('p_raw')} since {since} "
+                         f"[3-state {st.get('name')}]")
 
 
 def h4_atr(m, sym: str) -> float:

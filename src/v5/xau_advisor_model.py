@@ -75,8 +75,12 @@ def load(path: Path | str = ARTIFACT) -> dict:
     return _CACHE
 
 
-def _predict(blob: dict, X: pd.DataFrame) -> float:
-    """One row through the frozen estimator and its frozen calibrator."""
+def _predict(blob: dict, X: pd.DataFrame, raw: bool = False) -> float:
+    """One row through the frozen estimator and its frozen calibrator.
+
+    raw=True returns the estimator's probability BEFORE the isotonic calibrator. The calibrator
+    has one wide flat step (raw ~0.41-0.49 -> 0.4549) that swallows most bars, so the calibrated
+    number cannot express a lean; the raw one can (it crosses 0.5 about once a trading day)."""
     cols = blob["features"]
     missing = [c for c in cols if c not in X.columns]
     if missing:
@@ -87,6 +91,8 @@ def _predict(blob: dict, X: pd.DataFrame) -> float:
         raise AdvisorUnavailable(f"non-finite features on the decision bar: {bad[:5]}")
     v = blob["scaler"].transform(x.values) if blob.get("scaler") is not None else x.values
     p = float(blob["model"].predict_proba(v)[:, 1][0])
+    if raw:
+        return p
     cal = blob.get("calibrator")
     if cal is not None:
         p = float(cal.predict(np.array([p]))[0]) if hasattr(cal, "predict") and not hasattr(
@@ -147,6 +153,7 @@ def advise(h4: pd.DataFrame, m15: pd.DataFrame, path: Path | str = ARTIFACT) -> 
     b = bucket_for(p_adv, a["measured"]["reliability"])
     out["adverse"] = {
         "p": p_adv,
+        "p_raw": _predict(blobs["adverse"], Xa, raw=True),
         "usable": a["usable"], "tier": a["tier"],
         "cell": a["cell"], "k_atr": a["k_atr"], "hours": a["hours"],
         "down_at": a["down_at"], "down_release": a["down_release"],

@@ -95,11 +95,16 @@ def _fmt_ci(ci) -> str:
     return f"CI [{float(ci[0]):.3f}, {float(ci[1]):.3f}]"
 
 
+STATUS_MINUTES = 30             # a status message this often; a BUY/SELL switch sends at once
+
+
 def build(state: dict, reading: dict | None, meta: dict, seen: dict,
           now: datetime | None = None, market: dict | None = None,
-          broken: str | None = None, market_closed: bool = False) -> dict:
+          broken: str | None = None, market_closed: bool = False,
+          bias: dict | None = None) -> dict:
     """Return {subject, body, should_send, trigger, seen}. Pure — no I/O, no sending."""
     now = now or datetime.now(timezone.utc)
+    bias = bias or {}
     hk = _hour_key(now)
     a = (meta or {}).get("adverse", {})
     d = (meta or {}).get("direction", {})
@@ -188,9 +193,20 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
 
     # ------------------------------------------------------------------ subject
     flipped = bool(prev and prev != name and not frozen)
+    side = bias.get("side")
+    prev_side = seen.get("bias")
+    switched = bool(side and prev_side and side != prev_side and not frozen)
+    held_b = _held_minutes(bias.get("since"), now)
+    held_s = ("" if held_b is None else f"{held_b:.0f} min" if held_b < 120
+              else f"{held_b / 60:.1f}h")
     rate = f" P={obs_pct}" if observed is not None else ""
     if frozen or health != "ok":
         subject = f"[xau-advisor] {name} HELD — {health} (no current reading)"
+    elif switched:
+        subject = f"[xau-advisor] SWITCH -> {side} (was {prev_side})"
+    elif side:
+        subject = (f"[xau-advisor] {side} bias, held {held_s}"
+                   + (" — market closed" if market_closed else "") + f"  [{name}]")
     elif flipped:
         # The flip is the headline, in the user's own idiom: "now UP (P=60%), was DOWN".
         subject = f"[xau-advisor] {name}{rate} — was {prev}"
@@ -204,9 +220,20 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     # ------------------------------------------------------------------ body
     L = []
     L.append("=" * 72)
-    L.append("XAUUSD ADVISOR — advisory only. It places no orders and has no order path.")
+    L.append("XAUUSD ADVISOR — the advisor computes; a separate demo executor (magic 360602)")
+    L.append("trades the BUY/SELL bias below.")
     L.append("=" * 72)
     L.append("")
+    if side:
+        L.append(f"BIAS         {side}" + (f"   *** SWITCHED from {prev_side} ***" if switched
+                                           else f"   held {held_s}"))
+        pr = bias.get("p_raw")
+        if pr is not None:
+            L.append(f"             raw P(down first) {float(pr):.3f}  (BUY below 0.500)")
+        L.append("             the bias is the model's LEAN, not a measured edge; the measured")
+        L.append("             calls are only the UP / DOWN states of the direction below")
+        L.append(f"             since {bias.get('since')}")
+        L.append("")
     arrow = {"DOWN": "v  DOWN", "UP": "^  UP", "NEUTRAL": "-  NEUTRAL"}.get(name, f"?  {name}")
     L.append(f"DIRECTION    {arrow}" + ("   (HELD — see HEALTH)" if frozen else ""))
     if flipped:
@@ -285,7 +312,8 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         L.append(f"  quiet rule : more than {QUIET_HOURS}h without any message means this")
         L.append("               pipeline is down, NOT that the direction is steady.")
     else:
-        L.append("  You are emailed when the DIRECTION CHANGES, plus once a day either way.")
+        L.append(f"  You get a message the moment the BUY/SELL bias switches, and a status")
+        L.append(f"  every {STATUS_MINUTES} min while the market is open.")
         L.append(f"  quiet rule : more than {QUIET_HOURS}h without any message means this")
         L.append("               pipeline is down, NOT that the direction is steady.")
     L.append(f"  held since : {state.get('since')}")
@@ -310,10 +338,16 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     # Four lines at most: the call, what it is worth, the price, and why it is not moving.
     # The base rate stays, because a 60% call against a 49% base is the only thing that makes
     # the number mean anything, and dropping it is how a probability becomes a promise.
-    S = [f"{name}" + (f"  P={obs_pct} (base {100*base:.0f}%)" if observed is not None else "")
-         + ("  HELD" if frozen else "")]
+    S = []
+    if side:
+        S.append((f"SWITCH -> {side}  (was {prev_side})" if switched
+                  else f"{side} bias, held {held_s}")
+                 + (f"   raw p {float(bias['p_raw']):.3f}" if bias.get("p_raw") is not None
+                    else ""))
+    S.append(f"{name}" + (f"  P={obs_pct} (base {100*base:.0f}%)" if observed is not None else "")
+             + ("  HELD" if frozen else ""))
     if flipped:
-        S[0] += f"   was {prev}"
+        S[-1] += f"   was {prev}"
     S.append(m.get("advice", "no reading"))
     if market:
         bid, spread = market.get("bid"), market.get("spread")
@@ -336,6 +370,21 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         trigger = "health"
         should = seen.get("health_day") != day or seen.get("health") != health
         new_seen = {**seen, "health_day": day, "health": health}
+    elif side:
+        # USER, 2026-11-05: "signal when overall switch from buy to sell or vice versa ... as
+        # soon as possible ... notify every 30 minutes and any time it changes". A switch sends
+        # on the first run that sees it (no confirmation delay); otherwise a status goes out
+        # every STATUS_MINUTES, or once a day while the market is closed.
+        last = _held_minutes(seen.get("status_sent"), now)
+        if switched:
+            trigger, should = "switch", True
+        elif market_closed:
+            trigger, should = "status", seen.get("status_day") != day
+        else:
+            trigger, should = "status", last is None or last >= STATUS_MINUTES - 0.5
+        new_seen = {**seen, "state": name, "day": day, "health": health}
+        if should:
+            new_seen.update(bias=side, status_sent=now.isoformat(), status_day=day)
     elif flipped:
         # CONFIRMED CHANGES ONLY (user, 2026-11-04): a flip is announced once the new direction
         # has held CONFIRM_MINUTES. Until then `seen` is NOT advanced, so the notice goes out on
