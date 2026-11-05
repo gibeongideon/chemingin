@@ -86,5 +86,7 @@ def test_executor_trades_the_bias_not_the_three_state(tmp_path, monkeypatch):
                              "state": {"name": "NEUTRAL"},
                              "bias": {"side": "SELL", "since": "x1", "p_raw": 0.53}}))
     monkeypatch.setattr(T, "ADVISOR_STATE", f)
-    name, ep, _ = T.read_advisor(now)
-    assert (name, ep) == ("DOWN", "x1")
+    monkeypatch.setattr(T, "RULE", "BIAS")
+    assert T.read_advisor(now)[:2] == ("DOWN", "x1")
+    monkeypatch.setattr(T, "RULE", "STRONG")
+    assert T.read_advisor(now)[0] == "NEUTRAL", "STRONG rule ignores the bias"

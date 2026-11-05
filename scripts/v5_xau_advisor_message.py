@@ -200,10 +200,13 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     held_s = ("" if held_b is None else f"{held_b:.0f} min" if held_b < 120
               else f"{held_b / 60:.1f}h")
     rate = f" P={obs_pct}" if observed is not None else ""
+    act = {"UP": "executor BUYS", "DOWN": "executor SELLS"}.get(name, "executor stands aside")
     if frozen or health != "ok":
         subject = f"[xau-advisor] {name} HELD — {health} (no current reading)"
+    elif side and flipped:
+        subject = f"[xau-advisor] STRONG {name}{rate} (was {prev}) — {act}"
     elif switched:
-        subject = f"[xau-advisor] SWITCH -> {side} (was {prev_side})"
+        subject = f"[xau-advisor] bias SWITCH -> {side} (was {prev_side}) — info, not traded"
     elif side:
         subject = (f"[xau-advisor] {side} bias, held {held_s}"
                    + (" — market closed" if market_closed else "") + f"  [{name}]")
@@ -221,7 +224,8 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     L = []
     L.append("=" * 72)
     L.append("XAUUSD ADVISOR — the advisor computes; a separate demo executor (magic 360602)")
-    L.append("trades the BUY/SELL bias below.")
+    L.append("trades the STRONG direction (UP -> BUY, DOWN -> SELL, NEUTRAL -> no new entries).")
+    L.append("The BUY/SELL bias is shown as information only (it lost money in backtest).")
     L.append("=" * 72)
     L.append("")
     if side:
@@ -376,7 +380,10 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         # on the first run that sees it (no confirmation delay); otherwise a status goes out
         # every STATUS_MINUTES, or once a day while the market is closed.
         last = _held_minutes(seen.get("status_sent"), now)
-        if switched:
+        if flipped:
+            # the STRONG state is what the executor trades (2026-11-05): announce it at once
+            trigger, should = "change", True
+        elif switched:
             trigger, should = "switch", True
         elif market_closed:
             trigger, should = "status", seen.get("status_day") != day

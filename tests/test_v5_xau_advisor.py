@@ -361,3 +361,14 @@ def test_status_is_daily_while_market_closed(meta):
     m = build({"name": "NEUTRAL", "health": "ok", "since": str(NOW)}, _reading(0.50, meta),
               meta, seen, now=NOW + timedelta(hours=2), market_closed=True, bias=_bias("BUY"))
     assert not m["should_send"]
+
+
+def test_a_strong_flip_sends_immediately_with_the_executor_action(meta):
+    seen = {"state": "NEUTRAL", "bias": "BUY", "status_sent": NOW.isoformat()}
+    m = build({"name": "DOWN", "health": "ok", "since": str(NOW)}, _reading(0.72, meta),
+              meta, seen, now=NOW + timedelta(minutes=5), bias=_bias("SELL", NOW, 0.6))
+    assert m["trigger"] == "change" and m["should_send"]
+    assert "STRONG DOWN" in m["subject"] and "SELLS" in m["subject"]
+    again = build({"name": "DOWN", "health": "ok", "since": str(NOW)}, _reading(0.72, meta),
+                  meta, m["seen"], now=NOW + timedelta(minutes=10), bias=_bias("SELL", NOW, 0.6))
+    assert not again["should_send"]

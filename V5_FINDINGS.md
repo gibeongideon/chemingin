@@ -7892,3 +7892,57 @@ still not evidence when the candidate was ASSEMBLED from the winners after looki
 **Data defect found on the way:** the Switch H1 `spread` column is **0 for every bar before
 2025** on all three assets. §3db (liquidity sweep) therefore charged no cost pre-2025; its
 verdict (no survivor) only strengthens. Any study on `data/sweep_switch` must floor the spread.
+
+### §3de — The advisor as money: the BUY/SELL bias loses, the STRONG calls win only in-sample (2026-11-05, `scripts/v5_advisor_pnl.py`)
+
+The live executor (magic 360602) was replayed with its OWN `decide()` on Switch H1 bars: entry at
+the H4 close, $0.25 spread, 1.0×H4-ATR20 stop ratcheted 1.0 ATR behind the best price (stop
+checked before ratcheting), close-if-profit-else-hedge on a flip, one entry per episode, swap
+L −6% / S +2.5%. Null = 200 circular shifts of each rule's own signal series (same mechanics,
+same long/short mix, timing destroyed). Model `f1495d804cc6` was trained through 2026-06-15.
+
+| rule | span | trades | R | t | timing-shuffle p |
+|---|---|---|---|---|---|
+| BIAS (raw p<0.5 → BUY else SELL) | full | 3408 | −25.0 | −0.43 | 0.110 |
+| BIAS | OOS (5 mo) | 103 | **−15.1** | −1.87 | 0.955 |
+| STRONG (3-state UP→BUY, DOWN→SELL) | full | 473 | **+108.3** | 3.98 | 0.000 |
+| STRONG | OOS | 14 | 0.0 | 0.01 | 0.405 |
+| STRONG_LONG (UP→BUY, DOWN trims) | full | 297 | +75.3 | 3.59 | 0.000 |
+| STRONG_LONG | OOS | 7 | −2.0 | −1.40 | 0.690 |
+
+Per year, STRONG is positive in 9 of 10 years from 2016 to 2025 (Switch history before 2016 is
+one bar per day and is not an H1 test). **But 2016 to 2026-06 is the model's training period,
+so the +108R is in-sample.** The only out-of-sample evidence is 14 trades at 0.0R, which is
+no information either way. The executor was switched from BIAS to STRONG at the user's request
+the same day (`RULE` in `v5_xau_advisor_trader.py`); the bias stays in the notifications for
+information only. The live forward record is the test.
+
+### §3df — "Dynamic Grid Trading" (arXiv 2506.11921): the lower drawdown is lower exposure (2026-11-05, `scripts/v5_dgt_grid.py`)
+
+Replicated on the paper's own source: Binance 1m BTCUSDT/ETHUSDT, 2017-08 to 2026-10
+(4.83M bars each, `data/binance_1m/`), fee 0.0008, the paper's grid (k 0.5-10% × half 2-10).
+Bars are walked open → near extreme → far extreme → close, with limits filled at the level prices.
+Two readings of the reset rule: LITERAL (after a downside break the coins are kept in a bag;
+only the wallet funds the next grid) and RECENTRE (the whole account re-centres on every break).
+Control: a CONSTANT-MIX portfolio at the cell's own average coin fraction, rebalanced daily
+at the same fee. Sharpe is exposure-invariant, so it is the honest comparison.
+
+* **Headline not reproduced.** BTC in the paper window: B&H +24.7%/yr with 77% MDD, matching
+  the paper's ~22% and ~78%. The median DGT cell is LITERAL +23.3%/77% or RECENTRE +9.0%/55%,
+  not the ~30%/~45% claimed. Only a handful of the best-of-72 cells get close.
+* **The lower drawdown is the exposure.** RECENTRE holds 0.35-0.5 in coins on average, and a
+  constant mix at that fraction has the same drawdown. Median-cell Sharpe vs the matched mix:
+  BTC paper window 0.42 vs 0.66, BTC full 0.58 vs 0.80, ETH full 0.47 vs 0.68. LITERAL
+  accumulates a bag (exposure 0.8-1.0) and is buy-and-hold with extra steps.
+* **No cell is robust.** The edge over the matched mix forms a checkerboard: neighbouring
+  cells flip sign. The paper-window best cell (k 10%, half 9) beat the mix after the paper
+  too (BTC 0.76 vs 0.39; ETH 0.47 vs 0.11). But on the full 2017-26 history it LOSES on BTC
+  (−0.12), and every wide BTC cell loses there (−0.03 to −0.48). Grids win in ranges and lose
+  in trends; that is a regime bet, not an edge.
+* **On our CFDs it is worse.** Switch XAU M15 2024-26, spread fee plus −6% long swap: median
+  cell SR 0.42 vs the mix's 0.90, and 0% of RECENTRE cells beat B&H CAGR (gold trended).
+  BTC 2025-26 (falling): RECENTRE beats B&H's CAGR in 86% of cells, but the matched mix in
+  only 49%.
+
+Verdict: no tradeable edge. A grid is a contrarian rebalancer whose average exposure sets its
+drawdown. The paper compares it with 100%-invested buy-and-hold, which is the wrong benchmark.

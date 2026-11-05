@@ -55,6 +55,13 @@ TRAIL_ATR = 1.0     # ratchet distance from the best price since entry
 RISK_FRAC = 0.005   # per entry; Sharpe-invariant dial, 0.5% under a 10% wall (risk_frac table)
 MAX_SPREAD = 0.80   # $ — skip ENTRIES above this; Switch quotes ~$0.28 in normal hours
 MAX_STATE_AGE_MIN = 16       # advisor runs every 5 min; allow two missed slots
+# WHICH SIGNAL IS TRADED (user, 2026-11-05: "can we try this strong UP/DOWN one").
+#   "STRONG": the 3-state machine, UP -> BUY, DOWN -> SELL, NEUTRAL -> no entries (trail only).
+#   "BIAS"  : raw p < 0.5 -> BUY else SELL. Replayed by scripts/v5_advisor_pnl.py (§3de) it
+#             LOST: -25R over 2016-26, -15R in the 5 out-of-sample months, worse than shuffled
+#             timing. STRONG made +108R, t 3.98, beat 200 timing shuffles (p 0.000) -- but that
+#             is IN-SAMPLE (model trained through 2026-06-15); OOS is 14 trades at 0.0R.
+RULE = "STRONG"
 BUY, SELL = 0, 1    # MT5 POSITION_TYPE_BUY / _SELL
 FIELDS = ["utc", "event", "side", "price", "sl", "volume", "ticket", "profit", "retcode",
           "advisor", "atr", "note"]
@@ -160,8 +167,11 @@ def read_advisor(now: datetime) -> tuple[str, str | None, str]:
     a = load_json(ADVISOR_STATE)
     st = a.get("state") or {}
     b = a.get("bias") or {}
-    name = {"BUY": "UP", "SELL": "DOWN"}.get(b.get("side"), "UNKNOWN")
-    since = b.get("since")
+    if RULE == "STRONG":
+        name, since = st.get("name") or "UNKNOWN", st.get("since")
+    else:
+        name = {"BUY": "UP", "SELL": "DOWN"}.get(b.get("side"), "UNKNOWN")
+        since = b.get("since")
     try:
         age = (now - datetime.fromisoformat(a["computed_utc"])).total_seconds() / 60
     except Exception:
@@ -170,8 +180,8 @@ def read_advisor(now: datetime) -> tuple[str, str | None, str]:
         return "UNKNOWN", None, f"advisor state {age:.0f} min old"
     if a.get("broken") or st.get("frozen") or a.get("health") not in ("ok", "thrashing"):
         return "UNKNOWN", None, f"advisor unhealthy ({a.get('health')}, {a.get('broken')})"
-    return name, since, (f"bias {b.get('side')} raw p={b.get('p_raw')} since {since} "
-                         f"[3-state {st.get('name')}]")
+    return name, since, (f"rule {RULE}: strong {st.get('name')} p={a.get('p')} | "
+                         f"bias {b.get('side')} raw p={b.get('p_raw')} | episode {since}")
 
 
 def h4_atr(m, sym: str) -> float:

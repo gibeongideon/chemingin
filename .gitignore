@@ -33,3 +33,4 @@ screenshots/
 data/v5_runs/zigzag_atr/_*.npy
 data/v5_runs/zigzag_atr/_*.csv
 data/v5_runs/zigzag_atr/_catboost/
+data/binance_1m/
