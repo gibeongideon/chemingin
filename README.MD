@@ -1,226 +1,268 @@
-# MT5 V5 — XAU-centric prop-firm trend books
+# MT5 V5 — systematic gold & crypto trend books, and the research ledger behind them
 
-> **Two research regimes.** Since 2026-09-04 this project optimises net Sharpe with drawdown
-> unconstrained (regime U), not prop-firm pass rate (regime P). Which findings belong to which
-> regime — and where to pick up if we go back to a prop firm — is in **`RESEARCH-REGIMES.md`**.
+Long-only, vol-targeted **trend-following on assets that drift up** (gold first, then bitcoin), traded
+through MetaTrader 5 on a headless Linux/Wine VPS — plus a research ledger of **several thousand
+logged trials**, most of them honest failures. The project is optimised for **net Sharpe after real
+broker costs and financing** (research regime U since 2026-09-04; prop-firm-specific results are
+partitioned in `RESEARCH-REGIMES.md`).
 
+**Read first:**
 
-Systematic **trend-following books built to pass (and hold) prop-firm challenges** —
-FTMO, FundingPips, Maven — trading gold plus a few uncorrelated diversifiers via MT5 on a
-headless Linux/Wine VPS. The question that drives everything: *what book passes a 2-step
-challenge at the highest probability and fastest median time, net of real broker costs?*
+- `V5_FINDINGS.md` — the settled ledger (§1 … §3dk). Read its **MANDATORY CONTROLS** before trusting any number.
+- `RESEARCH-REGIMES.md` — which conclusions hold under a drawdown wall (P) vs pure Sharpe (U).
+- `researchpepers/*-FINDINGS.md` — external papers we replicated, one file per paper.
+- `BlogPOST.md` — the plain-English story.
 
-**Two documents matter most.** `V5_FINDINGS.md` is the settled research ledger — read its
-**MANDATORY CONTROLS** before trusting any number in this repo. `BlogPOST.md` is the
-plain-English write-up of what was found and what it cost to find out.
-
-> The old EURUSD/USDJPY candle-champion path (`v5_validate_champion.py`, candle features)
-> is **superseded**. The project pivoted to XAU trend books.
+*Last updated 2026-11-06.*
 
 ---
 
-## Current state — 2026-09-03
+## 1. Best findings at a glance
 
-**Nothing is trading right now.** Every trading timer on the VPS is disabled. This is a
-deliberate, known state, not a fault:
-
-| Account | Bridge | Book | Status |
+| # | Finding | Number | Where |
 |---|---|---|---|
-| **FTMO-Demo 100K** (1514222432) | 18814 | XAU+BTC+NDX+BRENT @9% | **stopped 2026-08-28** by decision. All 8 positions closed for **+$3,215 realised**, final balance $102,944.17 (+2.9% into a +10% P1). Timers disabled. |
-| **FundingPips 10K** (20414926) | 18812 | XAU(micro)+ETH+DJI30 | **dead** — broker returns *"Invalid account"* on login. Its bots had already been failing before this; its terminal prefix was repurposed for Maven. |
-| **HFM cent live** (54939391) | 18813 | dual `ls` + `champ` | **drained to $0.12 USC** (~$0.001). Timer paused. Was a plumbing-validation account, never a returns account. |
-| **Maven 100K** (10398574, *BNPL P1*) | 18812 | champion (long-only) | **built, logged in, verified — BLOCKED.** Orders rejected `retcode 10026` = *autotrading disabled by server*. Needs enabling in Maven's dashboard; nothing else is outstanding. |
+| 1 | **Kill the shorts.** On drift assets the short side loses in every family tested (10/10 signal families, 5 more times since) | long-only roughly doubles long/short Sharpe | §3, `xau-longonly-champion` |
+| 2 | **The champion** — long-only EWMAC ∪ breakout, `conc^1.5`, fast vol-target, XAU H4 | Sharpe **≈1.02–1.10**, net of a $0.448 spread | `src/v5/xau_dual_signals.py::champion_signal` |
+| 3 | **Diversification is the only thing that lifts it.** Same recipe, verbatim, on uncorrelated drift assets | XAU+BTC book **1.26** (2018–26, DD −13.4%); 4-sleeve XAU+BTC+NDX+BRENT **1.48** | `scripts/v5_book_overlays.py` |
+| 4 | **The recipe is a template, not a gold fact.** Frozen params across 8 drift classes | portfolio **1.60** (DSR 0.9998; realistic live 1.2–1.4) | `data/v5_runs/SHARPE16_QUEST.md` |
+| 5 | **Financing is the largest live lever.** Swap costs −3.79%/yr | −0.29 Sharpe; swap-free gold lifts the XAU sleeve **0.886 → 1.090** | §3q, §3ag |
+| 6 | **Carry beats spread on slow sleeves.** BTC turns ~5.8×/yr, so its swap matters more than a 37× worse spread | venue choice moves BTC Sharpe by 0.2–0.5 | §3bq–§3br |
+| 7 | **`risk_frac` is a pure dial.** Sharpe is invariant at ≈1.02 from 0.25% to 4% risk; tail risk is not | 1%→2% doubles CAGR, multiplies P(−10% DD) ~24× | `xau-riskfrac-sizing-table` |
+| 8 | **BTC trend beats holding bitcoin** in both halves and at 10× spread | WF Sharpe 1.40; converts −83% DD into −13% | §3bp (DSR 0.743 — a *lead*) |
 
-**Maven, measured live:** spread **$0.44** (12 tick samples, stable — FTMO-class, *not*
-raw/ECN), leverage 1:75, swap **−$45.33 long / +$25.25 short** per lot per night,
-`stops_level` 0. Executor `scripts/v5_maven_champ.py` (magic 360571, config
-`configs/v5_xau_maven.json`, `risk_frac` 0.5%) with a **once-per-day guard** so a manual
-profit-take is never re-opened by the next hourly reconcile.
-
-### Known infrastructure faults
-
-- **Two of three MT5 terminals cannot serve the Python API.** After the 2026-08-28 reboot
-  (kernel 6.8.0-124 → 6.8.0-138), the two **build 5836** instances (`.mt5b` cent, `.mt5c`
-  FTMO) never reach "MCP started" and every `initialize()` returns `-10005 IPC timeout`.
-  The **build 6140** instance (`.mt5`, now Maven) works. Terminal GUIs are fine; only the
-  API channel is affected. Reviving them needs a build upgrade, not a restart.
-- `mt5-terminal.service`'s `ExecStop` uses a bare `pkill -f terminal64.exe` + `wineserver -k`,
-  which would kill **all** instances. Never `systemctl stop` it — kill by verified
-  `/proc/<pid>/environ` `WINEPREFIX` instead.
-- Maven's ini auto-login does **not** survive a terminal restart (the broker's server
-  discovery is slower than the ini path's patience). A restart currently needs a one-time
-  VNC login. Do not restart that terminal casually.
+**The single-asset ceiling is real:** XAU alone tops out at ~1.05–1.10. Every attempt to push one
+asset further — 40+ overlay configs, regime gates, ML detectors, intraday timing, new data types —
+failed (§4). Sharpe comes from *more independent drift*, cheaper *financing*, and *honest sizing*.
 
 ---
 
-## The breakthrough: diversification, and only diversification
+## 2. The champion recipe
 
-**The champion** (`src/v5/xau_dual_signals.py::champion_signal`) is a long-only blend of
-EWMAC (16/32/64 vs 64/128/256 **days**) and 10/20/40-day breakout, concentrated at
-`conc^1.5` with a small resting long tilt, run through a causal vol-target. On XAU H4, net
-of a live $0.448 spread, it does **Sharpe ≈ 1.02–1.10, maxDD ≈ −11%** at 1% risk/trade.
+```text
+forecast = 0.5·conc( max(EWMAC_mid⁺, Breakout_fast⁺) ) + 0.5·conc( Breakout_fast⁺ ) + 0.15
+  ⁺          = clip at 0 (LONG-ONLY)
+  conc(s)    = past-only-normalised s^1.5
+  EWMAC_mid  = (16,64)/(32,128)/(64,256) days      Breakout_fast = 10/20/40 days
+position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0.1, next-bar fill
+```
 
-Two levers produced that, and nothing else has since:
+- Survives 3× cost and a 2-bar delay.
+- About half its Sharpe is gold's secular drift. It sells *drawdown control* relative to holding the metal: it does not beat buy-and-hold on gold, it beats it on BTC.
+- The discrete live port (3×ATR trail, confidence-scaled risk) gives Sharpe ≈0.97, DD −10%.
 
-**1. Killing the shorts.** Re-confirmed independently in 2026-09 at a completely different
-horizon: across **ten** signal families, the short side lost money on **all ten**, and
-long-only roughly *doubled* every long/short Sharpe (e.g. EWMAC 12–60h: both +0.34,
-long-only **+0.86**, short-only −0.58).
+---
 
-**2. Uncorrelated sleeves.** Re-measured cleanly with per-instrument basis-point costs:
+## 3. What is live (Switch Markets demo + FundingPips trial, VPS `68.183.91.240`)
 
-| | Sharpe | maxDD |
+| Magic | System | Venue / bridge | Status |
+|---|---|---|---|
+| **360595** | XAU+BTC 50/50 champion book (`configs/v5_xau_btc_switch.json`) | Switch demo, 18815 | **live**, every 4h at :50 |
+| **360598** | XAU+BTC book | FundingPips-Trial, 18816 | live, every 4h at :20 |
+| **360601** | ZigZag bottom detector + 3×ATR trail | Switch, 18815 | live hourly (:19) — **earns gold's drift, not timing** (§3dg/§3dk) |
+| 360597 | ZigZag + trail | FundingPips-Trial | live hourly (:24) |
+| **360602** | Advisor executor — trades STRONG UP/DOWN of the adverse-move advisor | Switch | live every minute; in-sample edge only (§3de) |
+| 360600 | Intraday trail-follower (`INTRADAY-TRAIL-SPEC.md`) | Switch | live, 5-min |
+| 360599 | Fill probe — measures buy-stop slippage at the prior-day high | demo | measurement only |
+| — | `xau-advisor` (5-min) + `advisor-notify` / `zigzag-notify` | Telegram + email | notifications |
+
+**Broken, needs a decision:** `zigzag-obs` and `trend-signal` fail every run. `zigzag-obs` is on the dead FTMO bridge 18814; `trend-signal` fails the same way, and its logs haven't been checked yet.
+
+---
+
+## 4. What does NOT work (closed — do not re-run without a new data type)
+
+The negative results are most of the value. Each is in `V5_FINDINGS.md` with its controls. Most
+failures come down to five recurring reasons:
+
+- **(a) drift in disguise:** looked good only because gold/BTC go up;
+- **(b) cost wall:** a real effect smaller than the spread;
+- **(c) exposure/leverage in disguise:** less risk, not more skill;
+- **(d) timing ≈ random:** fails a random-timing null;
+- **(e) measurement artifact:** leak, bar-order or a null bug.
+
+### Overlays on the champion (§3w–3at)
+
+| Tried | Result | Why it failed |
 |---|---|---|
-| Gold alone | +1.098 | −19.5% |
-| **4-sleeve book (XAU+BTC+NDX+BRENT)** | **+1.480** | **−8.0%** |
+| ADX / regime **gates** | 1.084 → 1.007, DD worse, t −2.88 | (c) cuts exposure in trends' early phase; regimes are known only after the fact |
+| **Scale-in / averaging down** (54 variants) | lose at matched CAGR | (c) it is leverage; plain higher `risk_frac` does it better |
+| Five lifts, 6-component stack, vol taper | 0/29, 0/29; taper failed replication (1/4 sleeves) | collinear with the champion (+0.85) or a post-2022 artifact |
+| **Risk oracles** (perfect foresight of future vol / MAE) | +0.085 Sharpe, t +0.68 | even perfect risk knowledge is worth little to a vol-targeted trend book |
+| **Profit locks, breakeven stops, scaling out** | lock 50% of peak: 86% wins but −85% return; BE stop −6.4bp/trade | cut the right tail that pays for trend following |
 
-Higher Sharpe than any component and less than half the drawdown of the best one. NDX
-standalone is a mediocre +0.52 and still earns its place — it contributes decorrelation,
-not return.
+### Entry timing (§3v, 3bi, 3db, 3dg, 3dk)
 
-### Two findings that changed how we size
+| Tried | Result | Why it failed |
+|---|---|---|
+| **ICT/SMC** (12 concepts + 4 confluences), **liquidity sweeps** | 0 survivors; "mitigation" works backwards | (d)/(a) every zone loses to a flat ATR offset at the same distance |
+| **Turning-point / pivot detectors** | top oracle +1.25, best detector +0.09 | (d) a pivot is only knowable after confirmation, when the move is gone |
+| **ZigZag** (HistGB, XGB/CatBoost, longer windows, payoff label) | live Sharpe = gold's; random timing p 0.48 | (a)/(d) the model learns gold's drift, not bottoms |
+| **Wait for a pullback / limit entries** | filled −22.8bp vs skipped +17.9bp | adverse selection: the dips that fill are the ones that keep falling |
 
-**`risk_frac` is a pure risk dial with a violent asymmetry.** Sharpe is *invariant* at
-+1.02 across 0.25%→4%; return scales linearly, breach probability does not:
+### Intraday / short horizon (§3be, 3bx, 3cc, 3dh, 3di)
 
-| risk/trade | Sharpe | CAGR | maxDD | P(−10% in 12mo, trailing) |
-|---|---|---|---|---|
-| **0.50%** | +1.015 | +4.4% | −5.8% | **0.0%** |
-| 1.00% | +1.024 | +9.0% | −11.2% | 1.9% |
-| 2.00% | +1.024 | +17.8% | −21.5% | **45.9%** |
+| Tried | Result | Why it failed |
+|---|---|---|
+| **M15–H1 trend, next-bar fade, overnight drift** | gross edges real, net negative | (b) M15 needs a 0.587 hit rate to break even vs 0.510 at D1 |
+| **Session ORB, release trigger (08:30 ET)** | p 0.84 after fixing the null | (e) the first "significance" was a cost offset inside a zero-mean null |
+| **Candle language** (n-gram over candle tokens) | +0.0095 nats/token, hit 52.3% | (b) real information, too small to pay the spread |
+| **5-min ORB Stocks in Play** (share CFDs) | direction beats random by ~1 Sharpe gross; net −10 | (b) CFD spread = 0.66R per side vs the paper's 0.01R |
 
-1%→2% doubles CAGR and multiplies 10%-drawdown risk by ~24×. **Use 0.5% under a 10% wall;
-never exceed 1.5%.** Also: *static* drawdown (from starting balance) is far more forgiving
-than *trailing* — 4.4% vs 17.9% breach at 1.5% risk. Sizing off the forgiving one by
-accident is how books get too big.
+### ML / AI (§3dj and memory)
 
-**Sharpe does not predict prop-firm pass rate — the dial-scaled left tail does.** The two
-deployed books are statistically *equivalent* (matched-vol paired t = −0.40) and 0.748
-correlated, with ETH≈BTC and DJI30≈NDX as near-substitutes. What separates pass rates is
-whether the vol dial pushes the worst day through the daily-loss limit:
+| Tried | Result | Why it failed |
+|---|---|---|
+| **Meta-labeling, DQN/RL, LLM H4 trader** | ≤ always-long; DQN = random | (a) every learner rediscovers "be long" |
+| **LSTM + MADL loss** (paper) | no loss beats buy & hold | (e) sign() has zero gradient, so it never trains; (a) others collapse to always long |
+| **Regime / direction classifiers** | 79/80 negative as P&L; 5.9σ AUC lift gave −0.70 Sharpe | AUC is payoff-blind: accuracy on small moves, losses on big ones |
 
-| book | dial | worst scaled day ×1.5 | vs 5% daily | fail_day | pass |
-|---|---|---|---|---|---|
-| XAU+BTC+NDX | 7% | −3.96% | ok | 0.0% | **98.7%** |
-| XAU+BTC+NDX | **9%** | **−5.09%** | **BREACH** | **13.9%** | 83.3% |
-| +BRENT | 9% | −4.80% | ok | 0.0% | 96.8% |
+### Factors, data, sizing and book construction
 
-**BRENT is tail insurance, not return** (on returns it is insignificant, t=+0.47; it takes
-daily breaches 13.9%→0.0%). This independently reconstructed the deployed design decision.
+| Tried | Result | Why it failed |
+|---|---|---|
+| **Factors/data:**<br>• value, BAB, skew, seasonality<br>• COT<br>• IV/VRP<br>• real yields, DXY<br>• volume zones<br>• TV ratings<br>• XS-momentum | 0 keepers in ~1,100 trials | (a) contrarian readings have the wrong sign on a drift asset; the identity excess(L)+excess(S) = −2×drift |
+| **Martingale, lot progressions, grids** (*Dynamic Grid Trading*) | ruin 71–97%; DGT loses to a matched constant-mix | (c) win/loss signs are serially independent (z +0.88), so a progression is leverage |
+| **Shorts / long-short on gold** | lose on every signal tested | (a) shorting a drifting asset pays the drift |
+| **Wider books** (weak sleeves) | 1.67 → 1.04 | weak sleeves dilute more than they diversify |
+| **Optimised weights** (HRP / RMT / CVaR / ERC) | 0/20 vs equal weight | estimation error > the gain |
 
 ---
 
-## What did NOT work
+## 5. Live leads (real effect, not yet proven enough to deploy at size)
 
-The negative results are the bulk of the value here. Everything below was built, measured
-honestly, and rejected — each is recorded in `V5_FINDINGS.md` with a "do not re-run" marker.
+| Lead | Evidence | What's missing |
+|---|---|---|
+| **BTC trend sleeve** | WF 1.40, beats holding BTC in both halves | DSR 0.743 < 0.90; kept at 1/6 speed |
+| **Long-only prior-high break** (stop order at yesterday's high) | net +10.2bp/trade, t +4.71, both halves, blend t ≥2 | entry slippage — fill probe 360599 is measuring it live |
+| **Swap-free gold instruments** | +0.20 Sharpe on the XAU sleeve | availability per venue; rollable futures cost more (§3cr) |
+| **BTC opening-range breakout** (9:30 ET, both stop orders, 10%-ATR stop, flat by 16:00) | pays in both directions; ETH replicates; book 1.26 → 1.32 | dies at 2× cost (0.10%/side); ETH spread at Switch 0.20% (§3di) |
+| **Drift-class portfolio** (finding #4) | 1.60 historical | re-cost D1 legs with real CFD spreads; rates are not tradeable on retail CFDs |
 
-**Five consecutive overlay families on the champion, ~40+ configurations, all failed:**
+---
 
-| attempt | outcome |
+## 6. Research papers replicated
+
+| Paper | File | Verdict |
+|---|---|---|
+| Zarattini, Barbon & Aziz — 5-min ORB on *Stocks in Play* (SSRN 4729284) | `researchpepers/ssrn-4729284-FINDINGS.md` | Direction effect **replicates** (beats random by ~1 Sharpe gross); untradeable on share CFDs (spread 0.66R/side); moved to crypto → the cost-fragile lead above |
+| Michańków et al. — MADL loss (J. Comp. Sci. 2024) | `researchpepers/MADL-S1877750324001686-FINDINGS.md` | **Does not replicate.** sign() has zero gradient, so "MADL-trained" = an untrained network; every loss → "always long" |
+| *Dynamic Grid Trading* (arXiv 2506.11921) | §3df | Lower drawdown is lower exposure; loses to a matched constant-mix |
+| SSRN 7445798 (prop-firm barrier maths) | `researchpepers/ssrn-7445798.pdf` | Read, not yet written up |
+
+---
+
+## 7. Potential research directions
+
+Ranked by how well the evidence supports them. The pattern is consistent: **signal research on
+gold price bars is exhausted; gains came from new independent drift, cheaper carry and better
+execution.**
+
+| # | Direction | Why it is promising | First concrete step |
+|---|---|---|---|
+| 1 | **More independent drift sleeves at honest cost** | The only lever that ever lifted Sharpe (gold 1.1 → book 1.26–1.6); class correlations ≈0–0.2 | Re-cost the drift-class portfolio's D1 legs with real Switch/FundingPips CFD spreads and swaps; add the sleeves that survive |
+| 2 | **Financing / venue optimisation** | Swap is −0.29 Sharpe, larger than any signal gain; swap-free gold is worth +0.20 on its sleeve | A monthly carry census across venues; route each sleeve to its cheapest-carry venue |
+| 3 | **Forward-test the cost-fragile leads** (BTC opening breakout, prior-high break) | Both are real effects whose verdict depends on fill quality, which only live fills can measure | Demo executors with their own magic numbers; compare realised slippage with the backtest's assumption |
+| 4 | **Sizing layer: stream-level risk equalisation** | Worth about +0.3 Sharpe in the drift portfolio; implementable live; not a signal | Port the equaliser into the book executor; paper-run beside 360595 |
+| 5 | **Genuinely new data types** (not derived from price bars) | 80/80 price-derived regime features failed: the information is not in OHLC | Crypto funding rates and on-chain flows for BTC; gold ETF holdings/flows; central-bank purchases (all retail-observable) |
+| 6 | **Prospective intraday data capture** | Switch keeps only 100k M1 bars and ~1 month of ticks; every tight-stop study needs finer bars | A daily M1 + tick archiver on the VPS (like the FF-calendar archiver), feeding tick-imbalance-bar studies later |
+| 7 | **Different venues for proven-but-blocked effects** | ORB "Stocks in Play" replicates in direction but needs per-share commissions; the ETH breakout needs ≤0.05% cost | Price a direct-market-access stock broker and a low-fee crypto venue; only proceed if executable retail |
+| 8 | **Combination study of the survivors** | Each lead is small; combined at matched vol they may clear the bar together | A pre-registered blend of champion book + BTC breakout + prior-high break, judged on one paired test |
+
+**Not worth more time** (closed on mechanism):
+- entry-timing detectors;
+- ICT/SMC;
+- intraday trend on gold;
+- loss-function or model-class swaps;
+- overlays on the champion;
+- grids and martingales;
+- shorts on drift assets.
+
+---
+
+## 8. Methodology — the actual product
+
+Thousands of failures are only informative if the measurement is trustworthy. `V5_FINDINGS.md` holds
+the full MANDATORY CONTROLS. The laws that changed answers:
+
+**Costs and benchmarks**
+- **Floor costs at live quotes.** CSV spread columns understate venues by up to 10×. Measure by sampling ticks, and run a **2× cost stress before any book test** (§3di).
+- **Benchmark against the incumbent and against holding the asset, not zero.** Since excess(LONG) + excess(SHORT) = −2 × drift, a long/short rule on a drift asset must beat *always long* to show skill.
+- **Gate overlays at MATCHED VOL** (paired t, years better). Raw paired returns punish de-risking; DSR is vacuous for overlays because they all inherit the base's edge.
+
+**Nulls**
+- **Random timing / random direction nulls.** A detector that matches circular-shifted timing has no timing skill (ZigZag p 0.48).
+- **Max-stat nulls on GROSS, signed.** A cost offset inside a zero-mean null manufactures significance (the ORB p 0.0000 → 0.84 episode). If flipping a parameter that shouldn't matter flips the verdict, run that flip first.
+- **Clearing a max-stat null qualifies the family**, not the arg-max cell; deploy the most robust cell.
+
+**Sampling traps**
+- **Measure the SKIPPED sample.** Limit orders fill on losers; the skipped trades are the winners.
+- **Window extremes are tautologies.** "At the N-day high" is determined by the window's return sign; split by outcome first.
+
+**Labels and oracles**
+- **Oracle ceiling first.** Hindsight-trade a label before building a detector for it; bottoms were worthless.
+- **AUC is payoff-blind.** Report EV per fire beside hit rate, and print the base rate next to every hit rate.
+
+**Leaks**
+- **Lookahead probes:**
+  - truncation invariance (`src/evaluation/lookahead_probe.py`);
+  - an intrabar leak screen (`intrabar_leak() > 0.15` refuses a series);
+  - cross-timeframe resampling is lookahead (a bar stamped t is only known at t + duration);
+  - multi-broker splices are leaks.
+
+**Measurement mechanics**
+- **Tight stops need fine bars.** With a stop of ~one bar's range, the bar order decides the trade. Use M1, or calibrate the coarse result against M1, and report the pessimistic bound.
+- **Watch the units.** Dollar constants don't transfer across instruments; bar-count lookbacks don't transfer across timeframes.
+- **Record the trial array.** An unrecorded grid makes DSR unreproducible.
+
+---
+
+## 9. Layout
+
+| Path | What |
 |---|---|
-| ADX-percentile regime **gate** | Sharpe 1.084→1.007, drawdown *worse*, paired t −2.88, pass 95%→80% |
-| **scale-in / averaging down** (54 variants) | leverage in disguise — plain champion at higher `risk_frac` beat it on Sharpe, drawdown, Calmar *and* worst trade |
-| **five untried lifts** (range-vol denominator, ensemble agreement, trend age, parameter cloud, skew) | 0/29 passed; the one that looked real was a post-2022 artifact and the live bot's ATR beat it anyway |
-| **6-component stack** (vol regime, trend strength, HTF confirm, hours, cost filter) | 0/29 passed; 2 of 6 were *already implemented*, 1 was collinear with the champion at +0.85, 1 a category error, 1 had no bad session to remove |
-| **high-vol taper** | best single result found (gold 1.098→1.311, both halves) — then failed pre-registered replication: 1 of 4 sleeves, and it *hurt* the portfolio (1.480→1.310) |
+| `src/v5/xau_dual_signals.py` | champion & long/short signals |
+| `scripts/v5_basket_challenge.py`, `scripts/v5_basket_challenge_exec.py` | book engine + guard-first executor (`--config`) |
+| `scripts/v5_xau_champion_lifts.py` | `engine_v`, `vol_match`, `report()` — the matched-vol overlay gate |
+| `scripts/v5_book_overlays.py` | `sleeve_returns()` — per-sleeve champion streams for book tests |
+| `scripts/v5_zigzag_signal.py`, `scripts/v5_zigzag_live_wf.py` | live ZigZag + its walk-forward replay |
+| `scripts/v5_xau_advisor*.py`, `src/v5/xau_advisor_model.py` | adverse-move advisor, notifier, executor |
+| `configs/` | one JSON per deployed book / venue |
+| `deploy/` | systemd units, wrappers, VPS provisioning (`vps_provision.sh`) |
+| `researchpepers/` | papers + per-paper FINDINGS |
+| `data/` | market data (**git-ignored**: data never goes in git) and `data/v5_runs/` reports |
 
-**Other closed lines:** 12 ICT/SMC concepts + 4 confluence combos (zero survivors);
-turning-point bottom-detector as a scalp (all 48 cells negative); 4–15h long/short book
-(shorts lose on 10/10 signals, cost wall); intraday/multi-timeframe (H4 beats M30/H1 *even
-at $0.12 raw spread* — the intraday signal is genuinely worse, not merely cost-limited);
-LLM-as-analyst (no edge); martingale (ruins 71–97% of runs); meta-labeling (failed twice).
+Recent research scripts:
 
-**Maven's 0% daily-loss mandate is infeasible.** Backtested honestly: with tight stops
-**41.7% of days** realise a loss; loosening stops trades frequency for severity (worst day
-−5.0%). No parameterisation gets near "never lose on a day" — that constraint is
-incompatible with taking directional risk at all. The account is therefore run with manual
-exit discipline plus a 0.5% risk dial, not an automated zero-loss guarantee.
-
-**A commercial EA ("Happy Gold – OxS") was reverse-engineered and proved un-replicable.**
-The log is genuine (balance reconciles to the cent). Its direction rule was fully recovered
-(momentum, t≈30) but carries **no standalone edge** (+$0.22 gross vs a $4.40 spread). The
-edge is in *entry timing*, which is provably absent from 15-minute bars (every feature
-t≤2.6 vs matched controls) and was **not** reproduced by tick-level burst triggers on 2.95M
-real ticks. Four candidate mechanisms eliminated; see `strategy/REVERSE_ENGINEERING_REPORT.md`.
+| Script | § |
+|---|---|
+| `v5_orb_stocks_in_play.py` | §3dh |
+| `v5_orb_xau_btc.py`, `v5_orb_book_integration.py` | §3di |
+| `v5_madl_lstm.py` | §3dj |
+| `v5_zigzag_madl.py` | §3dk |
+| `v5_zigzag_bert.py` | BERT-style candle encoder → ZigZag |
+| `v5_dgt_grid.py` | §3df |
+| `v5_advisor_pnl.py` | §3de |
 
 ---
 
-## Methodology — the actual product
+## 10. Ops gotchas
 
-Forty-plus failures are only informative if the measurement is trustworthy.
-`V5_FINDINGS.md` holds the full MANDATORY CONTROLS list; the ones that changed answers:
+**The shared bridge**
+- **One MT5 session per bridge, shared over rpyc.** Never call `mt5.shutdown()` from a job: it drops the session for every other job on that bridge (2026-11-04 incident). High-frequency jobs must yield to peers' `/tmp/*.lock`.
+- **`np.float64` must never cross the rpyc bridge.** Cast to `float` at the boundary.
 
-- **Floor every cost at live broker rates.** The CSV spread column understates the venue by
-  up to 10×. Measure the real spread by sampling ticks.
-- **Benchmark against the incumbent, not zero.** Most overlays are positive-Sharpe and
-  still worthless.
-- **Gate de-risking overlays at MATCHED VOL.** Anything that multiplies exposure by ≤1 will
-  show a *negative* raw paired-return test even when Sharpe and drawdown clearly improve.
-  One variant read Sharpe 1.155 vs 1.084 and DD −13.4% vs −19.8% with a raw t of −2.52.
-- **Split-sample everything, including things that pass.** A pooled t of +2.25 with 7-of-9
-  years positive still turned out to be a post-2022 artifact.
-- **DSR is near-vacuous for overlays.** When every candidate is a variation of an
-  already-good base they all inherit its edge; we logged DSR 0.998 alongside PBO 0.845. For
-  overlays the gate is the paired test against the base.
-- **Probe for lookahead mechanically** (`src/evaluation/lookahead_probe.py`) — truncation
-  invariance on synthetic data, run *before* trusting a backtest.
-- **Pre-register the decisive test.** The taper replication would have produced a positive
-  story if a per-asset schedule had been cherry-picked after the fact.
-- **Watch the units.** Dollar constants don't transfer across instruments ($0.10 slippage is
-  0.002bp on BTC and 12bp on Brent); bar-count lookbacks don't transfer across timeframes
-  (`D=6` silently makes the champion a 96–1536 *day* system on daily bars). Both produced
-  spectacular nonsense before being caught.
+**Time and history**
+- **Clocks:** the Switch server is New York + 7h all year (16:30 server = 9:30 ET). Three gates once died because host time was used instead of server time.
+- **Switch caps history:** M1 holds only 100,000 bars (~3 months). Plan intraday studies prospectively, since broker tick retention is ~1 month.
 
----
+**Account state**
+- **Sticky guards:** prop-style `phase_complete` latches flat forever; re-derive guards per venue, never copy them.
+- **Manual trading trips the bot guard** on a shared account; never mix hand trades and a bot.
+- **Account switching:** a cached `common.ini` beats the startup ini, and `term_running()` makes a restart a no-op.
 
-## Layout
+**Wine and systemd**
+- Any systemd unit launching Wine needs `KillMode=none`.
+- Never `systemctl stop mt5-terminal`: it kills every instance.
 
-**Engines** — `scripts/v5_basket_challenge.py` (champion recipe + portfolio vol-target),
-`scripts/v5_basket_challenge_exec.py` (generic guard-first executor, `--config <firm>.json`),
-`src/v5/xau_trend.py` (discrete trade-ticket engine) via `scripts/v5_xau_dual.py` /
-`scripts/v5_maven_champ.py`.
-
-**Configs** — `v5_ftmo_challenge.json` (4-asset @9%), `v5_fp_flex_10k.json` (10K book),
-`v5_xau_maven.json` (Maven, 0.5% risk), `v5_xau_dual.json` (cent dual),
-`v5_fundingpips_funded.json` (*planned* weekend-flat @6%),
-`v5_xau_champ_fundingpips.json` (*planned* champ-only half-risk).
-
-**Research** — `V5_FINDINGS.md` (ledger), `BlogPOST.md` (narrative),
-`strategy/REVERSE_ENGINEERING_REPORT.md` (EA forensics), `FUNDED-STAGE-PLAN.md`,
-`SPRINT-OPTIONS.md`, `CHALLENGEBOT.MD`. Session memory in
-`~/.claude/projects/.../memory/` (`MEMORY.md` index) is the fast-recall layer for what is
-deployed, disproven, and why.
-
----
-
-## Immediate next actions
-
-1. **Enable algorithmic trading for the Maven account** in Maven's dashboard — the only
-   thing blocking a live champion there. Everything else is built and dry-run verified.
-2. **Decide the FundingPips 10K account's fate** — the login is invalid; it needs renewing
-   or writing off.
-3. **Fund or retire the HFM cent account** — at $0.001 it cannot size a single trade.
-4. **Upgrade the two build-5836 terminals** if their accounts are ever needed again; a
-   restart alone will not fix the IPC fault.
-5. If a Friday-flatten is wanted for FundingPips funded stage, that executor feature is
-   still unbuilt (`fundingpips-b-account-plan` in memory).
-
-## Ops gotchas
-
-- **`np.float64` must never cross the rpyc bridge** — it ships to the Wine interpreter as
-  literal `np.float64(...)` and is eval'd without numpy → `NameError`. Cast to plain `float`
-  at the boundary (bit the cent bot's trailing stop and sizing twice).
-- **Vendor trade logs may not share your feed's clock.** The reverse-engineered EA log ran
-  **+2h** ahead; before correcting it, 43% of its trades looked "physically impossible."
-  Always solve the offset by maximising in-bar fill consistency first.
-- **Broker tick retention is ~1 month** — verified: ticks exist at 1 day/1 week/1 month and
-  are *zero* at 3, 6, 9 and 11 months. Any tick-level study must be planned prospectively.
-- Local dev MT5 on Wayland can die at launch (`nodrv_CreateWindow`); fix is `wineserver -k`
-  then relaunch with the mutter Xwayland cookie, not `~/.Xauthority`.
-- Any systemd unit launching Wine needs `KillMode=none`, or teardown kills the shared
-  wineserver and takes the persistent terminal with it.
-- **Prop firms can restrict a symbol mid-challenge without notice** (FundingPips set
-  XAUUSDmicro CLOSE-ONLY once). The executor checks `trade_mode` before sending.
-- This repo can have **concurrent Claude sessions** committing and switching branches; check
-  `git reflog` before assuming a missing file is data loss.
+**Repo hygiene**
+- This repo can have **concurrent Claude sessions**; check `git reflog` before assuming data loss.
