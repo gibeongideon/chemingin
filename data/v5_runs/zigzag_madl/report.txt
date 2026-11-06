@@ -1,0 +1,14 @@
+Switch XAUUSDs H1 walk-forward 2024-01-01..2026-11-05 19:00:00, pooled ['EURUSDs', 'GBPUSDs', 'USDJPYs']
+BASE vs §3dg live probs: corr 0.9873, max |diff| 0.2517
+hold gold same days (with swap): SHARPE +0.93
+variant  lock  trades  win  avgR  totR  ann  mdd  sharpe  null_p50  null_p95     p                              by_year
+   BASE  True     551 71.1 0.029  16.2 1.36 3.39    0.58      0.91      1.49 0.810 {2024: -1.2, 2025: 20.6, 2026: -3.2}
+   BASE False     507 40.6 0.098  49.7 4.24 2.17    1.27      1.20      1.70 0.390  {2024: 8.9, 2025: 30.2, 2026: 10.5}
+PIVOT_W  True     555 70.1 0.005   2.5 0.19 3.71    0.10      0.85      1.54 0.960 {2024: -0.8, 2025: 12.2, 2026: -8.9}
+PIVOT_W False     501 40.5 0.084  42.2 3.58 3.24    1.10      1.18      1.66 0.605 {2024: 13.9, 2025: 29.9, 2026: -1.6}
+MADL_50  True    1395 69.4 0.046  64.2 5.49 6.44    1.28      1.34      1.69 0.685 {2024: 23.6, 2025: 49.8, 2026: -9.2}
+MADL_50 False     780 39.4 0.083  64.7 5.54 6.52    1.31      1.35      1.60 0.605 {2024: 22.1, 2025: 50.9, 2026: -8.4}
+MADL_60  True     326 65.0 0.028   9.2 0.77 1.73    0.39      0.79      1.52 0.805   {2024: -0.1, 2025: 1.7, 2026: 7.7}
+MADL_60 False     243 38.7 0.082  19.8 1.66 2.24    0.72      1.01      1.59 0.775    {2024: 8.2, 2025: 5.6, 2026: 6.0}
+
+p = share of 200 circular-shift timing replays (same fires, same trade rules) with Sharpe >= the variant's.

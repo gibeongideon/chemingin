@@ -1,0 +1,4 @@
+Switch XAUUSDs H1, walk-forward 2024-01-01 -> 2026-11-05 19:00:00, pooled with ['EURUSDs', 'GBPUSDs', 'USDJPYs']
+with +$100->+$50 lock: trades 555, win 72%, avg +0.047R, total +26.2R -> +6.69% at 0.25% risk (+2.22%/yr), maxDD 4.16%, SHARPE +0.93   by year {2024: {'count': 177, 'sum': 1.9}, 2025: {'count': 196, 'sum': 31.9}, 2026: {'count': 182, 'sum': -7.6}}
+without +$100->+$50 lock: trades 508, win 41%, avg +0.117R, total +59.5R -> +15.85% at 0.25% risk (+5.11%/yr), maxDD 2.75%, SHARPE +1.51   by year {2024: {'count': 167, 'sum': 13.0}, 2025: {'count': 178, 'sum': 37.4}, 2026: {'count': 163, 'sum': 9.1}}
+hold gold same days (with swap): +67.3%, SHARPE +0.93

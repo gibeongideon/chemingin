@@ -8020,3 +8020,49 @@ The paper claims Sharpe 2.81 (base version 0.48).
 **Method rules:**
 - A tight-stop intraday test needs bars at least ~5× finer than the stop's time scale, or an M1 calibration of the coarse result.
 - Run the 2× cost stress BEFORE the book test.
+
+### §3dj — MADL loss (Michańków et al. 2024, J. Comp. Sci. 81:102375): the exact loss cannot train, and every loss collapses to "always long" (2026-11-06, `scripts/v5_madl_lstm.py`)
+
+**Setup:**
+- LSTM 2×64 on daily returns; sequence 20 for BTC, 10 for WTI and gold.
+- Walk-forward: 4y train (33% validation, early stopping), then a 1y test, retrained yearly.
+- Five losses, 5 seeds each; net of Switch-class costs.
+
+| OOS net Sharpe (median of 5 seeds) | BTC 2016+ | WTI 2002+ | GOLD 2002+ |
+|---|---|---|---|
+| buy & hold | **+0.89** | −0.02 | **+0.70** |
+| MADL_EXACT (the paper's) | +0.82 (seeds −0.89 … +0.89) | −0.02 | +0.66 (seeds −0.70 … +0.70) |
+| MADL_SOFT (tanh, trainable) | +0.87, 97% long | −0.13 | +0.56 |
+| MAE | +0.31 | −0.08 | +0.50 |
+| MSE | +0.87, 95% long | −0.21 | +0.56 |
+| UNTRAINED (random init) | +0.41 (seeds ±0.89) | −0.02 | +0.19 (seeds ±0.70) |
+
+1. **MADL_EXACT is an untrained network.** d sign/dx = 0, so backprop gets no signal. Its seeds land on exactly ±buy-and-hold, like UNTRAINED: a random-init LSTM emits a near-constant sign, so it is "always long" or "always short" by luck of the seed. Early stopping on validation MADL just picks among near-identical weight-decayed copies. The paper's MADL-vs-MAE gap is therefore a comparison between a coin-flip constant position and a trained model.
+2. **No loss beats holding.** On BTC and gold every trained loss converges toward long 85–97% of the time and lands at or below buy-and-hold (the drift identity again). On WTI (no drift) everything is ≈0 or negative. Hit rates are 50–53%.
+3. **Book overlay** (gate the XAU/BTC champion sleeves by the forecast sign):
+   - MADL and MSE ensembles never say "short" after 2018, so the gate is inert (SR 1.260 = book).
+   - MAE gating hurts: 1.103, t −1.45.
+
+**Verdict:** closed. MADL as published does not optimise. The trainable variant is a P&L objective that learns "be long" on drift assets, which the champion already does better. Fourth confirmation that the loss or model class is not the lever ([[zigzag-closed-model-class-not-the-lever]], §3dg).
+
+### §3dk — ZigZag-MADL: training the live ZigZag on trade PAYOFF instead of the pivot label — no variant beats random timing (2026-11-06, `scripts/v5_zigzag_madl.py`)
+
+**Setup:**
+- Borrowed from §3dj: the MADL objective in classification form. The label is sign(R) of the live trade started at that bar (next open + $0.25, 3-ATR trail, max hold 120), with sample weight |R|.
+- Same features, pooling (gold + EURUSD/GBPUSD/USDJPY), monthly walk-forward 2024-01..2026-11 and trade rules as §3dg.
+- Control: 200 circular-shift timing replays.
+
+| variant | lock | trades | avg R | Sharpe | null p50 | p |
+|---|---|---|---|---|---|---|
+| BASE (live label) | yes / no | 551 / 507 | +0.029 / +0.098 | 0.58 / 1.27 | 0.91 / 1.20 | 0.81 / 0.39 |
+| PIVOT_W (pivot label, weight abs R) | yes / no | 555 / 501 | +0.005 / +0.084 | 0.10 / 1.10 | 0.85 / 1.18 | 0.96 / 0.61 |
+| MADL_50 (R>0 label, abs-R weight, P≥0.5) | yes / no | 1395 / 780 | +0.046 / +0.083 | 1.28 / 1.31 | 1.34 / 1.35 | 0.69 / 0.61 |
+| MADL_60 (same, P≥0.6) | yes / no | 326 / 243 | +0.028 / +0.082 | 0.39 / 0.72 | 0.79 / 1.01 | 0.81 / 0.78 |
+
+Hold gold over the same days: 0.93.
+
+1. **No variant beats its own random-timing null** (p 0.39–0.96). MADL_50's higher Sharpe is exposure: it fires 2.5× as often, so it holds gold more; random timing with the same fires does 1.34.
+2. **The payoff label is nearly pure noise at H1.** Only 36% of bars start a winning trade, and the mean label R is +0.011. A model that learns it learns the drift.
+3. **Fragility flag:** BASE reproduces §3dg's probabilities at corr 0.987, yet its Sharpe moved 0.93 → 0.58 (lock) and 1.51 → 1.27 (no lock). The only change was a longer label purge (122 vs 4 bars), which drops the latest training rows. Small model perturbations move this harness's Sharpe by ±0.35, larger than any variant gap.
+
+**Verdict:** closed. Weighting by payoff does not give ZigZag timing skill. Combined with §3dg, the live 360601 earns gold's drift, and the +$100→+$50 lock costs about 0.6 Sharpe.
