@@ -1,0 +1,11 @@
+[Unit]
+Description=ZigZag + 3xATR trail on DARWINEX demo - magic 360606 (schedule)
+
+[Timer]
+OnCalendar=*-*-* *:29:27
+Persistent=false
+AccuracySec=10s
+Unit=zigzag-trail-darwinex.service
+
+[Install]
+WantedBy=timers.target

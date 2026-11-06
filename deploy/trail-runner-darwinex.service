@@ -1,0 +1,7 @@
+[Unit]
+Description=Trail-runner on DARWINEX demo - magic 360607
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trail-runner-darwinex.sh

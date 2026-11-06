@@ -33,8 +33,14 @@ STATE = ROOT / "data" / "v5_runs" / "trade_events_state.json"
 BOTS = {360595: "Book (XAU+BTC champion)", 360601: "ZigZag", 360600: "Trail-runner"}
 ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
                6: "BUY STOP LIMIT", 7: "SELL STOP LIMIT"}
-BRIDGE_PEERS = ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock",
-                "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock")
+PEERS_BY_PORT = {
+    18815: ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock",
+            "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock"),
+    18817: ("/tmp/xau-darwinex.lock", "/tmp/zigzag-trail-darwinex.lock",
+            "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner-darwinex.lock"),
+}
+LABEL = "Switch"
+BRIDGE_PEERS = PEERS_BY_PORT[18815]
 
 
 def peers_busy() -> str | None:
@@ -114,7 +120,7 @@ def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
         ex = f" → {exit_px:,.2f}" if exit_px else ""
         pl = money(pnl) if pnl is not None else f"~{money(x['profit'])} (last seen)"
         line = f"{side} {x['symbol']} {x['volume']} · {x['price']:,.2f}{ex} · P&L {pl}"
-    return head, f"{line}\n#{t} · Switch"
+    return head, f"{line}\n#{t} · {LABEL}"
 
 
 def weekly(m) -> tuple[str, str]:
@@ -134,7 +140,7 @@ def weekly(m) -> tuple[str, str]:
     for name, real, n, w, fl in rows:
         lines.append(f"• {name}: realised {money(real)} · {n} closed ({w} won) · open {money(fl)}")
     lines.append(f"TOTAL realised {money(tot)} · equity ${float(acct.equity):,.2f}")
-    return "📊 WEEKLY P/L · Switch", "\n".join(lines)
+    return f"📊 WEEKLY P/L · {LABEL}", "\n".join(lines)
 
 
 def main() -> int:
@@ -142,7 +148,20 @@ def main() -> int:
     ap.add_argument("--port", type=int, default=18815)
     ap.add_argument("--weekly", action="store_true")
     ap.add_argument("--dry", action="store_true", help="print, do not send")
+    ap.add_argument("--label", default="Switch", help="account name shown in every message")
+    ap.add_argument("--bots", default="",
+                    help="magic=Name,... e.g. '360605=Book (XAU champion),360606=ZigZag,360607=Trail-runner'")
     a = ap.parse_args()
+    global LABEL, BRIDGE_PEERS, STATE
+    LABEL = a.label
+    BRIDGE_PEERS = PEERS_BY_PORT.get(a.port, ())
+    if a.bots:
+        BOTS.clear()
+        for item in a.bots.split(","):
+            k, v = item.split("=", 1)
+            BOTS[int(k)] = v.strip()
+    if a.port != 18815:                    # one state file per account
+        STATE = STATE.with_name(f"trade_events_{a.port}_state.json")
     busy = peers_busy()
     if busy and not a.weekly:
         print(f"peer busy ({busy}); skipping this run")

@@ -1,0 +1,7 @@
+[Unit]
+Description=XAU champion book on DARWINEX demo - magic 360605
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-darwinex.sh

@@ -1,0 +1,7 @@
+[Unit]
+Description=Telegram trade events - DARWINEX bots 360605/360606/360607
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trade-events-darwinex.sh

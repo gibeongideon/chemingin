@@ -129,12 +129,23 @@ def wilder_atr(d: pd.DataFrame, n: int = 14) -> float:
 
 
 def main() -> int:
+    global MAGIC, LOG, STATE          # rebound below for a second account (--magic / --tag)
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=18815)
     ap.add_argument("--symbol", default="XAUUSDs")
     ap.add_argument("--risk-frac", type=float, default=RISK_FRAC)
     ap.add_argument("--execute", action="store_true")
+    ap.add_argument("--magic", type=int, default=MAGIC,
+                    help="360600 Switch (default) · 360607 Darwinex")
+    ap.add_argument("--tag", default="",
+                    help="state/log file suffix for a second account, e.g. 'darwinex'")
     a = ap.parse_args()
+    # A second account (Darwinex, 2026-11-06) runs this same runner: its own magic, and its own
+    # state + log files so the two accounts' daily decisions never overwrite each other.
+    MAGIC = a.magic
+    if a.tag:
+        LOG = LOG.with_name(f"trail_runner_{a.tag}_log.csv")
+        STATE = STATE.with_name(f"trail_runner_{a.tag}_state.json")
 
     from mt5linux import MetaTrader5
     # RETRY: 18815 is shared by seven timers and this one now polls every 5 minutes. A terminal
@@ -294,6 +305,17 @@ def main() -> int:
         _release(m); return 0
     if srv_now.hour >= DAY_END_HOUR:
         print("  past day end; no new order today"); _release(m); return 0
+    # The spec cancels the day if the prior-day LOW trades first. Block 2 enforces that only on an
+    # order that already exists, so a runner starting mid-day (new account, lost state) would
+    # place a stop on a day the rule has already voided. Found 2026-11-06 deploying Darwinex.
+    todays_low = float(D["low"].iloc[-1]) if D.index[-1].normalize() == srv_now.normalize() \
+        else float(tick.bid)
+    if todays_low < pdl:
+        print(f"  prior-day LOW {pdl:.2f} already broke today (low {todays_low:.2f}) — the spec "
+              f"voids today. No order.")
+        record(**base, event="skip", level=pdh, note=f"low first: {todays_low:.2f} < pdl {pdl:.2f}")
+        save_state(dict(day=day, decided="skipped_low_first"))
+        _release(m); return 0
     if tick.ask >= pdh:
         print(f"  ask {tick.ask:.2f} already above the level {pdh:.2f} — a stop here fills at "
               f"market, which is not the trade that was measured. Skipping today.")

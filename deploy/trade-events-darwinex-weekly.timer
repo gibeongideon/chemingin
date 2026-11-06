@@ -1,0 +1,11 @@
+[Unit]
+Description=Telegram weekly P/L - DARWINEX (schedule)
+
+[Timer]
+OnCalendar=Sat *-*-* 07:05:00
+Persistent=true
+AccuracySec=10s
+Unit=trade-events-darwinex-weekly.service
+
+[Install]
+WantedBy=timers.target

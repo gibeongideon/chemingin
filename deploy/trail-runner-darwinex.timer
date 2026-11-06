@@ -1,0 +1,11 @@
+[Unit]
+Description=Trail-runner on DARWINEX demo - magic 360607 (schedule)
+
+[Timer]
+OnCalendar=*-*-* *:03/5:50
+Persistent=false
+AccuracySec=10s
+Unit=trail-runner-darwinex.service
+
+[Install]
+WantedBy=timers.target

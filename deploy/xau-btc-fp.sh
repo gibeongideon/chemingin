@@ -33,7 +33,7 @@ for s in ("XAUUSD", "BTCUSD"):        # BTC trades weekends; gold does not
         print(f"  market check: {s} ticking -> OPEN"); open_any = True
     else:
         print(f"  market check: {s} static -> closed")
-mt5.shutdown()
+pass  # NO mt5.shutdown(): this bridge is shared by every job on it (2026-11-06)
 sys.exit(0 if open_any else 1)
 PYOPEN
 case $? in
@@ -80,7 +80,7 @@ if not mt5.initialize():
 mt5.symbol_select("XAUUSD", True)
 tick = mt5.symbol_info_tick("XAUUSD")
 r = mt5.copy_rates_from_pos("XAUUSD", 16388, 0, 4)   # 16388 = TIMEFRAME_H4
-mt5.shutdown()
+pass  # NO mt5.shutdown(): this bridge is shared by every job on it (2026-11-06)
 if r is None or len(r) < 2:
     print("  gate XAUUSD_H4_switch: broker returned no H4 bars"); sys.exit(1)
 if tick is None:

@@ -1,0 +1,7 @@
+[Unit]
+Description=Telegram weekly P/L - DARWINEX
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trade-events-darwinex.sh --weekly

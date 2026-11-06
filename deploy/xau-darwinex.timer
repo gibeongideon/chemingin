@@ -1,0 +1,11 @@
+[Unit]
+Description=XAU champion book on DARWINEX demo - magic 360605 (schedule)
+
+[Timer]
+OnCalendar=*-*-* 0/4:55:27
+Persistent=false
+AccuracySec=10s
+Unit=xau-darwinex.service
+
+[Install]
+WantedBy=timers.target
