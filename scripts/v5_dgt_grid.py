@@ -59,7 +59,7 @@ PERIODS = {
 
 # ------------------------------------------------------------------------------------ data ---
 def build() -> None:
-    for sym in ("BTCUSDT", "ETHUSDT"):
+    for sym in ("BTCUSDT", "ETHUSDT", "PAXGUSDT"):
         parts = []
         for z in sorted((RAW / "zips").glob(f"{sym}-1m-*.zip")):
             with zipfile.ZipFile(z) as zf:
@@ -283,7 +283,7 @@ def main() -> None:
         (OUT / "cfd_report.txt").write_text(txt + "\n")
         return
     frames = []
-    for sym in ("BTCUSDT", "ETHUSDT"):
+    for sym in ("BTCUSDT", "ETHUSDT", "PAXGUSDT"):
         df = load(sym)
         for per, (s, e) in PERIODS.items():
             sub = df[(df.index >= s) & (df.index < e)]

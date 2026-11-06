@@ -7963,3 +7963,60 @@ The detector's timing is worth nothing: the same number of fires at circularly s
 scores the same Sharpe. The positive number is a long-only 3-ATR trail riding gold's 2024-26
 bull. The +$100→+$50 lock cuts Sharpe from 1.51 to 0.93, the §3co breakeven family again.
 This is consistent with §3x/§3bv, not a reversal of them.
+
+### §3dh — 5-min ORB "Stocks in Play" (SSRN 4729284) on Switch US-share CFDs: the direction is real, the spread is 0.66R per side (2026-11-06, `scripts/v5_orb_stocks_in_play.py`)
+
+**The paper's rules:**
+- trade the first 5-minute candle's direction with a stop order at the opening-range high or low;
+- stop at 10% of ATR14, flat at the close, 1% risk, 4× leverage cap;
+- "Stocks in Play" = opening-range relative volume ≥ 1, top 20.
+
+The paper claims Sharpe 2.81 (base version 0.48).
+
+**Data:**
+- Switch M5 bid bars with the quoted spread, fetched via `scripts/v5_us_m5_fetch.py`;
+- 313 of 1,302 listed names returned history, 233 pass the filters;
+- 594 days, 2024-06..2026-11;
+- tick volume stands in for shares.
+
+**Control:** random direction (same names, days, levels and stops, coin-flip side, 200 draws).
+
+| variant | NET Sharpe | GROSS Sharpe | random-dir p50 (gross) | p (gross) |
+|---|---|---|---|---|
+| BASE (54.8k trades) | −18.3 | −1.33 | −2.43 | 0.000 |
+| SIP20 (9.9k) | −10.3 | −0.27 | −1.26 | 0.015 |
+| SIP20_CHEAP (stop ≥ 6× spread, 2.1k) | −0.12 | +0.35 | −0.31 | 0.055 |
+
+*(These are the OHLC-path entry-bar results. With the pessimistic bound, NET Sharpe ranges from −7.6 to −44 everywhere.)*
+
+1. **The first candle's direction does carry information.** It beats a random direction by about 1 Sharpe gross (p 0.000–0.015), stable in both halves (SIP20 gross −0.46 / −0.12). This is the paper's mechanism, and it replicates in direction.
+2. **The cost makes it untradeable here.** The CFD spread is a flat ~$0.31. Against a 10%-ATR stop (median R ≈ $0.46) that is **0.66R per side**, i.e. about 1.3R per round trip, against an edge of about +0.05R per trade. The paper's commission ($0.0035/share) is about 0.01R. Even the cheapest sixth of names nets −0.12.
+3. **Method trap: with a stop this tight, the entry bar decides the trade.** The pessimistic same-bar rule made even the gross random-direction trades lose −0.5R each; the true value for a cost-free random trade is about 0. Use the OHLC path convention (an up bar runs O→L→H→C) and report the pessimistic bound beside it. Gross random still sits at −1.3 to −2.4 Sharpe, so the absolute gross level is biased low. That is why the comparison is against the random-direction null, not against zero. M1 bars would resolve it, but they cannot rescue 1.3R of cost.
+
+**Verdict:** a real, paper-replicating direction effect that cannot be traded on MT5 share CFDs. It would need direct-market-access equities (per-share commission). Closed on venue cost, not on edge.
+
+### §3di — The ORB "working bit" moved to gold/BTC/ETH and into the champion book: real in both directions, killed by a doubling of cost (2026-11-06, `scripts/v5_orb_xau_btc.py`, `scripts/v5_orb_book_integration.py`)
+
+**Hypothesis (user's ask):** fold the §3dh direction effect into the best strategy. On gold and BTC the spread is small against a 10%-ATR stop (XAU ~0.13R, BTC ~0.12R per side, versus 0.66R on share CFDs). So: the paper's exact rule at 9:30 ET, flat at 16:00 ET.
+
+1. **On 24h assets the direction adds nothing; the structure carries the edge.**
+   - Random-direction trades are as good as the rule: XAU gross +1.17 vs null p50 +1.22 (p 0.64); BTC +1.00 vs +1.04.
+   - Holding **both** stop orders beats either: BTC gross +1.49.
+   - So an opening-range breakout with a tight stop and a same-day exit pays in both directions.
+2. **Gold cannot be measured on M15; calibrated, it is about 0 net.**
+   - M15 swings from +1.17 (path convention) to −1.26 (pessimistic).
+   - On the 60 days where Switch M1 exists, the M15 path matches M1 on the long leg (−0.111 vs −0.111R, signs 100% agree) but overstates the short leg (+0.395 vs +0.164R). That is a bias of ~+0.1R per trade, about the whole net gold edge (+0.07R).
+   - PAXG 1m (Binance) is a bad gold proxy at this scale: −1.6 even gross, because of thin-book wicks.
+   - Switch caps M1 history at 100,000 bars, about 3 months.
+3. **BTC on the M1 path is bar-order robust** (gross PATH +1.00 / PESS +0.95). **ETH replicates the frozen rules:** BOTH net +0.99 (PATH) / +0.82 (PESS), positive in both halves.
+4. **In the book** (XAU+BTC champion at equal weight, SR 1.260, DD −13.4%), adding a BTC+ETH BOTH sleeve at 10% of risk gives SR 1.346, t@matched +2.76, 8/9 years, DD −10.7%. At 20%: SR 1.43.
+5. **Killed by cost:**
+   - At 0.10% per side (2× the assumption): BTC −0.53, sleeve −0.06, book 1.246 (t −0.47).
+   - Live Switch quote on 2026-11-06: BTCUSDs 0.045% (the assumption holds), **ETHUSDs 0.20%** (4×, so dead).
+   - BTC alone: book 1.26 → 1.32, t +1.80 (PATH) / +0.88 (PESS). Not significant, with a razor-thin cost margin.
+
+**Verdict:** a genuine behavioural effect (intraday breakout convexity after the US open, both directions, replicated on ETH). It is not deployable at Switch costs. BTC-only is a lead that needs a forward test with real fills; a 9:30 ET spread widening would erase it.
+
+**Method rules:**
+- A tight-stop intraday test needs bars at least ~5× finer than the stop's time scale, or an M1 calibration of the coarse result.
+- Run the 2× cost stress BEFORE the book test.

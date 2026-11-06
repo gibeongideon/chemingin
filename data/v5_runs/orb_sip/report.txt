@@ -1,0 +1,12 @@
+entry bar: OHLC path; 233 symbols, 594 days 2024-06-14..2026-11-05; spread per side in R: median 0.67 all, 0.66 SIP20
+SIP20 NET halves: Sharpe -6.32 / -15.08
+SIP20 GROSS halves: Sharpe -0.46 / -0.12
+    variant  cost  cand  trades  win   avgR   ann  sharpe  mdd  rand_p50  rand_p95     p
+       BASE   NET 62323   54781  7.9 -0.540 -79.7  -18.34 97.7    -19.90    -18.83 0.000
+       BASE GROSS 62323   54781 15.9 -0.057 -13.4   -1.33 36.8     -2.43     -1.89 0.000
+      SIP20   NET 11515    9934  7.8 -0.474 -74.4  -10.26 96.0    -11.63    -10.61 0.025
+      SIP20 GROSS 11515    9934 14.5 -0.037  -5.6   -0.27 27.1     -1.26     -0.53 0.015
+SIP20_CHEAP   NET  2409    2067 16.6  0.011  -4.6   -0.12 36.5     -0.78     -0.18 0.045
+SIP20_CHEAP GROSS  2409    2067 18.0  0.090   5.6    0.35 31.0     -0.31      0.42 0.055
+
+ann/sharpe/mdd at 1% risk per trade (4x cap); avgR per triggered trade; p = share of 200 random-DIRECTION replays (same names, days, levels, stops) with Sharpe >= it.

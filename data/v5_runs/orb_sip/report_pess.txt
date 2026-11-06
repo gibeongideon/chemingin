@@ -1,0 +1,12 @@
+entry bar: PESSIMISTIC; 233 symbols, 594 days 2024-06-14..2026-11-05; spread per side in R: median 0.67 all, 0.66 SIP20
+SIP20 NET halves: Sharpe -29.41 / -42.17
+SIP20 GROSS halves: Sharpe -15.98 / -18.91
+    variant  cost  cand  trades  win   avgR   ann  sharpe  mdd  rand_p50  rand_p95     p
+       BASE   NET 62323   54781  3.1 -0.850 -92.1  -44.17 99.7    -45.58    -44.09 0.095
+       BASE GROSS 62323   54781  8.8 -0.525 -78.3  -21.09 97.3    -26.17    -24.98 0.000
+      SIP20   NET 11515    9934  2.6 -0.865 -91.6  -33.90 99.7    -33.41    -30.56 0.570
+      SIP20 GROSS 11515    9934  6.5 -0.635 -83.1  -17.34 98.5    -18.96    -17.29 0.055
+SIP20_CHEAP   NET  2409    2067  8.0 -0.618 -60.1   -7.57 88.5     -7.83     -6.51 0.400
+SIP20_CHEAP GROSS  2409    2067 10.0 -0.511 -54.5   -6.10 84.3     -6.47     -5.46 0.305
+
+ann/sharpe/mdd at 1% risk per trade (4x cap); avgR per triggered trade; p = share of 200 random-DIRECTION replays (same names, days, levels, stops) with Sharpe >= it.

@@ -34,3 +34,5 @@ data/v5_runs/zigzag_atr/_*.npy
 data/v5_runs/zigzag_atr/_*.csv
 data/v5_runs/zigzag_atr/_catboost/
 data/binance_1m/
+data/us_m5/
+data/xau_m1_switch/

@@ -1,0 +1,31 @@
+BOOK XAU+BTC champion 2018-01-02..2026-10-21: SR +1.260  DD -13.4%  halves +1.29/+1.24
+
+[PATH] BTC-ORB DIR: standalone SR +0.50 (halves -0.03/+0.89), corr to book -0.01, to BTC champ -0.01
+   10% risk: SR +1.308  DD -10.6% (matched -11.7%)  t@matched +1.54  years 5/9  halves +1.28/+1.34
+   20% risk: SR +1.345  DD -10.1% (matched -12.2%)  t@matched +1.23  years 5/9  halves +1.26/+1.43
+   33% risk: SR +1.353  DD -9.6% (matched -12.8%)  t@matched +0.73  years 4/9  halves +1.18/+1.52
+
+[PATH] BTC-ORB BOTH: standalone SR +0.62 (halves +0.13/+0.97), corr to book +0.04, to BTC champ +0.03
+   10% risk: SR +1.316  DD -11.2% (matched -12.2%)  t@matched +1.80  years 7/9  halves +1.30/+1.34
+   20% risk: SR +1.361  DD -11.2% (matched -13.4%)  t@matched +1.49  years 6/9  halves +1.29/+1.44
+   33% risk: SR +1.384  DD -11.5% (matched -14.9%)  t@matched +0.99  years 5/9  halves +1.24/+1.52
+
+[PATH] BTC-ORB LONG: standalone SR +0.35 (halves +0.30/+0.39), corr to book +0.11, to BTC champ +0.13
+   10% risk: SR +1.276  DD -11.1% (matched -12.0%)  t@matched +0.51  years 7/9  halves +1.30/+1.26
+   20% risk: SR +1.274  DD -9.4% (matched -11.0%)  t@matched +0.21  years 7/9  halves +1.30/+1.26
+   33% risk: SR +1.232  DD -8.7% (matched -11.1%)  t@matched -0.24  years 6/9  halves +1.26/+1.21
+
+[PESS] BTC-ORB DIR: standalone SR +0.33 (halves -0.08/+0.67), corr to book -0.01, to BTC champ -0.01
+   10% risk: SR +1.291  DD -10.9% (matched -12.0%)  t@matched +0.99  years 5/9  halves +1.28/+1.31
+   20% risk: SR +1.307  DD -10.2% (matched -12.3%)  t@matched +0.68  years 5/9  halves +1.24/+1.37
+   33% risk: SR +1.284  DD -10.2% (matched -13.5%)  t@matched +0.19  years 4/9  halves +1.15/+1.41
+
+[PESS] BTC-ORB BOTH: standalone SR +0.35 (halves +0.08/+0.56), corr to book +0.03, to BTC champ +0.02
+   10% risk: SR +1.287  DD -11.2% (matched -12.3%)  t@matched +0.88  years 6/9  halves +1.29/+1.29
+   20% risk: SR +1.300  DD -11.3% (matched -13.5%)  t@matched +0.58  years 5/9  halves +1.28/+1.33
+   33% risk: SR +1.272  DD -11.6% (matched -15.0%)  t@matched +0.10  years 4/9  halves +1.21/+1.33
+
+[PESS] BTC-ORB LONG: standalone SR +0.16 (halves +0.25/+0.08), corr to book +0.12, to BTC champ +0.14
+   10% risk: SR +1.254  DD -11.5% (matched -12.5%)  t@matched -0.20  years 6/9  halves +1.30/+1.22
+   20% risk: SR +1.228  DD -10.4% (matched -12.3%)  t@matched -0.49  years 6/9  halves +1.29/+1.18
+   33% risk: SR +1.149  DD -9.2% (matched -11.7%)  t@matched -0.93  years 5/9  halves +1.23/+1.07

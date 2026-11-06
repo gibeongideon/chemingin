@@ -1,0 +1,17 @@
+XAU M15 2015-01-20..2026-06-12, 2838 days; median spread/R 0.134
+XAU  LS   GROSS trades  2429 win 24.7% avgR +0.213  Sharpe +1.17 (halves +0.90/+1.43)  random p50 +1.25 p95 +1.56  p 0.637
+XAU  LONG GROSS trades  1226 win 23.8% avgR +0.179  Sharpe +0.71 (halves +0.30/+1.08)  random p50 +0.77 p95 +1.08  p 0.663
+XAU  LS   NET   trades  2372 win 21.8% avgR +0.071  Sharpe +0.40 (halves +0.03/+0.76)  random p50 +0.41 p95 +0.71  p 0.510
+XAU  LONG NET   trades  1169 win 21.6% avgR +0.058  Sharpe +0.23 (halves -0.12/+0.56)  random p50 +0.23 p95 +0.55  p 0.493
+XAU  LS   NET @$0.448 stress: Sharpe +0.06
+BTC M5 2017-08-31..2026-10-30, 2380 days; median spread/R 0.117
+BTC  LS   GROSS trades  2238 win 23.9% avgR +0.199  Sharpe +0.97 (halves +0.40/+1.54)  random p50 +1.05 p95 +1.34  p 0.647
+BTC  LONG GROSS trades  1115 win 22.3% avgR +0.137  Sharpe +0.49 (halves +0.28/+0.67)  random p50 +0.68 p95 +1.02  p 0.820
+BTC  LS   NET   trades  2191 win 21.6% avgR +0.089  Sharpe +0.47 (halves -0.23/+1.08)  random p50 +0.44 p95 +0.81  p 0.453
+BTC  LONG NET   trades  1068 win 21.2% avgR +0.095  Sharpe +0.33 (halves +0.08/+0.54)  random p50 +0.38 p95 +0.69  p 0.583
+
+INTEGRATION — XAU champion 2018-01-02..2026-07-16: SR +1.084 DD -19.8%
+  champ+ORB_LS_25      SR +1.163  DD -13.5%  t@matched +0.73  years 5/9  corr -0.03
+  champ+ORB_LS_50      SR +1.060  DD -12.4%  t@matched -0.09  years 4/9  corr -0.03
+  champ+ORB_LONG_25    SR +1.032  DD -15.2%  t@matched -0.51  years 4/9  corr +0.17
+  champ+ORB_LONG_50    SR +0.822  DD -17.5%  t@matched -1.13  years 4/9  corr +0.17
