@@ -106,6 +106,7 @@ failures come down to five recurring reasons:
 | **M15–H1 trend, next-bar fade, overnight drift** | gross edges real, net negative | (b) M15 needs a 0.587 hit rate to break even vs 0.510 at D1 |
 | **Session ORB, release trigger (08:30 ET)** | p 0.84 after fixing the null | (e) the first "significance" was a cost offset inside a zero-mean null |
 | **Candle language** (n-gram over candle tokens) | +0.0095 nats/token, hit 52.3% | (b) real information, too small to pay the spread |
+| **BERT-style candle transformer** (pretrained pre-2024, frozen) | OOS masked-token loss *worse than token frequencies*; in ZigZag fails the timing null | no H1 sequence information exists to learn; the training gain was memorisation (§3dl) |
 | **5-min ORB Stocks in Play** (share CFDs) | direction beats random by ~1 Sharpe gross; net −10 | (b) CFD spread = 0.66R per side vs the paper's 0.01R |
 
 ### ML / AI (§3dj and memory)
@@ -136,6 +137,7 @@ failures come down to five recurring reasons:
 | **Long-only prior-high break** (stop order at yesterday's high) | net +10.2bp/trade, t +4.71, both halves, blend t ≥2 | entry slippage — fill probe 360599 is measuring it live |
 | **Swap-free gold instruments** | +0.20 Sharpe on the XAU sleeve | availability per venue; rollable futures cost more (§3cr) |
 | **BTC opening-range breakout** (9:30 ET, both stop orders, 10%-ATR stop, flat by 16:00) | pays in both directions; ETH replicates; book 1.26 → 1.32 | dies at 2× cost (0.10%/side); ETH spread at Switch 0.20% (§3di) |
+| **Book + BTC breakout + XAU prior-high break** (10% + 10% risk) | Sharpe 1.286 → **1.391**, t +2.37, 7/9 years, DD −13.4% → −10.7% | falls below the book at 2× cost; stop-order slippage decides it (§3dm) |
 | **Drift-class portfolio** (finding #4) | 1.60 historical | re-cost D1 legs with real CFD spreads; rates are not tradeable on retail CFDs |
 
 ---
@@ -166,7 +168,7 @@ execution.**
 | 5 | **Genuinely new data types** (not derived from price bars) | 80/80 price-derived regime features failed: the information is not in OHLC | Crypto funding rates and on-chain flows for BTC; gold ETF holdings/flows; central-bank purchases (all retail-observable) |
 | 6 | **Prospective intraday data capture** | Switch keeps only 100k M1 bars and ~1 month of ticks; every tight-stop study needs finer bars | A daily M1 + tick archiver on the VPS (like the FF-calendar archiver), feeding tick-imbalance-bar studies later |
 | 7 | **Different venues for proven-but-blocked effects** | ORB "Stocks in Play" replicates in direction but needs per-share commissions; the ETH breakout needs ≤0.05% cost | Price a direct-market-access stock broker and a low-fee crypto venue; only proceed if executable retail |
-| 8 | **Combination study of the survivors** | Each lead is small; combined at matched vol they may clear the bar together | A pre-registered blend of champion book + BTC breakout + prior-high break, judged on one paired test |
+| 8 | **Forward-test the best combination** (done as a backtest in §3dm: 1.391, t 2.37, fails 2× cost) | The only mix to clear t ≥ 2; its fate is one unmeasured number, live stop slippage | Read the fill probe 360599's slippage log; build a BTC-ORB demo executor; re-run `v5_combo_survivors.py` with the measured costs |
 
 **Not worth more time** (closed on mechanism):
 - entry-timing detectors;
@@ -239,7 +241,8 @@ Recent research scripts:
 | `v5_orb_xau_btc.py`, `v5_orb_book_integration.py` | §3di |
 | `v5_madl_lstm.py` | §3dj |
 | `v5_zigzag_madl.py` | §3dk |
-| `v5_zigzag_bert.py` | BERT-style candle encoder → ZigZag |
+| `v5_zigzag_bert.py` | §3dl |
+| `v5_combo_survivors.py` | §3dm |
 | `v5_dgt_grid.py` | §3df |
 | `v5_advisor_pnl.py` | §3de |
 

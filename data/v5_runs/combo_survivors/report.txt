@@ -1,0 +1,15 @@
+window 2018-01-02..2026-06-15; BOOK SR +1.286 DD -13.4% halves +1.29/+1.28
+[1x] ORB: SR +0.61 halves +0.13/+0.98 corr book +0.03
+[1x] PDH: SR +0.98 halves +0.48/+1.35 corr book +0.40
+[2x] ORB: SR -0.31 halves -0.63/-0.05 corr book +0.01
+[2x] PDH: SR +0.76 halves +0.23/+1.15 corr book +0.40
+corr ORB-PDH -0.03
+
+              mix  SR_1x  t_1x yrs_1x  DD_1x   halves_1x  SR_2x  t_2x yrs_2x  DD_2x   halves_2x  PASS
+         +10% ORB  1.340  1.73    6/9  -11.2 +1.30/+1.39  1.242 -1.38    3/9  -11.9 +1.22/+1.27 False
+         +20% ORB  1.384  1.42    5/9  -11.3 +1.29/+1.48  1.169 -1.67    3/9  -12.6 +1.12/+1.22 False
+         +10% PDH  1.329  1.57    4/9  -12.1 +1.29/+1.38  1.306  0.73    4/9  -12.3 +1.26/+1.35 False
+         +20% PDH  1.363  1.32    4/9  -10.8 +1.27/+1.46  1.314  0.48    4/9  -11.2 +1.22/+1.41 False
++10% ORB +10% PDH  1.391  2.37    7/9  -10.7 +1.29/+1.49  1.261 -0.55    4/9  -11.5 +1.18/+1.34 False
+
+PASS = matched-vol paired t >= 2.0 at 1x cost AND Sharpe at 2x cost still above the book.

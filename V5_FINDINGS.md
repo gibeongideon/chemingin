@@ -8066,3 +8066,46 @@ Hold gold over the same days: 0.93.
 3. **Fragility flag:** BASE reproduces §3dg's probabilities at corr 0.987, yet its Sharpe moved 0.93 → 0.58 (lock) and 1.51 → 1.27 (no lock). The only change was a longer label purge (122 vs 4 bars), which drops the latest training rows. Small model perturbations move this harness's Sharpe by ±0.35, larger than any variant gap.
 
 **Verdict:** closed. Weighting by payoff does not give ZigZag timing skill. Combined with §3dg, the live 360601 earns gold's drift, and the +$100→+$50 lock costs about 0.6 Sharpe.
+
+### §3dl — ZigZag-BERT: a masked-candle transformer learns nothing out of sample (2026-11-06, `scripts/v5_zigzag_bert.py`)
+
+**Setup (user's "BERT way"):**
+- A 4-layer d=64 encoder over the 45-token candle alphabet (`src/features/bar_tokenizer.py`).
+- 15% masking, pretrained ONLY on windows ending before 2024-01 (gold + EURUSD/GBPUSD/USDJPY H1, 109,601 windows), then frozen.
+
+**Diagnostic (OOS gold 2024+, masked-token NLL in nats):**
+- BERT **3.1053**, order-1 3.1044, unigram **3.1033**.
+- BERT is *worse than token frequencies*; even the previous token adds nothing at H1 OOS.
+- Train NLL 2.90 → OOS 3.10 is memorisation/shift, not language. This closes §3cc's open question: sparsity was not the bottleneck, there is no H1 sequence information to find.
+
+**In ZigZag** (timing null, 200 circular shifts; lock / no lock):
+- BERT-only: 26 / 17 trades, p 0.29 / 0.13.
+- ZZ+BERT: 0.21 / 0.98, *worse* than BASE 0.58 / 1.27.
+- ZZ+BERT+payoff label: 1.42 / 1.58, p 0.20 / 0.14. Best of the family, but it fails the null. Its features carry zero information (above), so the lift is inside the ±0.35 harness noise (§3dk).
+
+**Verdict:** closed.
+
+### §3dm — Combination of the survivors: champion book + BTC opening breakout + XAU prior-high break (2026-11-06, `scripts/v5_combo_survivors.py`)
+
+**Pre-registered mixes**, each sleeve vol-scaled to the book, window 2018-01..2026-06:
+- **BOOK:** XAU+BTC champion, SR 1.286.
+- **ORB:** BTC 9:30 ET both-stop breakout, 0.05%/side (§3di).
+- **PDH:** XAU long-only prior-day-high first break, 0.756bp + 2bp slip (§3ch).
+- Sleeve correlations: ORB/book +0.03, PDH/book +0.40, ORB/PDH −0.03.
+
+**Gate:** matched-vol paired t ≥ 2 AND Sharpe still above the book at 2× cost.
+
+| mix | SR 1x | t 1x | years | DD | SR 2x |
+|---|---|---|---|---|---|
+| +10% ORB | 1.340 | 1.73 | 6/9 | −11.2 | 1.242 |
+| +20% ORB | 1.384 | 1.42 | 5/9 | −11.3 | 1.169 |
+| +10% PDH | 1.329 | 1.57 | 4/9 | −12.1 | **1.306** |
+| +20% PDH | 1.363 | 1.32 | 4/9 | −10.8 | **1.314** |
+| **+10% ORB +10% PDH** | **1.391** | **2.37** | **7/9** | **−10.7** | 1.261 |
+
+**Results:**
+- **0/5 pass.** The two-lead mix is the best and only result in this round to clear t ≥ 2 with both halves up (+1.29 / +1.49). But it falls below the book at 2× cost, because the ORB leg goes to −0.31.
+- PDH is cost-robust but not significant alone.
+- **Both verdicts reduce to one unmeasured number, real stop-order slippage.** The fill probe (360599) measures it for PDH; a BTC-ORB demo executor would do the same for ORB.
+
+**Verdict:** not deployable on backtest evidence. It is the strongest forward-test candidate in the repo.
