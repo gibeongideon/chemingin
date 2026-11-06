@@ -7946,3 +7946,20 @@ at the same fee. Sharpe is exposure-invariant, so it is the honest comparison.
 
 Verdict: no tradeable edge. A grid is a contrarian rebalancer whose average exposure sets its
 drawdown. The paper compares it with 100%-invested buy-and-hold, which is the wrong benchmark.
+
+### §3dg — Live ZigZag (360601) walk-forward 2024-01..2026-11: Sharpe = gold's, timing adds nothing (2026-11-05, `scripts/v5_zigzag_live_wf.py`)
+
+This replays the live config exactly: POOLED HistGB (gold + EUR/GBP/JPY), refit monthly with
+labels rebuilt on the truncated data, fire at P≥0.60, BUY at the next open + $0.25, 3.0×ATR14
+trail, 120-bar max hold, long swap −6%/yr, at the live 0.25% risk.
+
+| variant | trades | win | total | Sharpe | random-timing median / p95 | p |
+|---|---|---|---|---|---|---|
+| with the +$100→+$50 lock (live) | 555 | 72% | +26.2R, +2.2%/yr | **+0.93** | +0.93 / +1.60 | 0.48 |
+| without the lock | 508 | 41% | +59.5R, +5.1%/yr | **+1.51** | +1.18 / +1.72 | 0.20 |
+| hold gold, same days | | | +67.3% | +0.93 | | |
+
+The detector's timing is worth nothing: the same number of fires at circularly shifted times
+scores the same Sharpe. The positive number is a long-only 3-ATR trail riding gold's 2024-26
+bull. The +$100→+$50 lock cuts Sharpe from 1.51 to 0.93, the §3co breakeven family again.
+This is consistent with §3x/§3bv, not a reversal of them.
