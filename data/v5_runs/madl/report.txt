@@ -1,0 +1,23 @@
+
+BTC: OOS 2016-01-01..2026-10-21 (3947 days), buy&hold SR +0.89, cost 0.05%/change
+  MADL_EXACT L/S SR seeds [-0.89, +0.89, +0.89, +0.82, -1.02] median +0.82 ens +0.89 | LONG-ONLY median +0.88 | long 63% hit 50.6%
+  MADL_SOFT  L/S SR seeds [+0.49, +0.89, +0.89, +0.86, +0.87] median +0.87 ens +0.89 | LONG-ONLY median +0.88 | long 97% hit 52.3%
+  MAE        L/S SR seeds [-0.36, +0.31, +0.31, +0.06, +0.56] median +0.31 ens +0.11 | LONG-ONLY median +0.64 | long 82% hit 51.5%
+  MSE        L/S SR seeds [+0.65, +0.90, +0.90, +0.85, +0.87] median +0.87 ens +0.85 | LONG-ONLY median +0.91 | long 95% hit 52.6%
+  UNTRAINED  L/S SR seeds [-0.89, +0.89, +0.89, +0.41, -0.89] median +0.41 ens +0.89 | LONG-ONLY median +0.79 | long 55% hit 50.3%
+
+WTI: OOS 2002-01-02..2026-07-09 (6160 days), buy&hold SR -0.02, cost 0.03%/change
+  MADL_EXACT L/S SR seeds [+0.02, -0.02, -0.06, +0.01, -0.05] median -0.02 ens -0.02 | LONG-ONLY median -0.02 | long 60% hit 50.3%
+  MADL_SOFT  L/S SR seeds [+0.01, -0.13, -0.15, -0.03, -0.19] median -0.13 ens -0.13 | LONG-ONLY median -0.07 | long 66% hit 49.8%
+  MAE        L/S SR seeds [-0.17, -0.06, -0.13, -0.08, -0.04] median -0.08 ens -0.05 | LONG-ONLY median -0.05 | long 81% hit 50.9%
+  MSE        L/S SR seeds [-0.29, -0.21, -0.23, -0.19, -0.12] median -0.21 ens -0.13 | LONG-ONLY median -0.12 | long 65% hit 49.7%
+  UNTRAINED  L/S SR seeds [+0.02, -0.02, -0.04, +0.24, -0.06] median -0.02 ens -0.02 | LONG-ONLY median -0.02 | long 54% hit 50.1%
+
+GOLD: OOS 2002-01-02..2026-10-21 (6196 days), buy&hold SR +0.70, cost 0.01%/change
+  MADL_EXACT L/S SR seeds [-0.70, +0.70, +0.70, +0.66, -0.50] median +0.66 ens +0.70 | LONG-ONLY median +0.70 | long 61% hit 50.8%
+  MADL_SOFT  L/S SR seeds [+0.66, +0.56, +0.61, +0.53, +0.55] median +0.56 ens +0.53 | LONG-ONLY median +0.65 | long 86% hit 53.0%
+  MAE        L/S SR seeds [+0.57, +0.57, +0.50, +0.38, +0.37] median +0.50 ens +0.40 | LONG-ONLY median +0.62 | long 81% hit 52.4%
+  MSE        L/S SR seeds [+0.68, +0.53, +0.70, +0.51, +0.56] median +0.56 ens +0.59 | LONG-ONLY median +0.65 | long 85% hit 53.0%
+  UNTRAINED  L/S SR seeds [-0.70, +0.70, +0.70, +0.19, -0.70] median +0.19 ens +0.70 | LONG-ONLY median +0.55 | long 54% hit 50.3%
+
+SR = net daily Sharpe; seeds = 5 independent inits; ens = sign of the 5-seed mean forecast; 'long' = share of days the forecast is > 0.

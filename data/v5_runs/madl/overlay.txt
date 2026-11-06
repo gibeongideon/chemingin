@@ -1,0 +1,11 @@
+BOOK SR +1.260 DD -13.4%
+  gate MADL_EXACT floor 0.0: SR +1.260 DD -13.4% t@matched +0.00 years 0/9
+  gate MADL_EXACT floor 0.5: SR +1.260 DD -13.4% t@matched +0.00 years 0/9
+  gate MADL_SOFT  floor 0.0: SR +1.260 DD -13.4% t@matched +0.00 years 0/9
+  gate MADL_SOFT  floor 0.5: SR +1.260 DD -13.4% t@matched +0.00 years 0/9
+  gate MAE        floor 0.0: SR +1.103 DD -14.2% t@matched -1.45 years 4/9
+  gate MAE        floor 0.5: SR +1.208 DD -13.6% t@matched -1.01 years 4/9
+  gate MSE        floor 0.0: SR +1.262 DD -13.7% t@matched +0.05 years 6/9
+  gate MSE        floor 0.5: SR +1.265 DD -13.4% t@matched +0.22 years 7/9
+  gate UNTRAINED  floor 0.0: SR +1.260 DD -13.4% t@matched +0.00 years 0/9
+  gate UNTRAINED  floor 0.5: SR +1.260 DD -13.4% t@matched +0.00 years 0/9
