@@ -1,0 +1,63 @@
+
+BULL 2002-11  (gold 279 -> 1828)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION                  +117.7%  +10.8%   +0.82  -15.6%            1.3 yrs
+  CHAMPION 3bp cost         +112.5%  +10.5%   +0.80  -15.7%            1.3 yrs
+  CHAMPION -3%/yr swap       +89.0%   +8.8%   +0.68  -15.9%            1.3 yrs
+  CONSTANT LONG same vol    +155.8%  +13.2%   +1.22  -13.3%            1.1 yrs
+  GOLD buy & hold           +556.1%  +21.6%   +1.11  -29.7%            1.5 yrs
+
+BEAR 2011-15  (gold 1826 -> 1060)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION                   -11.2%   -3.5%   -0.40  -16.9%            2.5 yrs
+  CHAMPION 3bp cost          -11.9%   -3.7%   -0.43  -17.3%            2.5 yrs
+  CHAMPION -3%/yr swap       -14.0%   -4.4%   -0.52  -18.5%            2.5 yrs
+  CONSTANT LONG same vol     -27.8%   -9.2%   -0.88  -32.6%            2.5 yrs
+  GOLD buy & hold            -42.0%  -11.8%   -0.60  -43.9%            4.3 yrs
+
+RECENT 2016-26  (gold 1075 -> 4135)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION                  +113.9%   +9.4%   +0.75  -17.3%            2.9 yrs
+  CHAMPION 3bp cost         +108.0%   +9.0%   +0.73  -17.9%            2.9 yrs
+  CHAMPION -3%/yr swap       +80.2%   +7.2%   +0.60  -20.2%            3.0 yrs
+  CONSTANT LONG same vol    +126.8%  +10.2%   +0.98  -12.0%            1.8 yrs
+  GOLD buy & hold           +290.0%  +13.4%   +0.83  -24.9%            3.3 yrs
+
+FULL 2002-26  (gold 279 -> 4135)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION                  +313.3%   +7.6%   +0.64  -17.3%            5.2 yrs
+  CHAMPION 3bp cost         +289.3%   +7.3%   +0.62  -18.0%            5.2 yrs
+  CHAMPION -3%/yr swap      +192.9%   +5.7%   +0.50  -20.9%            6.2 yrs
+  CONSTANT LONG same vol    +318.6%   +7.7%   +0.75  -32.6%            6.1 yrs
+  GOLD buy & hold          +1383.6%  +11.5%   +0.69  -44.4%            8.9 yrs
+
+BEAR detail: average forecast 0.48 (resting tilt 0.15); share of days at resting (<0.2) 55%, in strong trend (>=1.5) 10%
+
+BY YEAR (%):
+      champion  const_long  gold
+time                            
+2002       0.5        20.3  24.7
+2003      13.7         7.4  19.6
+2004      -6.1         0.3   5.2
+2005      11.8        13.7  18.2
+2006      11.1         8.4  22.8
+2007      21.3        13.7  31.4
+2008      -9.0        -5.1   5.8
+2009      20.0        21.9  23.9
+2010      15.0        13.7  29.8
+2011       3.7         4.5  10.2
+2012       2.0        -0.8   7.0
+2013      -5.0       -18.6 -28.2
+2014      -2.2        -2.6  -1.5
+2015      -3.2        -5.8 -10.4
+2016       2.5         3.0   8.5
+2017       3.3         8.9  13.6
+2018       5.8         1.3  -2.1
+2019      22.2        15.8  18.9
+2020       8.9        10.8  24.7
+2021      -5.7        -4.7  -3.5
+2022      -0.4         7.2  -0.1
+2023       5.3         8.7  13.4
+2024      23.1        20.3  27.5
+2025      22.6        18.7  64.4
+2026      -3.7        -1.9  -4.7

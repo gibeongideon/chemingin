@@ -8109,3 +8109,26 @@ Hold gold over the same days: 0.93.
 - **Both verdicts reduce to one unmeasured number, real stop-order slippage.** The fill probe (360599) measures it for PDH; a BTC-ORB demo executor would do the same for ORB.
 
 **Verdict:** not deployable on backtest evidence. It is the strongest forward-test candidate in the repo.
+
+### §3dn — The champion through gold's 2011-15 bear market (D1 port, 2002-2026) (2026-11-06, `scripts/v5_champion_bear_test.py`)
+
+**Setup:**
+- Continuous gold futures D1 from 2000.
+- Champion at its true speeds (`champion_recipe(close, 1/6, 1.5)`), vol half-life 7 days, 1bp cost.
+- Compared with gold buy & hold and with CONSTANT LONG at the same 10% vol target.
+
+| era | champion | const-long same vol | gold B&H |
+|---|---|---|---|
+| BULL 2002-11 | +118%, SR 0.82, DD −15.6% | +156%, SR **1.22**, DD −13.3% | +556%, SR 1.11, DD −29.7% |
+| **BEAR 2011-09..2015** (gold −42%) | **−11.2%**, SR −0.40, **DD −16.9%**, 2.5y underwater | −27.8%, DD −32.6% | −42.0%, DD −43.9%, 4.3y underwater |
+| RECENT 2016-26 | +114%, SR 0.75, DD −17.3% | +127%, SR **0.98**, DD −12.0% | +290%, SR 0.83 |
+| FULL 2002-26 | SR 0.64, DD −17.3% | SR **0.75**, DD −32.6% | SR 0.69, DD −44.4% |
+
+**Results:**
+
+1. **The bear is survivable.** The long-only design goes defensive: 55% of bear days at the 0.15 resting tilt, average forecast 0.48. It lost 11% (−14% with a 3%/yr swap) while gold lost 42%, and its max DD stayed ≈ its bull-market DD.
+2. **But over 24 years its TIMING does not beat holding gold at the same vol** (SR 0.64 vs 0.75). It loses to constant-long in the bull and in 2016-26, and wins only in the bear.
+   - Its proven value is **drawdown control** (−17% vs −33% at equal vol, −44% for gold).
+   - It is NOT higher risk-adjusted return. This repeats CONTROL #2 ("never beats the metal").
+3. **The D1 port understates the live H4 version** (2016+: 0.75 here vs 1.08 on H4, consistent with "D1 anything ≤0.44" in the July search). The H4 edge cannot be tested pre-2015 (no H4 data).
+   - Either H4 sampling adds real value, or the H4 1.08 is partly the in-sample choice made on 2015+ data. **Only a live record separates the two.**

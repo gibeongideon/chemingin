@@ -95,7 +95,7 @@ def _fmt_ci(ci) -> str:
     return f"CI [{float(ci[0]):.3f}, {float(ci[1]):.3f}]"
 
 
-STATUS_MINUTES = 30             # a status message this often; a BUY/SELL switch sends at once
+STATUS_MINUTES = 60          # user 2026-11-06: hourly status + immediate on change             # a status message this often; a BUY/SELL switch sends at once
 
 
 def build(state: dict, reading: dict | None, meta: dict, seen: dict,
@@ -200,7 +200,8 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     held_s = ("" if held_b is None else f"{held_b:.0f} min" if held_b < 120
               else f"{held_b / 60:.1f}h")
     rate = f" P={obs_pct}" if observed is not None else ""
-    act = {"UP": "executor BUYS", "DOWN": "executor SELLS"}.get(name, "executor stands aside")
+    # executor 360602 was stopped 2026-11-06 (user kept only book/ZigZag/trail-runner on Switch)
+    act = {"UP": "lean BUY", "DOWN": "lean SELL"}.get(name, "no lean")
     if frozen or health != "ok":
         subject = f"[xau-advisor] {name} HELD — {health} (no current reading)"
     elif side and flipped:
@@ -223,9 +224,9 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     # ------------------------------------------------------------------ body
     L = []
     L.append("=" * 72)
-    L.append("XAUUSD ADVISOR — the advisor computes; a separate demo executor (magic 360602)")
-    L.append("trades the STRONG direction (UP -> BUY, DOWN -> SELL, NEUTRAL -> no new entries).")
-    L.append("The BUY/SELL bias is shown as information only (it lost money in backtest).")
+    L.append("XAUUSD ADVISOR — information only. No bot trades these signals (the demo executor,")
+    L.append("magic 360602, was stopped 2026-11-06: its edge was in-sample only, 0R out of sample).")
+    L.append("The BUY/SELL bias is also information only (it lost money in backtest).")
     L.append("=" * 72)
     L.append("")
     if side:

@@ -33,6 +33,7 @@ Add exactly one of the above to .env.notify and the VPS needs nothing else.
 from __future__ import annotations
 
 import json
+import os
 import smtplib
 import ssl
 import sys
@@ -128,6 +129,20 @@ def notify(subj: str, body: str, short: str | None = None) -> bool:
     message modules exist to guarantee.
     """
     e = env()
+    # *** NOTIFY_NO_TELEGRAM (user request, 2026-11-06). *** Telegram carries ONLY trade events
+    # (tradable / traded / closed, from v5_trade_events_notify) and the advisor's hourly + change
+    # messages. Every other sender's wrapper exports NOTIFY_NO_TELEGRAM=1: its messages still go
+    # to email, never to the phone. Read from the process environment so one wrapper line does it.
+    no_tg = str(os.environ.get("NOTIFY_NO_TELEGRAM", e.get("NOTIFY_NO_TELEGRAM", ""))
+                ).strip().lower() in ("1", "true", "yes")
+    if no_tg:
+        rest = [c for c in channels_all(e) if c != "telegram"]
+        if not rest:
+            print("  (notify: telegram suppressed for this sender and no other channel configured)")
+            return False
+        if str(e.get("NOTIFY_ALL", "")).strip().lower() in ("1", "true", "yes"):
+            return any([_send_one(c, e, subj, _body_for(c, body, short)) for c in rest])
+        return _send_one(rest[0], e, subj, _body_for(rest[0], body, short))
     if str(e.get("NOTIFY_ALL", "")).strip().lower() in ("1", "true", "yes"):
         chans = channels_all(e)
         if len(chans) > 1:

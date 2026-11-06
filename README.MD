@@ -54,15 +54,18 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 
 ## 3. What is live (Switch Markets demo + FundingPips trial, VPS `68.183.91.240`)
 
+**Switch demo order-placers (since 2026-11-06): exactly three — Book 360595, ZigZag 360601, Trail-runner 360600.**
+
+
 | Magic | System | Venue / bridge | Status |
 |---|---|---|---|
 | **360595** | XAU+BTC 50/50 champion book (`configs/v5_xau_btc_switch.json`) | Switch demo, 18815 | **live**, every 4h at :50 |
 | **360598** | XAU+BTC book | FundingPips-Trial, 18816 | live, every 4h at :20 |
 | **360601** | ZigZag bottom detector + 3×ATR trail | Switch, 18815 | live hourly (:19) — **earns gold's drift, not timing** (§3dg/§3dk) |
 | 360597 | ZigZag + trail | FundingPips-Trial | live hourly (:24) |
-| **360602** | Advisor executor — trades STRONG UP/DOWN of the adverse-move advisor | Switch | live every minute; in-sample edge only (§3de) |
-| 360600 | Intraday trail-follower (`INTRADAY-TRAIL-SPEC.md`) | Switch | live, 5-min |
-| 360599 | Fill probe — measures buy-stop slippage at the prior-day high | demo | measurement only |
+| ~~360602~~ | Advisor executor | Switch | **stopped 2026-11-06** (in-sample edge only, §3de); the advisor still notifies |
+| **360600** | Trail-runner: long-only buy-stop at the prior-day high + 3-ATR trail (`INTRADAY-TRAIL-SPEC.md`) | Switch | live, 5-min — the §3ch/§3dm lead |
+| ~~360599~~ | Fill probe | Switch | **stopped 2026-11-06** — trail-runner's live fills now supply the slippage data |
 | — | `xau-advisor` (5-min) + `advisor-notify` / `zigzag-notify` | Telegram + email | notifications |
 
 **Broken, needs a decision:** `zigzag-obs` and `trend-signal` fail every run. `zigzag-obs` is on the dead FTMO bridge 18814; `trend-signal` fails the same way, and its logs haven't been checked yet.

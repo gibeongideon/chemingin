@@ -344,13 +344,13 @@ def test_a_bias_switch_sends_immediately(meta):
     assert m["seen"]["bias"] == "SELL"
 
 
-def test_status_every_30_minutes_and_not_between(meta):
+def test_status_every_hour_and_not_between(meta):
     seen = {"state": "NEUTRAL", "bias": "BUY", "status_sent": NOW.isoformat()}
     st = {"name": "NEUTRAL", "health": "ok", "since": str(NOW)}
-    mid = build(st, _reading(0.50, meta), meta, seen, now=NOW + timedelta(minutes=15),
+    mid = build(st, _reading(0.50, meta), meta, seen, now=NOW + timedelta(minutes=45),
                 bias=_bias("BUY"))
     assert not mid["should_send"]
-    due = build(st, _reading(0.50, meta), meta, mid["seen"], now=NOW + timedelta(minutes=30),
+    due = build(st, _reading(0.50, meta), meta, mid["seen"], now=NOW + timedelta(minutes=60),
                 bias=_bias("BUY"))
     assert due["trigger"] == "status" and due["should_send"]
 
@@ -368,7 +368,7 @@ def test_a_strong_flip_sends_immediately_with_the_executor_action(meta):
     m = build({"name": "DOWN", "health": "ok", "since": str(NOW)}, _reading(0.72, meta),
               meta, seen, now=NOW + timedelta(minutes=5), bias=_bias("SELL", NOW, 0.6))
     assert m["trigger"] == "change" and m["should_send"]
-    assert "STRONG DOWN" in m["subject"] and "SELLS" in m["subject"]
+    assert "STRONG DOWN" in m["subject"] and "lean SELL" in m["subject"]
     again = build({"name": "DOWN", "health": "ok", "since": str(NOW)}, _reading(0.72, meta),
                   meta, m["seen"], now=NOW + timedelta(minutes=10), bias=_bias("SELL", NOW, 0.6))
     assert not again["should_send"]
