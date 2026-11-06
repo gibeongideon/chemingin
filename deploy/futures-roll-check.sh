@@ -5,6 +5,7 @@
 # Switch lists no successor gold contract yet and the fallback is spot XAUUSDs, not "go flat".
 set -uo pipefail
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 PY=/home/trader/miniconda3/envs/envmt5/bin/python
 LOG=data/v5_runs/futures_roll/roll-check.log
 mkdir -p data/v5_runs/futures_roll

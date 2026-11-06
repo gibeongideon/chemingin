@@ -143,9 +143,9 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         if "authorization" in bl or "init failed" in bl:
             cause = ("The MT5 bridge will not AUTHORISE. The terminal process is usually running "
                      "and the port listening, so this is a credential problem, not a crash: a "
-                     "demo account that has expired, a reset password, or a changed server.")
+                     "trading account that has expired, a reset password, or a changed server.")
             remedy = ["  1. open the FTMO terminal and check the account is still valid",
-                      "  2. if the demo expired, create a new one and update "
+                      "  2. if the account expired, create a new one and update "
                       "~/.mt5c/drive_c/mt5_login.ini",
                       "  3. systemctl --user restart mt5-terminal-ftmo.service   "
                       "(prefix-scoped, safe)",
@@ -224,7 +224,7 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     # ------------------------------------------------------------------ body
     L = []
     L.append("=" * 72)
-    L.append("XAUUSD ADVISOR — information only. No bot trades these signals (the demo executor,")
+    L.append("XAUUSD ADVISOR — information only. No bot trades these signals (the executor,")
     L.append("magic 360602, was stopped 2026-11-06: its edge was in-sample only, 0R out of sample).")
     L.append("The BUY/SELL bias is also information only (it lost money in backtest).")
     L.append("=" * 72)

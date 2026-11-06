@@ -87,10 +87,16 @@ def announce(kw: dict) -> None:
                 if kw.get(k) not in (None, "")]
         line = f"{NOTIFY_EVENTS[ev]} · {kw.get('symbol', '')}"
         body = line + "\n" + "\n".join(f"  {b}" for b in bits)
-        notify(f"[trail] {line}", body + f"\n\nmagic {MAGIC}, Switch demo, 0.5% risk",
+        notify(f"[trail] {line}", body + f"\n\nmagic {MAGIC}, Switch, 0.5% risk",
                body)
     except Exception as exc:                                   # noqa: BLE001
         print(f"  (notify failed: {type(exc).__name__}: {exc})")
+
+
+def _release(m) -> None:
+    """NEVER m.shutdown(): bridge 18815 is ONE MT5 session shared by the book, ZigZag and this
+    runner — a shutdown drops it for all of them (2026-11-04 incident). Found still here 2026-11-06."""
+    return None
 
 
 def load_state() -> dict:
@@ -149,43 +155,51 @@ def main() -> int:
         print("bridge init failed after 3 tries:", _last); return 2
     ai = m.account_info()
     if ai is None:
-        print("NOT LOGGED IN"); m.shutdown(); return 2
+        print("NOT LOGGED IN"); _release(m); return 2
     if ai.trade_mode != 0:
         print(f"REFUSING: account {ai.login} trade_mode {ai.trade_mode} is not DEMO")
-        m.shutdown(); return 1
+        _release(m); return 1
 
     sym = a.symbol
     m.symbol_select(sym, True)
     si, tick = m.symbol_info(sym), m.symbol_info_tick(sym)
     if si is None or tick is None or not tick.ask:
-        print(f"no quote for {sym} (Switch symbols carry an 's' suffix)"); m.shutdown(); return 1
+        print(f"no quote for {sym} (Switch symbols carry an 's' suffix)"); _release(m); return 1
     if si.trade_mode != 4:
-        print(f"REFUSING: {sym} trade_mode {si.trade_mode} is not FULL"); m.shutdown(); return 1
+        print(f"REFUSING: {sym} trade_mode {si.trade_mode} is not FULL"); _release(m); return 1
 
     # ---- is the market open? Asked FRAME-INDEPENDENTLY: does the tick ADVANCE? --------------
     # Hour 00 server is XAUUSD's daily break, and `srv_now.hour >= DAY_END_HOUR` is FALSE at
     # hour 0, so without this the runner would try to place into a closed market every night.
     # Comparing a server-stamped tick to host utcnow() instead would read a fresh quote as three
     # hours old and make the gate a no-op -- that bug has shipped here twice.
+    # A single 6-second look misfired on 133 of 158 runs on 2026-11-06 while gold quoted every
+    # ~4s (and a misfire also skips the TRAIL). Poll up to 30s and stop at the first change: the
+    # daily break lasts an hour, so 30s of silence is still an unambiguous "closed".
     import time as _time
     _t0 = tick
-    _time.sleep(6)
-    tick = m.symbol_info_tick(sym) or _t0
-    if int(tick.time) == int(_t0.time) and float(tick.bid) == float(_t0.bid):
-        print(f"  {sym} quote static over 6s -> market closed; nothing to do")
-        m.shutdown(); return 0
+    moved = False
+    for _ in range(15):
+        _time.sleep(2)
+        tick = m.symbol_info_tick(sym) or _t0
+        if int(tick.time_msc) != int(_t0.time_msc) or float(tick.bid) != float(_t0.bid):
+            moved = True
+            break
+    if not moved:
+        print(f"  {sym} quote static over 30s -> market closed; nothing to do")
+        _release(m); return 0
 
     srv_now = pd.to_datetime(int(tick.time), unit="s")
     D = daily_frame(m, sym)
     if D.empty:
-        print("no D1 bars"); m.shutdown(); return 1
+        print("no D1 bars"); _release(m); return 1
     done = D[D.index.normalize() < srv_now.normalize()]
     if len(done) < 20:
-        print("not enough completed daily bars"); m.shutdown(); return 1
+        print("not enough completed daily bars"); _release(m); return 1
     pdh, pdl = float(done["high"].iloc[-1]), float(done["low"].iloc[-1])
     atr = wilder_atr(done)
     if not np.isfinite(atr) or atr <= 0:
-        print("bad ATR"); m.shutdown(); return 1
+        print("bad ATR"); _release(m); return 1
 
     pos = [p for p in (m.positions_get(symbol=sym) or []) if p.magic == MAGIC]
     orders = [o for o in (m.orders_get(symbol=sym) or []) if o.magic == MAGIC]
@@ -244,7 +258,7 @@ def main() -> int:
                 print(f"  would RATCHET sl {cur_sl:.2f} -> {want:.2f}; --execute to send")
         else:
             print(f"  stop holds at {cur_sl:.2f} (ratchet never loosens)")
-        m.shutdown(); return 0
+        _release(m); return 0
 
     # ---- 2. PENDING ORDER: cancel if the prior-day LOW went first, or at day end -------------
     if orders:
@@ -272,20 +286,20 @@ def main() -> int:
         else:
             print(f"  RESTING buy-stop #{o.ticket} at {o.price_open:.2f} "
                   f"({100*(o.price_open/tick.ask-1):+.2f}% above ask), sl {o.sl:.2f}")
-        m.shutdown(); return 0
+        _release(m); return 0
 
     # ---- 3. NOTHING OUTSTANDING: one decision per server day ---------------------------------
     if st.get("day") == day:
         print(f"  today's decision already made: {st.get('decided')}")
-        m.shutdown(); return 0
+        _release(m); return 0
     if srv_now.hour >= DAY_END_HOUR:
-        print("  past day end; no new order today"); m.shutdown(); return 0
+        print("  past day end; no new order today"); _release(m); return 0
     if tick.ask >= pdh:
         print(f"  ask {tick.ask:.2f} already above the level {pdh:.2f} — a stop here fills at "
               f"market, which is not the trade that was measured. Skipping today.")
         record(**base, event="skip", level=pdh, note="ask already above level")
         save_state(dict(day=day, decided="skipped_above_level"))
-        m.shutdown(); return 0
+        _release(m); return 0
 
     stop_px = pdh - INIT_STOP_ATR * atr
     risk_usd = ai.equity * a.risk_frac
@@ -298,7 +312,7 @@ def main() -> int:
           f"${lots*per_lot:,.2f} = {100*lots*per_lot/ai.equity:.2f}% of equity")
     if not a.execute:
         print("  dry run — rerun with --execute to send")
-        m.shutdown(); return 0
+        _release(m); return 0
     rr = m.order_send(dict(action=m.TRADE_ACTION_PENDING, symbol=sym, volume=lots,
                            type=m.ORDER_TYPE_BUY_STOP, price=round(pdh, si.digits),
                            sl=round(stop_px, si.digits), tp=0.0,     # TP 0.0 = none, by design
@@ -310,7 +324,7 @@ def main() -> int:
     if int(rr.retcode) == 10009:
         save_state(dict(day=day, decided="placed", ticket=int(getattr(rr, "order", 0)),
                         level=round(pdh, 2)))
-    m.shutdown()
+    _release(m)
     return 0
 
 

@@ -1,0 +1,13 @@
+# Every 2 minutes at :50 seconds, stepping from :00 -> 00,02,04,... Read-only; yields to peers.
+[Unit]
+Description=Telegram trade events, every 2 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/2:50
+OnBootSec=200sec
+Persistent=false
+AccuracySec=10s
+Unit=trade-events.service
+
+[Install]
+WantedBy=timers.target

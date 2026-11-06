@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+"""Telegram trade events for the three Switch order-placers — the ONLY bot messages on the phone.
+
+User request 2026-11-06: "Telegram should send only tradable, traded and closed", plus a weekly
+P/L per bot. One read-only watcher replaces each bot's own chatter (their wrappers now export
+NOTIFY_NO_TELEGRAM=1, so lock/trail/digest messages go to email only).
+
+EVENTS (diff of the account between runs, magic-filtered):
+  TRADABLE  a new pending order (e.g. trail-runner's buy-stop at the prior-day high)
+  TRADED    a new position, or a position whose volume changed (book rebalances)
+  CLOSED    a position that disappeared — exit price and realised P&L from the deal history
+WEEKLY (--weekly, Saturday timer): realised P&L, trades, wins per bot over the last 7 days of
+  server time, plus each bot's open floating P&L and the account equity.
+
+Read-only: never sends an order, never calls shutdown() (bridge 18815 is shared), yields to any
+peer holding its bridge lock. First run records the current state silently (no flood).
+
+    python scripts/v5_trade_events_notify.py --port 18815
+    python scripts/v5_trade_events_notify.py --port 18815 --weekly
+"""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import json
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+STATE = ROOT / "data" / "v5_runs" / "trade_events_state.json"
+BOTS = {360595: "Book (XAU+BTC champion)", 360601: "ZigZag", 360600: "Trail-runner"}
+ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
+               6: "BUY STOP LIMIT", 7: "SELL STOP LIMIT"}
+BRIDGE_PEERS = ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock",
+                "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock")
+
+
+def peers_busy() -> str | None:
+    """Test-and-release only: holding a peer's lock would make that peer skip its own run."""
+    for path in BRIDGE_PEERS:
+        try:
+            with open(path, "a") as fh:
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    fcntl.flock(fh, fcntl.LOCK_UN)
+                except BlockingIOError:
+                    return path
+        except OSError:
+            continue
+    return None
+
+
+def money(x: float) -> str:
+    return f"{'+' if x >= 0 else '-'}${abs(x):,.2f}"
+
+
+def snapshot(m) -> tuple[dict, dict]:
+    orders = {str(o.ticket): dict(magic=int(o.magic), symbol=o.symbol, type=int(o.type),
+                                  volume=float(o.volume_initial), price=float(o.price_open),
+                                  sl=float(o.sl), tp=float(o.tp))
+              for o in (m.orders_get() or []) if int(o.magic) in BOTS}
+    positions = {str(p.ticket): dict(magic=int(p.magic), symbol=p.symbol, type=int(p.type),
+                                     volume=float(p.volume), price=float(p.price_open),
+                                     sl=float(p.sl), profit=float(p.profit))
+                 for p in (m.positions_get() or []) if int(p.magic) in BOTS}
+    return orders, positions
+
+
+def diff(prev: dict, orders: dict, positions: dict) -> list[tuple[str, str, dict]]:
+    """Pure: (kind, ticket, info) for every event between two snapshots."""
+    ev = []
+    for t, o in orders.items():
+        if t not in prev.get("orders", {}):
+            ev.append(("TRADABLE", t, o))
+    for t, p in positions.items():
+        old = prev.get("positions", {}).get(t)
+        if old is None:
+            ev.append(("TRADED", t, p))
+        elif abs(old["volume"] - p["volume"]) > 1e-9:
+            ev.append(("RESIZED", t, dict(p, old_volume=old["volume"])))
+    for t, p in prev.get("positions", {}).items():
+        if t not in positions:
+            ev.append(("CLOSED", t, p))
+    return ev
+
+
+def close_details(m, ticket: str) -> tuple[float | None, float | None]:
+    deals = m.history_deals_get(position=int(ticket)) or []
+    if not deals:
+        return None, None
+    pnl = sum(float(d.profit) + float(d.swap) + float(d.commission) for d in deals)
+    outs = [d for d in deals if int(d.entry) in (1, 2, 3)]          # OUT, INOUT, OUT_BY
+    return pnl, (float(outs[-1].price) if outs else None)
+
+
+def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
+    bot = BOTS[x["magic"]]
+    side = "BUY" if x["type"] == 0 else "SELL"
+    sl = f" · SL {x['sl']:,.2f}" if x.get("sl") else ""
+    if kind == "TRADABLE":
+        head = f"🟡 TRADABLE · {bot}"
+        line = f"{ORDER_TYPES.get(x['type'], x['type'])} {x['symbol']} {x['volume']} @ {x['price']:,.2f}{sl}"
+    elif kind == "TRADED":
+        head = f"🟢 TRADED · {bot}"
+        line = f"{side} {x['symbol']} {x['volume']} @ {x['price']:,.2f}{sl}"
+    elif kind == "RESIZED":
+        head = f"🔵 TRADED (resized) · {bot}"
+        line = f"{side} {x['symbol']} {x['old_volume']} → {x['volume']} (entry {x['price']:,.2f})"
+    else:
+        pnl, exit_px = close_details(m, t)
+        head = f"🔴 CLOSED · {bot}"
+        ex = f" → {exit_px:,.2f}" if exit_px else ""
+        pl = money(pnl) if pnl is not None else f"~{money(x['profit'])} (last seen)"
+        line = f"{side} {x['symbol']} {x['volume']} · {x['price']:,.2f}{ex} · P&L {pl}"
+    return head, f"{line}\n#{t} · Switch"
+
+
+def weekly(m) -> tuple[str, str]:
+    now = datetime.now(timezone.utc)
+    deals = m.history_deals_get(now - timedelta(days=7), now + timedelta(days=1)) or []
+    acct = m.account_info()
+    rows = []
+    for magic, name in BOTS.items():
+        mine = [d for d in deals if int(d.magic) == magic]
+        closes = [d for d in mine if int(d.entry) in (1, 2, 3)]
+        realised = sum(float(d.profit) + float(d.swap) + float(d.commission) for d in mine)
+        wins = sum(1 for d in closes if float(d.profit) + float(d.swap) > 0)
+        floating = sum(float(p.profit) for p in (m.positions_get() or []) if int(p.magic) == magic)
+        rows.append((name, realised, len(closes), wins, floating))
+    tot = sum(r[1] for r in rows)
+    lines = [f"Week to {now:%a %d %b %Y} (last 7 days)"]
+    for name, real, n, w, fl in rows:
+        lines.append(f"• {name}: realised {money(real)} · {n} closed ({w} won) · open {money(fl)}")
+    lines.append(f"TOTAL realised {money(tot)} · equity ${float(acct.equity):,.2f}")
+    return "📊 WEEKLY P/L · Switch", "\n".join(lines)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=18815)
+    ap.add_argument("--weekly", action="store_true")
+    ap.add_argument("--dry", action="store_true", help="print, do not send")
+    a = ap.parse_args()
+    busy = peers_busy()
+    if busy and not a.weekly:
+        print(f"peer busy ({busy}); skipping this run")
+        return 0
+    from mt5linux import MetaTrader5  # noqa: PLC0415
+    from scripts.v5_notify import notify  # noqa: PLC0415
+    m = MetaTrader5(host="localhost", port=a.port)
+    if not m.initialize():
+        print("init failed", m.last_error())
+        return 1
+    # NO m.shutdown() anywhere: bridge 18815 is shared.
+    if a.weekly:
+        subj, body = weekly(m)
+        print(subj + "\n" + body)
+        if not a.dry:
+            notify(subj, body, f"{subj}\n{body}")
+        return 0
+    orders, positions = snapshot(m)
+    prev = json.loads(STATE.read_text()) if STATE.exists() else None
+    if prev is None:
+        print(f"first run: recording {len(orders)} order(s), {len(positions)} position(s) silently")
+    else:
+        for kind, t, x in diff(prev, orders, positions):
+            head, body = message(m, kind, t, x)
+            print(head, "|", body.replace("\n", " | "))
+            if not a.dry:
+                notify(head, body, f"{head}\n{body}")
+    if not a.dry:
+        STATE.write_text(json.dumps(dict(orders=orders, positions=positions,
+                                         at=datetime.now(timezone.utc).isoformat()), indent=1))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

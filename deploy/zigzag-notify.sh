@@ -15,6 +15,7 @@
 # the family on mechanism). This reports what a disproven detector does live; it is not advice.
 set -u
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 mkdir -p data/v5_runs
 /home/trader/miniconda3/envs/envmt5/bin/python scripts/v5_zigzag_notify.py \
   --state zigzag_trail_switch_state.json --port 18815 --magic 360601 \

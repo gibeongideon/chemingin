@@ -396,7 +396,7 @@ def main() -> None:
         warning="NEGATIVE EXPECTANCY — walk-forward SR -0.76, 0/8 years, DSR 0.000 (V5_FINDINGS 3x)"
     ), indent=2))
     print(f"\nstate -> {state_path.relative_to(ROOT)}")
-    mt5.shutdown()
+    pass  # NO mt5.shutdown(): shared bridge (2026-11-06)
 
 
 if __name__ == "__main__":

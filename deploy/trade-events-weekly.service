@@ -1,0 +1,7 @@
+[Unit]
+Description=Telegram weekly P/L per bot (Switch demo)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trade-events.sh --weekly

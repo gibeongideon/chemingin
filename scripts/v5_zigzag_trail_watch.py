@@ -213,7 +213,7 @@ def main() -> int:
         live = {str(p.ticket) for p in held}
         my_state.write_text(json.dumps({k: v for k, v in seen.items() if k in live}, indent=2))
     finally:
-        mt5.shutdown()
+        pass  # NO mt5.shutdown(): shared bridge (2026-11-06)
     return 0
 
 

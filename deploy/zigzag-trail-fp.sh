@@ -10,6 +10,7 @@
 # RR=1 against a required 0.503 -- zero headroom before any model exists).
 set -uo pipefail
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 PY=/home/trader/miniconda3/envs/envmt5/bin/python
 LOG=data/v5_runs/zigzag-trail-fp.log
 mkdir -p data/v5_runs

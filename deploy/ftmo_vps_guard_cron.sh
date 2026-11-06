@@ -1,6 +1,7 @@
 #!/bin/bash
 set -u
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 export MT5_BRIDGE_PORT=18814
 /home/trader/miniconda3/envs/envmt5/bin/python scripts/v5_basket_challenge_exec.py \
   --config configs/v5_ftmo_challenge.json \

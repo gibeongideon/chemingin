@@ -2,6 +2,7 @@
 # FundingPips Flex 10K — real-time PROTECTOR (guards + flatten on breach, no reconcile).
 set -u
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 export MT5_BRIDGE_PORT=18812
 PY=/home/trader/miniconda3/envs/envmt5/bin/python
 $PY scripts/v5_basket_challenge_exec.py \

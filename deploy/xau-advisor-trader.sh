@@ -7,6 +7,7 @@
 # Disarm: systemctl --user disable --now xau-advisor-trader.timer
 set -uo pipefail
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 PY=/home/trader/miniconda3/envs/envmt5/bin/python
 LOG=data/v5_runs/xau-advisor-trader.log
 mkdir -p data/v5_runs

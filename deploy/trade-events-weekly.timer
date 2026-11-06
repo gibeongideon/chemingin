@@ -1,0 +1,11 @@
+# Saturday 07:00 UTC: gold has been closed since Friday 21:00 UTC, so the week's gold P/L is final.
+[Unit]
+Description=Telegram weekly P/L, Saturdays 07:00 UTC
+
+[Timer]
+OnCalendar=Sat *-*-* 07:00:00
+Persistent=true
+Unit=trade-events-weekly.service
+
+[Install]
+WantedBy=timers.target

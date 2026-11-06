@@ -1,0 +1,7 @@
+[Unit]
+Description=Telegram trade events (tradable/traded/closed) for Switch bots 360595/360601/360600
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trade-events.sh

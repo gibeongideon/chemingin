@@ -9,6 +9,7 @@
 # Resend account. Sign up with the address you want alerts at, or verify it in their dashboard.
 set -eu
 cd /home/trader/MT5
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 
 read -rsp "Resend API key (starts re_, input hidden): " KEY; echo
 [ -n "$KEY" ] || { echo "no key entered, aborting"; exit 1; }

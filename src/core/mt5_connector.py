@@ -72,13 +72,15 @@ class MT5Connector:
         self.server: str = os.getenv("MT5_SERVER") or mt5_cfg.get("server") or ""
         self.timeout: int = mt5_cfg.get("timeout", 60000)
         self.host = host
-        self.port = port
+        self.port = int(os.getenv("MT5_BRIDGE_PORT") or port)
         self._connected = False
 
     def connect(self) -> None:
         self._mt5 = get_mt5(self.host, self.port)
 
-        kwargs: dict = {"path": self.terminal_path, "timeout": self.timeout}
+        kwargs: dict = {"timeout": self.timeout}
+        if self.terminal_path:
+            kwargs["path"] = self.terminal_path
         if self.login:
             kwargs["login"] = self.login
         if self.password:
@@ -104,10 +106,12 @@ class MT5Connector:
             print("Connected to MT5 terminal (not yet logged in to a trading account)")
 
     def disconnect(self) -> None:
+        # NO self._mt5.shutdown(). Every VPS bridge (18815 Switch, 18816 FundingPips) is ONE MT5
+        # session shared over rpyc by several timers; shutdown() drops it for all of them
+        # mid-run (2026-11-04 incident; still present in this connector until 2026-11-06).
         if self._connected:
-            self._mt5.shutdown()
             self._connected = False
-            print("Disconnected from MT5")
+            print("Disconnected from MT5 (session left open for the other jobs on this bridge)")
 
     def reset_singleton(self) -> None:
         """Drop the cached rpyc bridge so the next connect() builds a fresh one."""

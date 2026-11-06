@@ -164,7 +164,7 @@ def main() -> None:
     acct = mt5.account_info()
     server = getattr(acct, "server", "unknown") if acct else "unknown"
     login = getattr(acct, "login", None) if acct else None
-    mt5.shutdown()
+    pass  # NO mt5.shutdown(): shared bridge (2026-11-06)
 
     if csv.exists():
         old = pd.read_csv(csv, parse_dates=["time"]).set_index("time").sort_index()

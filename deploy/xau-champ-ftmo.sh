@@ -12,6 +12,7 @@
 # combined gold exposure is what neither was sized for.
 set -uo pipefail
 cd /home/trader/MT5 || exit 1
+export NOTIFY_NO_TELEGRAM=1   # 2026-11-06: phone gets only trade events + advisor; this job -> email
 PY=/home/trader/miniconda3/envs/envmt5/bin/python
 LOG=data/v5_runs/xau-champ-ftmo.log
 mkdir -p data/v5_runs
