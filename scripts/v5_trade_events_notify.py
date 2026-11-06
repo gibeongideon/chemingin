@@ -92,6 +92,25 @@ def diff(prev: dict, orders: dict, positions: dict) -> list[tuple[str, str, dict
     return ev
 
 
+MILESTONES = (50.0, 200.0, 300.0)   # user 2026-11-06: ZigZag floating +$50/+200/+300, so SL can be moved by hand
+
+
+def milestones(prev: dict, positions: dict) -> list[tuple[str, str, dict]]:
+    """Pure: one PROFIT event per ZigZag position per run, for the highest newly-crossed level.
+    Levels already hit are carried in positions[t]['hits'] (mutated here) so each fires once."""
+    ev = []
+    for t, p in positions.items():
+        hits = list(prev.get("positions", {}).get(t, {}).get("hits", []))
+        new = []
+        if "zigzag" in BOTS.get(p["magic"], "").lower():
+            new = [lv for lv in MILESTONES if p["profit"] >= lv and lv not in hits]
+            hits += new
+        p["hits"] = hits
+        if new:
+            ev.append(("PROFIT", t, dict(p, level=max(new))))
+    return ev
+
+
 def close_details(m, ticket: str) -> tuple[float | None, float | None]:
     deals = m.history_deals_get(position=int(ticket)) or []
     if not deals:
@@ -114,6 +133,10 @@ def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
     elif kind == "RESIZED":
         head = f"🔵 TRADED (resized) · {bot}"
         line = f"{side} {x['symbol']} {x['old_volume']} → {x['volume']} (entry {x['price']:,.2f})"
+    elif kind == "PROFIT":
+        head = f"💰 +${x['level']:,.0f} REACHED · {bot}"
+        line = (f"{side} {x['symbol']} {x['volume']} @ {x['price']:,.2f} · floating {money(x['profit'])}"
+                f" · SL {x['sl']:,.2f}\nYou may raise the SL (bot only ever raises it, never lowers)")
     else:
         pnl, exit_px = close_details(m, t)
         head = f"🔴 CLOSED · {bot}"
@@ -184,7 +207,7 @@ def main() -> int:
     if prev is None:
         print(f"first run: recording {len(orders)} order(s), {len(positions)} position(s) silently")
     else:
-        for kind, t, x in diff(prev, orders, positions):
+        for kind, t, x in diff(prev, orders, positions) + milestones(prev, positions):
             head, body = message(m, kind, t, x)
             print(head, "|", body.replace("\n", " | "))
             if not a.dry:

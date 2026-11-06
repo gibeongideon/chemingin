@@ -56,6 +56,8 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 
 **Switch demo order-placers (since 2026-11-06): exactly three — Book 360595, ZigZag 360601, Trail-runner 360600.**
 
+**Darwinex demo (3000112593, bridge 18817), concurrently since 2026-11-06: the same three — Book 360605 (gold only: Darwinex lists no BTC), ZigZag 360606, Trail-runner 360607.** Telegram reports TRADABLE / TRADED / CLOSED and a Saturday weekly P/L for both accounts.
+
 
 | Magic | System | Venue / bridge | Status |
 |---|---|---|---|
