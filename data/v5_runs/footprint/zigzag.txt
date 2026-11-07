@@ -1,0 +1,11 @@
+Switch XAUUSDs H1 walk-forward 2024-01-01..2026-11-05 19:00:00, pooled ['EURUSDs', 'GBPUSDs', 'USDJPYs']
+BASE vs §3dg live probs: corr 1.0000
+hold gold same days (with swap): SHARPE +0.93
+        variant  fires  trades  win  avgR  totR  ann  mdd  sharpe  null_p50  null_p95     p
+           BASE   1077     555 72.3 0.047  26.2 2.22 4.16    0.93      0.96      1.52 0.520
+        FP_FEAT   1516     661 68.5 0.044  29.4 2.48 4.28    0.84      1.01      1.66 0.645
+   FP_GATE kept    445     326 72.4 0.075  24.3 2.06 3.28    1.05      0.76      1.48 0.235
+FP_GATE skipped    632     404 73.0 0.051  20.5 1.73 1.72    0.83      0.82      1.46 0.490
+
+p = share of 200 circular-shift timing replays (same fire count, same trade rules) with
+Sharpe >= the variant's. 'skipped' = the BASE fires the footprint gate would have refused, traded.

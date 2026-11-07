@@ -1,0 +1,9 @@
+      name  sharpe      dd  dd_matched  t_raw  t_vs_base years_better  share_cut  PASS
+ XAU TILT6   1.404 -11.802     -12.774 -0.733      0.253          3/6      0.495 False
+XAU TILT30   1.534 -10.204     -11.070  0.281      1.330          5/6      0.506 False
+XAU DIVCUT   1.269 -11.969     -12.510 -2.364     -1.585          2/6      0.063 False
+ BTC TILT6   1.136 -18.812     -19.422 -0.143      0.594          4/8      0.490 False
+BTC TILT30   1.169 -18.017     -18.682  0.299      1.000          4/8      0.531 False
+BTC DIVCUT   0.993 -17.832     -19.604 -3.039     -1.699          2/8      0.078 False
+
+family max-stat: observed max t +1.33; null median +0.94, 95th +2.07; p = 0.280 (200 circular shifts of the multiplier)

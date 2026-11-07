@@ -112,6 +112,7 @@ failures come down to five recurring reasons:
 | **Session ORB, release trigger (08:30 ET)** | p 0.84 after fixing the null | (e) the first "significance" was a cost offset inside a zero-mean null |
 | **Candle language** (n-gram over candle tokens) | +0.0095 nats/token, hit 52.3% | (b) real information, too small to pay the spread |
 | **BERT-style candle transformer** (pretrained pre-2024, frozen) | OOS masked-token loss *worse than token frequencies*; in ZigZag fails the timing null | no H1 sequence information exists to learn; the training gain was memorisation (§3dl) |
+| **Volume footprint** (Binance taker-buy delta, CVD, absorption; PAXG for gold) | 0/48 screen cells; ZigZag with features 0.84 vs 0.93, absorption gate p 0.24; book overlays p 0.28 | aggressor flow mostly restates the bar's price move; gold has no real volume outside CME (§3do) |
 | **5-min ORB Stocks in Play** (share CFDs) | direction beats random by ~1 Sharpe gross; net −10 | (b) CFD spread = 0.66R per side vs the paper's 0.01R |
 
 ### ML / AI (§3dj and memory)
@@ -247,6 +248,7 @@ Recent research scripts:
 | `v5_madl_lstm.py` | §3dj |
 | `v5_zigzag_madl.py` | §3dk |
 | `v5_zigzag_bert.py` | §3dl |
+| `v5_footprint_build.py`, `v5_footprint_{screen,zigzag,book}.py` | §3do |
 | `v5_combo_survivors.py` | §3dm |
 | `v5_dgt_grid.py` | §3df |
 | `v5_advisor_pnl.py` | §3de |

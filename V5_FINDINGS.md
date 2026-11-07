@@ -2558,6 +2558,47 @@ broken or stale pipeline so silence is never ambiguous.
 
 ---
 
+### §3do — Volume FOOTPRINT (aggressor flow) for ZigZag and the book: 0 survivors (2026-11-07, `scripts/v5_footprint_{build,screen,zigzag,book}.py`)
+
+**Data:**
+- Binance 1m klines carry `taker_buy_base_volume`, so every minute is a real (price, buy-vol, sell-vol) footprint cell.
+- Built hourly footprint bars per symbol (`data/binance_1m/{SYM}_fp_H1.csv.gz`): delta, VWAP, POC position, and buy/sell volume in the bar's top/bottom 25%.
+- Gold CFDs have no traded volume, so gold flow = **PAXGUSDT** (2020-08..). It is thin: median $115k/hour vs BTC $39M.
+- Clock control: PAXG vs Switch XAU H1 returns correlate **0.764 at lag 0**, ≤0.05 at ±1, ±2. The UTC → server (NY+7) map is right.
+
+**A. Screen** (8 features × 3 horizons × XAU/BTC = 48 cells).
+- Uses the PARTIAL IC: each feature residualised on the bar's own return, ret6 and ret24.
+- Pass = |t| ≥ 3.3 AND same sign both halves AND top-decile EV > cost.
+- **0/48 pass.** On gold no feature reaches |t| 2.2.
+- BTC 1h delta: t −4.13, contrarian, but the first half is 0.000 and EV is 0.6bp vs a 10bp cost.
+- BTC cvd24: +24bp/24h EV, both halves +, but t 2.25.
+
+**B. ZigZag** (live harness, BASE reproduces §3dg at corr 1.0000):
+
+| variant | trades | Sharpe | timing-null p |
+|---|---|---|---|
+| BASE | 555 | 0.93 | 0.52 |
+| + 8 footprint features | 661 | 0.84 | 0.65 |
+| gate buy_lo > 0.5: kept | 326 | 1.05 | 0.24 |
+| gate: skipped | 404 | 0.83 | 0.49 |
+
+- Hold gold = 0.93.
+- The gate leans the textbook way (absorption at the low: 0.075R vs 0.051R per trade) but is indistinguishable from random timing.
+
+**C. Book overlays at matched vol.**
+- Bases: XAU H4 SR 1.375 (2021-07+), BTC D1 1.105 (2019+).
+- Overlays: TILT6, TILT30 (forecast × 1 + 0.5 tanh z(cvd)), DIVCUT (halve at a 30-bar high made without buyers).
+- Best: XAU TILT30, t +1.33, 5/6 years. DIVCUT hurts on both (t −1.6, −1.7).
+- **Family max-stat p 0.280** (null 95th +2.07).
+
+**Why it fails:**
+- Aggressor flow is mostly a restatement of the bar's own price move: raw IC dissolves once price is controlled for.
+- What remains is a short-horizon contrarian blip, far below the spread.
+- For gold, the only free real-volume proxy is a thin token whose flow tracks but does not lead the CFD.
+- Real CME GC footprint (tick data with aggressor flags) is not free retail data and was not tested.
+
+**Verdict:** footprint adds nothing to ZigZag or the book. Do not deploy. Re-open only with CME GC tick data.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~
