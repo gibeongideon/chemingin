@@ -22,7 +22,7 @@ partitioned in `RESEARCH-REGIMES.md`).
 | # | Finding | Number | Where |
 |---|---|---|---|
 | 1 | **Kill the shorts.** On drift assets the short side loses in every family tested (10/10 signal families, 5 more times since) | long-only roughly doubles long/short Sharpe | §3, `xau-longonly-champion` |
-| 2 | **The champion** — long-only EWMAC ∪ breakout, `conc^1.5`, fast vol-target, XAU H4 | Sharpe **≈1.02–1.10**, net of a $0.448 spread | `src/v5/xau_dual_signals.py::champion_signal` |
+| 2 | **The champion** — long-only EWMAC ∪ breakout, `conc^1.5`, fast vol-target, XAU H4 | Sharpe **≈1.02–1.10** on 2015+ broker data (in-sample era); **0.69 on clean CME gold 2011–26** incl. financing, DD −19% vs gold −45%; survives its out-of-sample 2011–14 (+4% while gold −21%) (§3dp) | `src/v5/xau_dual_signals.py::champion_signal` |
 | 3 | **Diversification is the only thing that lifts it.** Same recipe, verbatim, on uncorrelated drift assets | XAU+BTC book **1.26** (2018–26, DD −13.4%); 4-sleeve XAU+BTC+NDX+BRENT **1.48** | `scripts/v5_book_overlays.py` |
 | 4 | **The recipe is a template, not a gold fact.** Frozen params across 8 drift classes | portfolio **1.60** (DSR 0.9998; realistic live 1.2–1.4) | `data/v5_runs/SHARPE16_QUEST.md` |
 | 5 | **Financing is the largest live lever.** Swap costs −3.79%/yr | −0.29 Sharpe; swap-free gold lifts the XAU sleeve **0.886 → 1.090** | §3q, §3ag |

@@ -2599,6 +2599,33 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** footprint adds nothing to ZigZag or the book. Do not deploy. Re-open only with CME GC tick data.
 
+### §3dp — The REAL H4 champion from 2011 on CME gold futures (2026-11-07, `scripts/v5_champion_h4_cme.py`)
+
+**Data:** Databento GLBX `GC.v.0` hourly, single provenance, back-adjusted at rolls, mapped to the Switch server clock and resampled to H4 like the live feed.
+- Controls: GC vs Switch XAU H1 corr 0.986 at lag 0. Champion daily returns CME vs Switch (2017+) corr 0.951.
+- All streams start 2011-06, after the ~1y EWMAC warm-up. A 2010 start had handed constant-long gold's +14% while the champion was still flat.
+- Futures returns already pay financing (≈ cash rate). This is why the CME Sharpe on 2017+ is 0.86 vs 1.12 on Switch with no swap charged.
+
+| era | champion H4 | const-long same vol | gold B&H |
+|---|---|---|---|
+| **OUT-OF-SAMPLE 2011-06..2014** (recipe chosen on 2015+) | **+4.4%, SR +0.18, DD −15.5%** | −13.1%, SR −0.34, DD −28.0% | −21.4%, DD −40.9% |
+| BEAR 2011-09..2015 | −5.6%, SR −0.12, DD −15.5% | −22.4%, DD −29.0% | −42.2%, DD −45.0% |
+| 2015-26 | +171%, SR 0.83, DD −18.9% | +118%, SR 0.83, DD −12.9% | +143%, SR 0.53 |
+| **FULL 2011-26** | **+183%, CAGR 8.1%, SR 0.69, DD −18.9%** | +90%, SR 0.52, DD −29.0% | +91%, SR 0.32, DD −45.0%, 13.7y underwater |
+
+**Results:**
+
+1. **The true H4 recipe survives its first out-of-sample test.**
+   - Gold fell 21% in 2011-14; the champion made +4% with a third of the drawdown.
+   - In the bear it sat at the resting tilt on 52% of bars.
+2. **The live "1.08" is NOT reproduced on a clean 15-year sample.**
+   - Full-period Sharpe is **0.69** with financing included. A swap-free account adds roughly the cash rate back.
+3. **Timing vs constant-long at matched vol: paired t +1.00** (bear +1.39, OOS +1.29, 2015-26 +0.34).
+   - The edge over holding is real in direction but **not statistically significant**. What is robust is the **drawdown**: −19% vs −29% at equal vol, −45% for gold.
+   - This agrees with §3dn's D1 port. Its "H4 is better than D1" doubt resolves in favour of D1-like numbers: 0.69 here vs 0.64 there.
+
+**Expectation to use going forward:** Sharpe ≈ 0.7 after financing, max DD ≈ 19%, multi-year flat stretches possible. The value is drawdown control, not alpha.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~

@@ -1,0 +1,57 @@
+CME GC H4 (server clock) 2010-06-07 00:00:00 .. 2026-11-06 20:00:00, 25,563 bars
+control 2017+: CME vs Switch champion daily-return corr 0.951; Sharpe CME +0.86 vs Switch +1.12
+
+BEAR 2011-15  (gold 2560 -> 1479)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION H4                 -5.6%   -1.3%   -0.12  -15.5%            3.2 yrs
+  CHAMPION H4 3bp             -6.5%   -1.6%   -0.14  -15.7%            3.2 yrs
+  CONSTANT LONG same vol     -22.4%   -5.7%   -0.56  -29.0%            3.2 yrs
+  GC buy & hold              -42.2%  -10.0%   -0.58  -45.0%            5.2 yrs
+
+OUT-OF-SAMPLE 2011-14  (gold 2135 -> 1680)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION H4                 +4.4%   +1.2%   +0.18  -15.5%            2.2 yrs
+  CHAMPION H4 3bp             +3.6%   +1.0%   +0.15  -15.7%            2.2 yrs
+  CONSTANT LONG same vol     -13.1%   -3.8%   -0.34  -28.0%            2.2 yrs
+  GC buy & hold              -21.4%   -5.4%   -0.24  -40.9%            4.0 yrs
+
+IN-SAMPLE era 2015-26  (gold 1659 -> 4080)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION H4               +171.3%  +10.7%   +0.83  -18.9%            2.9 yrs
+  CHAMPION H4 3bp           +162.4%  +10.3%   +0.81  -19.3%            2.9 yrs
+  CONSTANT LONG same vol    +118.3%   +8.3%   +0.83  -12.9%            2.0 yrs
+  GC buy & hold             +142.8%   +7.5%   +0.53  -30.1%            3.7 yrs
+
+FULL 2011-26  (gold 2135 -> 4080)
+                              total    CAGR  Sharpe   maxDD  longest underwater
+  CHAMPION H4               +183.2%   +8.1%   +0.69  -18.9%            3.3 yrs
+  CHAMPION H4 3bp           +171.7%   +7.7%   +0.67  -19.3%            3.3 yrs
+  CONSTANT LONG same vol     +89.6%   +4.9%   +0.52  -29.0%            6.5 yrs
+  GC buy & hold              +90.7%   +3.9%   +0.32  -45.0%           13.7 yrs
+
+TIMING vs constant-long at MATCHED vol, full period: paired t +1.00
+  BEAR 2011-15             t +1.39
+  OUT-OF-SAMPLE 2011-14    t +1.29
+  IN-SAMPLE era 2015-26    t +0.34
+
+BEAR detail: mean forecast 0.56; at resting (<0.2) 52% of bars; strong (>=1.5) 14%
+
+BY YEAR (%):
+      champion  const_long  gold
+time                            
+2011       6.0         4.4   2.2
+2012       4.2         1.8   6.2
+2013      -7.3       -18.1 -28.3
+2014       2.0        -0.2   1.0
+2015      -1.1        -3.6 -12.0
+2016      15.4        10.7   7.7
+2017       6.2        10.8  11.8
+2018       0.5        -2.6  -3.8
+2019      19.3        14.0  15.6
+2020      11.5        11.2  20.9
+2021      -6.4        -5.4  -5.2
+2022       4.2         7.0  -2.6
+2023      11.8         7.6   7.2
+2024      24.1        17.7  20.6
+2025      23.3        19.4  55.7
+2026       0.3        -2.4  -8.3
