@@ -36,6 +36,7 @@ ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
 PEERS_BY_PORT = {
     18815: ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock",
             "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock"),
+    18814: ("/tmp/zigzag-trail-ftmo-b.lock", "/tmp/zigzag-trail-watch.lock"),
     18817: ("/tmp/xau-darwinex.lock", "/tmp/zigzag-trail-darwinex.lock",
             "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner-darwinex.lock"),
 }
@@ -43,7 +44,8 @@ LABEL = "Switch"
 BRIDGE_PEERS = PEERS_BY_PORT[18815]
 # ZigZag probability alerts (user 2026-11-09): WATCH at P >= 0.55, SIGNAL at the config threshold
 # (0.60, where the bot itself places the order). Read from the bot's own state file, once per H1 bar.
-ZZ_STATE_BY_PORT = {18815: "zigzag_trail_switch_state.json", 18817: "zigzag_trail_darwinex_state.json"}
+ZZ_STATE_BY_PORT = {18815: "zigzag_trail_switch_state.json", 18817: "zigzag_trail_darwinex_state.json",
+                    18814: "zigzag_trail_ftmo_b_state.json"}
 ZZ_WATCH = 0.55
 
 

@@ -1,0 +1,19 @@
+BTC ZigZag (Binance H1, Switch costs: 6bp round trip, swap -15%/yr) discovery 2020-01-01..2022-12-31, holdout 2023-01-01..
+BTC buy & hold Sharpe: discovery 0.76, holdout 1.10
+
+LIVE GOLD RULE on BTC (M1, .60, 3ATR, TP4.3R, 120h): discovery +0.09, holdout -0.33
+
+PICK (best of 480 on discovery): {'model': 'M2', 'thr': 0.65, 'k': 6.0, 'tp': 4.3, 'hold': 336, 'gate': True}
+  discovery Sharpe +1.30 -> HOLDOUT -0.16 (random-timing p 0.865)
+
+best rule per model (by discovery), holdout shown for information:
+  M1: thr 0.65 k 6.0 tp 4.3 hold 336 gate True | disc +1.14 -> holdout +0.20 (p 0.570)
+  M2: thr 0.65 k 6.0 tp 4.3 hold 336 gate True | disc +1.30 -> holdout -0.16 (p 0.855)
+  M3: thr 0.7 k 6.0 tp 0.0 hold 120 gate True | disc +1.18 -> holdout -0.06 (p 0.875)
+  M4: thr 0.65 k 6.0 tp 4.3 hold 336 gate True | disc +1.16 -> holdout +0.04 (p 0.745)
+  M5: thr 0.65 k 3.0 tp 0.0 hold 336 gate False | disc +0.99 -> holdout +0.57 (p 0.715)
+
+mean holdout Sharpe over ALL 96 rules per model (robustness, no selection):
+  M1 -0.03  M2 -0.13  M3 -0.01  M4 -0.04  M5 +0.02
+gate effect (mean holdout, gated vs ungated, all models): -0.14 vs +0.07
+gold features (M4 vs M1, mean over identical rules): disc +0.047, holdout -0.008

@@ -58,6 +58,8 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 
 **Darwinex demo (3000112593, bridge 18817), concurrently since 2026-11-06: the same three — Book 360605 (gold only: Darwinex lists no BTC), ZigZag 360606, Trail-runner 360607.** Telegram reports TRADABLE / TRADED / CLOSED and a Saturday weekly P/L for both accounts.
 
+**FTMO demo (1515233856, $100k, bridge 18814), since 2026-11-09: ZigZag best variant only — magic 360608, no profit lock, 3 ATR trail, take-profit 4.3R (§3dr).** Same rule as Darwinex 360606; Switch 360601 runs the user's lock ladder + trend gate (live A/B).
+
 
 | Magic | System | Venue / bridge | Status |
 |---|---|---|---|

@@ -2754,6 +2754,27 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** do not trade Nasdaq with the trend recipe or ZigZag (§3dt: ZigZag NQ = B&H). The only defensible use is an untimed long-hold diversifier, and that lift is unproven.
 
+### §3dv — BTC-specific ZigZag (incl. gold features): FAILS the holdout (2026-11-09, `scripts/v5_zigzag_btc.py`)
+
+**Setup:**
+- Binance BTCUSDT H1 2017-26. Switch costs: 6bp round trip, long swap −15%/yr charged per hour held.
+- 5 models: BTC-only; deeper swings (theta 2.5); BTC+ETH pooled; BTC + GOLD features (GC returns, z20, vol ratio, closed flag); H4.
+- 96 rules each: thr × trail 3/4/6 ATR × TP × hold 120/336h × BTC-champion gate. Quarterly walk-forward.
+- ONE pick on discovery 2020-22, read once on holdout 2023-26.
+
+**Results:**
+- Live gold rule on BTC: +0.09 discovery → **−0.33 holdout**.
+- **Pick** (M2, thr 0.65, 6 ATR, TP 4.3R, 336h, gated): discovery **+1.30 → holdout −0.16** (random-timing p 0.87). BTC buy & hold: 0.76 / 1.10.
+- Best rule of every model collapses on holdout (M1 +0.20, M3 −0.06, M4 +0.04, M5 +0.57 at p 0.72).
+- Mean holdout over all 96 rules per model: −0.13 to +0.02.
+- **Gold features add nothing** (holdout −0.008 vs BTC-only). The BTC trend gate HURTS (−0.14 vs +0.07).
+
+**Why:**
+- The discovery winners are wide-stop/long-hold cells, i.e. approximations of holding BTC through 2020-21. They do not transfer.
+- The −15%/yr swap taxes every multi-day hold.
+
+**Verdict:** no BTC ZigZag. BTC stays in the book's D1 trend sleeve.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~

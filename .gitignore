@@ -39,3 +39,4 @@ data/xau_m1_switch/
 data/v5_runs/zigzag_live_wf/*_H1.csv
 data/v5_runs/zigzag_bert/bert.pt
 data/databento/
+data/zigzag_more/
