@@ -2672,6 +2672,30 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Recommended variant:** no early lock, 3.0 ATR trail, TP at +4.3R (+$1,500 at current size), optional +600→+300.
 
+### §3ds — ZigZag RECOVERY ADD (average down to recover): 0/27 (2026-11-09, `scripts/v5_zigzag_recovery_add.py`)
+
+**Setup:**
+- On the 539 live fires (no lock, 3.0 ATR trail), add m × {0.5, 1, 2} when price falls d × {1.0, 1.5, 2.0} ATR.
+- Exit modes:
+  - SHARED: the add rides with the original.
+  - ADD_BE: the add takes profit at the original entry.
+  - ALL_BE: both close at the combined breakeven.
+- Gate: vol-matched paired t ≥ 2 and better in both halves.
+
+**Results:**
+
+1. **A first run showed Sharpe up to 4.92 with DD −1%. It was FAKE.**
+   - The recovery exit was allowed on the add's own fill bar, assuming the H1 low came before the high.
+   - Forbidding exits on the fill bar removes it entirely. Same-bar path ambiguity, again.
+2. **Honest result: 0/27 pass.**
+   - Best: d 2.0 / m 0.5 / SHARED, Sharpe 1.60 vs base 1.45, vol-matched t +1.64.
+   - ALL_BE and every 1.0-ATR trigger LOSE at matched risk (t down to −1.84).
+   - Raw $ gains are leverage. Worst trade grows to −2.4R and max DD to −9.5% at m = 2.
+3. **Selection check:** adds fill on trades whose original averages −0.30 to −0.55R, vs +0.53 to +0.85R when not filled.
+   - The add is bought exactly on the losers (skipped-sample law, 3rd confirmation).
+
+**Verdict:** do not deploy. Recovering a losing trade by adding is leverage on the losers.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~
