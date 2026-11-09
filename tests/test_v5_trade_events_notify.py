@@ -30,3 +30,17 @@ def test_zigzag_profit_milestones_fire_once_highest_level_only():
     ev = milestones(prev, {"9": dict(z, profit=310.0)})                          # jump past 200 and 300
     assert len(ev) == 1 and ev[0][2]["level"] == 300.0 and ev[0][2]["hits"] == [50.0, 200.0, 300.0]
     assert milestones({"positions": {}}, {"2": dict(P, profit=500.0)}) == []     # Book is not ZigZag
+
+
+def test_zigzag_watch_and_signal_alerts_once_per_bar():
+    from scripts.v5_trade_events_notify import zz_alert
+    zz = dict(prob=0.5713, threshold=0.6, last_bar="2026-11-09 10:00:00", open_positions=0, actions=[],
+              prospective=dict(symbol="XAUUSDs", price=4095.33))
+    head, body = zz_alert(zz, None)
+    assert "WATCH" in head and "0.57" in head
+    assert zz_alert(zz, "2026-11-09 10:00:00") is None                       # same bar: silent
+    assert zz_alert(dict(zz, prob=0.54), None) is None                       # below 0.55: silent
+    head, body = zz_alert(dict(zz, prob=0.63, actions=[{"x": 1}]), None)
+    assert "SIGNAL" in head and "order placed" in body
+    head, body = zz_alert(dict(zz, prob=0.63, open_positions=1), None)
+    assert "already in a ZigZag trade" in body

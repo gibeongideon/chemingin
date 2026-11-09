@@ -41,6 +41,41 @@ PEERS_BY_PORT = {
 }
 LABEL = "Switch"
 BRIDGE_PEERS = PEERS_BY_PORT[18815]
+# ZigZag probability alerts (user 2026-11-09): WATCH at P >= 0.55, SIGNAL at the config threshold
+# (0.60, where the bot itself places the order). Read from the bot's own state file, once per H1 bar.
+ZZ_STATE_BY_PORT = {18815: "zigzag_trail_switch_state.json", 18817: "zigzag_trail_darwinex_state.json"}
+ZZ_WATCH = 0.55
+
+
+def zz_alert(zz: dict | None, last_bar_alerted: str | None) -> tuple[str, str] | None:
+    """Pure: (head, body) when the ZigZag state shows a NEW bar with P >= ZZ_WATCH, else None."""
+    if not zz or zz.get("prob") is None or zz.get("last_bar") == last_bar_alerted:
+        return None
+    p, thr = float(zz["prob"]), float(zz.get("threshold", 0.6))
+    if p < ZZ_WATCH:
+        return None
+    pr = zz.get("prospective") or {}
+    px = f"{pr.get('symbol', '')} {pr.get('price', 0):,.2f}"
+    if p >= thr:
+        sent = zz.get("actions") or zz.get("sent")
+        what = ("order placed" if sent else
+                "no new order: already in a ZigZag trade" if zz.get("open_positions") else "order expected")
+        return f"🎯 ZigZag SIGNAL · P {p:.2f}", f"{px} · threshold {thr:.2f} · {what}\nbar {zz['last_bar']}"
+    return (f"👀 ZigZag WATCH · P {p:.2f}",
+            f"{px} · buys at {thr:.2f}; close to a signal\nbar {zz['last_bar']}")
+
+
+def wait_for_peers(max_wait: float = 45.0) -> str | None:
+    """Yield to a peer on the bridge, but WAIT for it instead of skipping the run: with the
+    every-minute trail watcher on the same bridge, skip-on-busy skipped 2,031 runs in a row
+    (2026-11-06..09) and the Switch watcher sent nothing."""
+    import time  # noqa: PLC0415
+    t0 = time.time()
+    while True:
+        busy = peers_busy()
+        if busy is None or time.time() - t0 > max_wait:
+            return busy
+        time.sleep(1.5)
 
 
 def peers_busy() -> str | None:
@@ -185,8 +220,8 @@ def main() -> int:
             BOTS[int(k)] = v.strip()
     if a.port != 18815:                    # one state file per account
         STATE = STATE.with_name(f"trade_events_{a.port}_state.json")
-    busy = peers_busy()
-    if busy and not a.weekly:
+    busy = wait_for_peers() if not a.weekly else None
+    if busy:
         print(f"peer busy ({busy}); skipping this run")
         return 0
     from mt5linux import MetaTrader5  # noqa: PLC0415
@@ -212,8 +247,19 @@ def main() -> int:
             print(head, "|", body.replace("\n", " | "))
             if not a.dry:
                 notify(head, body, f"{head}\n{body}")
+    zz_bar = (prev or {}).get("zz_bar")
+    zf = ZZ_STATE_BY_PORT.get(a.port)
+    if zf and (ROOT / "data" / "v5_runs" / zf).exists():
+        zz = json.loads((ROOT / "data" / "v5_runs" / zf).read_text())
+        alert = zz_alert(zz, zz_bar)
+        if alert:
+            head, body = alert
+            print(head, "|", body.replace("\n", " | "))
+            if not a.dry:
+                notify(head, f"{body}\n{LABEL}", f"{head}\n{body}\n{LABEL}")
+        zz_bar = zz.get("last_bar", zz_bar)
     if not a.dry:
-        STATE.write_text(json.dumps(dict(orders=orders, positions=positions,
+        STATE.write_text(json.dumps(dict(orders=orders, positions=positions, zz_bar=zz_bar,
                                          at=datetime.now(timezone.utc).isoformat()), indent=1))
     return 0
 

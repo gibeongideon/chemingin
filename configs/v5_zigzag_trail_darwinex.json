@@ -58,8 +58,17 @@
     [
       100,
       50
+    ],
+    [
+      200,
+      80
+    ],
+    [
+      300,
+      120
     ]
   ],
   "lock_unit": "usd",
-  "_lock_note": "User rule 2026-11-02: once the position is +$100 (account USD, at the peak), floor the SL at +$50; the 3.0xATR trail takes over above that. Applied by scripts/v5_zigzag_trail_watch.py every minute. Measured cost: section 3co, early locks are the breakeven family (-6.36bp/trade at t -3.55 for breakeven at +1 ATR); +$100 on 0.06 lots is ~0.9 H1 ATR."
+  "_lock_note": "User rule 2026-11-02 (+$100 -> +$50), extended 2026-11-09 to a ladder +$200 -> +$80, +$300 -> +$120; after the first lock the trail tightens 3.0 -> 2.5 ATR (trail_atr_locked). Applied each minute by scripts/v5_zigzag_trail_watch.py. §3dq backtest (539 live fires 2024-26, fixed event set): ladder + 2.5 = +0.007R/trade vs the old rule (t +0.84, not significant); tighter post-lock trails (2.0/1.5/1.0) all LOSE (t -1.3..-1.9). NO lock at all earns 2.4x more (t +2.16): the lock is the user's choice, not an edge.",
+  "trail_atr_locked": 2.5
 }

@@ -172,6 +172,10 @@ def main() -> int:
             for trig, lock in lock_steps:
                 if (peak - entry) * per_px >= trig:
                     floor, locked = entry + lock / per_px, (trig, lock)
+            if locked is not None:
+                # §3dq: once the first lock is reached the trail tightens to trail_atr_locked
+                # (2.5 = the only post-lock speed that did not lose money vs 3.0; 2.0..1.0 all worse).
+                trail_sl = peak - float(cfg.get("trail_atr_locked", trail_atr)) * atr
             new_sl = round(max(trail_sl, floor if floor is not None else trail_sl), info.digits)
             line = (f"{now_utc()} #{p.ticket} entry {entry:.2f} bid {bid:.2f} "
                     f"({(bid - entry) / atr:+.2f} ATR, {(bid - entry) * per_px:+.0f} {lock_unit}) "
