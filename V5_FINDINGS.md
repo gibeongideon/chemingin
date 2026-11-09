@@ -2775,6 +2775,20 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** no BTC ZigZag. BTC stays in the book's D1 trend sleeve.
 
+### §3dw — ZigZag on 15 more markets: 0/15 (2026-11-09, `scripts/v5_zigzag_more.py`)
+
+**Setup:**
+- Markets: Switch DAX/FTSE/Euro Stoxx/ASX (2016+, swap charged); CME Nikkei, Brent, heating oil, gasoline, palladium, KC wheat, soy oil, soy meal, feeder cattle, ultra bond (Databento, $8.19); Binance SOL (Switch 21bp + −15%/yr).
+- Pooled quarterly walk-forward from 2018. Best live rule V0.
+
+**Results:**
+- **0/15 pass.**
+- Best: Nikkei 0.26 (null p 0.70, B&H 0.62), Brent 0.19, gasoline 0.18. Every one is below its buy & hold.
+- DAX ≈ 0, SOL −1.13, FTSE −1.29. All negative at 2× cost.
+- Family max-stat p 0.87.
+
+**Verdict:** with §3dt that is 41 markets, and on none does the detector beat random timing. ZigZag's only use is long gold. Market hunting for ZigZag is closed.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~
