@@ -34,13 +34,22 @@ def test_zigzag_profit_milestones_fire_once_highest_level_only():
 
 def test_zigzag_watch_and_signal_alerts_once_per_bar():
     from scripts.v5_trade_events_notify import zz_alert
-    zz = dict(prob=0.5713, threshold=0.6, last_bar="2026-11-09 10:00:00", open_positions=0, actions=[],
+    zz = dict(prob=0.5713, threshold=0.6, last_bar="2026-11-09 10:00:00", open_positions=0, executed=True, sent=[],
               prospective=dict(symbol="XAUUSDs", price=4095.33))
     head, body = zz_alert(zz, None)
     assert "WATCH" in head and "0.57" in head
     assert zz_alert(zz, "2026-11-09 10:00:00") is None                       # same bar: silent
     assert zz_alert(dict(zz, prob=0.54), None) is None                       # below 0.55: silent
-    head, body = zz_alert(dict(zz, prob=0.63, actions=[{"x": 1}]), None)
+    head, body = zz_alert(dict(zz, prob=0.63, sent=[["BUY", None, 0.07, 10009]]), None)
     assert "SIGNAL" in head and "order placed" in body
     head, body = zz_alert(dict(zz, prob=0.63, open_positions=1), None)
     assert "already in a ZigZag trade" in body
+
+
+def test_dry_run_state_never_alerts_and_unsent_signal_says_so():
+    from scripts.v5_trade_events_notify import zz_alert
+    zz = dict(prob=0.617, threshold=0.6, last_bar="b", open_positions=0, executed=False,
+              actions=[{"kind": "BUY"}], sent=[], prospective=dict(symbol="XAUUSDs", price=4096.54))
+    assert zz_alert(zz, None) is None                                         # dry run: silent
+    head, body = zz_alert(dict(zz, executed=True), None)
+    assert "SIGNAL" in head and "NOT confirmed" in body                       # live but nothing sent

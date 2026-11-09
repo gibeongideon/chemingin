@@ -151,6 +151,7 @@ def main() -> None:
     # -1.43bp against simply holding, because the barriers cut the moves that pay for the losers.
     exit_mode = cfg.get("exit_mode", "pct_bracket")
     trail_atr = float(cfg.get("trail_atr", 3.0))
+    tp_r = float(cfg.get("tp_r", 0.0) or 0.0)       # take-profit in units of the 3-ATR risk; 0 = none
 
     from mt5linux import MetaTrader5
     # RETRY: 18815 is shared by seven timers, two of them polling every 5 minutes since
@@ -245,9 +246,11 @@ def main() -> None:
                        entry=round(float(ask), info.digits),
                        sl=round(ask - trail_atr * atr_h1, info.digits) if exit_mode == "atr_trail"
                           else round(ask * (1 - sl_pct), info.digits),
-                       # NO take-profit in trail mode: a TP is exactly the truncation the wide
-                       # trail exists to avoid.
-                       tp=0.0 if exit_mode == "atr_trail"
+                       # Trail mode has NO take-profit unless `tp_r` is set. §3dr: a HIGH TP
+                       # (4.3 x the 3-ATR risk, ~$1,500 at 0.06 lots) was the one consistent lift
+                       # (both halves); low TPs ($700) truncate the winners and lose.
+                       tp=(round(ask + tp_r * trail_atr * atr_h1, info.digits) if tp_r > 0 else 0.0)
+                          if exit_mode == "atr_trail"
                           else round(ask * (1 + tp_pct), info.digits),
                        lots=round(lots_p, 2),
                        sl_pct=sl_pct, tp_pct=tp_pct, max_hold=max_hold)
@@ -330,8 +333,10 @@ def main() -> None:
                 if kind == "MODIFY":
                     # Raise the server-side stop. TRADE_ACTION_SLTP only -- it never touches
                     # volume, so a ratchet can never accidentally close or resize a position.
+                    # KEEP the position's own TP: sending tp=0.0 here would silently delete it.
+                    cur = next((p for p in held if p.ticket == ticket), None)
                     req = dict(action=mt5.TRADE_ACTION_SLTP, symbol=symbol,
-                               position=ticket, sl=px["sl"], tp=0.0)
+                               position=ticket, sl=px["sl"], tp=float(getattr(cur, "tp", 0.0) or 0.0))
                     r = mt5.order_send(req)
                     rc = getattr(r, "retcode", r)
                     print(f"    SL RAISED on #{ticket} -> {px['sl']}: retcode={rc}")
@@ -346,7 +351,8 @@ def main() -> None:
                                type_filling=mt5.ORDER_FILLING_IOC)
                 else:
                     if exit_mode == "atr_trail":
-                        sl, tp = round(ask - trail_atr * atr_h1, info.digits), 0.0
+                        sl = round(ask - trail_atr * atr_h1, info.digits)
+                        tp = round(ask + tp_r * trail_atr * atr_h1, info.digits) if tp_r > 0 else 0.0
                     else:
                         sl = round(ask * (1 - sl_pct), info.digits)
                         tp = round(ask * (1 + tp_pct), info.digits)

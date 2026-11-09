@@ -51,15 +51,20 @@ def zz_alert(zz: dict | None, last_bar_alerted: str | None) -> tuple[str, str] |
     """Pure: (head, body) when the ZigZag state shows a NEW bar with P >= ZZ_WATCH, else None."""
     if not zz or zz.get("prob") is None or zz.get("last_bar") == last_bar_alerted:
         return None
+    if zz.get("executed") is False:
+        # A DRY run (no --live --execute) also writes this file. 2026-11-09 one did, and the phone
+        # got "order placed" for an order that was never sent. Only LIVE passes may alert.
+        return None
     p, thr = float(zz["prob"]), float(zz.get("threshold", 0.6))
     if p < ZZ_WATCH:
         return None
     pr = zz.get("prospective") or {}
     px = f"{pr.get('symbol', '')} {pr.get('price', 0):,.2f}"
     if p >= thr:
-        sent = zz.get("actions") or zz.get("sent")
+        sent = [s for s in (zz.get("sent") or []) if "BUY" in str(s) and "10009" in str(s)]   # 10009 = done
         what = ("order placed" if sent else
-                "no new order: already in a ZigZag trade" if zz.get("open_positions") else "order expected")
+                "no new order: already in a ZigZag trade" if zz.get("open_positions") else
+                "order NOT confirmed — check the bot log")
         return f"🎯 ZigZag SIGNAL · P {p:.2f}", f"{px} · threshold {thr:.2f} · {what}\nbar {zz['last_bar']}"
     return (f"👀 ZigZag WATCH · P {p:.2f}",
             f"{px} · buys at {thr:.2f}; close to a signal\nbar {zz['last_bar']}")
@@ -257,7 +262,8 @@ def main() -> int:
             print(head, "|", body.replace("\n", " | "))
             if not a.dry:
                 notify(head, f"{body}\n{LABEL}", f"{head}\n{body}\n{LABEL}")
-        zz_bar = zz.get("last_bar", zz_bar)
+        if zz.get("executed") is not False:          # a dry-run state must not consume the bar
+            zz_bar = zz.get("last_bar", zz_bar)
     if not a.dry:
         STATE.write_text(json.dumps(dict(orders=orders, positions=positions, zz_bar=zz_bar,
                                          at=datetime.now(timezone.utc).isoformat()), indent=1))

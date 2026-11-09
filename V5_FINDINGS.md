@@ -2626,6 +2626,52 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Expectation to use going forward:** Sharpe ≈ 0.7 after financing, max DD ≈ 19%, multi-year flat stretches possible. The value is drawdown control, not alpha.
 
+### §3dq — ZigZag profit-lock ladder and post-lock trail speed (2026-11-09, `scripts/v5_zigzag_lock_ladder.py`)
+
+**Setup:**
+- User asked for +$200 → +$80 and +$300 → +$120 on top of the live +$100 → +$50, plus "a sweet spot to trail slowly after locking".
+- 539 live ZigZag fires on Switch H1, 2024-01..2026-11. **Event set held fixed**: every variant exits the same entries.
+- R = $352 (0.25% × $141k). Swap included. A stop raised on bar j applies from bar j+1.
+
+| rule | win % | mean R | total $ | Sharpe | t vs live |
+|---|---|---|---|---|---|
+| **NO lock**, 3.0 ATR trail | 40.8 | 0.116 | 22,076 | **1.45** | **+2.16** |
+| L1 live (+100→+50), 3.0 | 72.9 | 0.048 | 9,131 | 0.92 | — |
+| L1, post-lock 2.5 | 72.9 | 0.054 | 10,179 | 1.02 | +1.06 |
+| **L3 user ladder, post-lock 2.5** (deployed) | 72.9 | 0.055 | 10,460 | 1.07 | +0.84 |
+| L3, post-lock 2.0 / 1.5 / 1.0 | 72.9 | 0.030 / 0.022 / 0.016 | 5,728 / 4,137 / 2,966 | 0.66 / 0.50 / 0.38 | −1.29 / −1.68 / −1.77 |
+
+**Results:**
+
+1. **The sweet spot after a lock is 2.5 ATR.** Anything tighter cuts the long runners that pay for everything.
+2. **The user ladder adds nothing harmful.** With 2.5 it is the best locked variant (not significant).
+3. **Not locking at all earns 2.4× more** (t +2.16). The lock converts 32 points of losers into small winners and gives up the big ones.
+   - Fourth confirmation of the giveback/breakeven family (§3co).
+   - Deployed anyway as the user's preference: 3 steps, `trail_atr_locked` 2.5 in both ZigZag configs.
+
+### §3dr — ZigZag LATE lock + high take-profit (2026-11-09, `scripts/v5_zigzag_late_lock.py`)
+
+**Setup:**
+- Follow-up to §3dq (no lock beat every early lock). Same 539 fires, event set fixed, R = $352.
+- Grid of 40 cells: late lock {none, +400→+200, +600→+300, +800→+400} × TP {none, 700, 1000, 1500, 2000} × post-lock trail {3.0, 2.5}.
+- Peak open profit per trade: median $229, 90th pct $897, 99th $1,614. Only 12% reach $800 and 2% reach $1,500.
+
+**Results:**
+
+1. **TP +$1,500 (≈4.3R) is the only consistent lever.**
+   - NO lock + TP1500: $24,233, Sharpe 1.53, t +2.78 vs no-lock $22,076 / 1.45.
+   - It is better in BOTH halves (+$1,094 and +$1,063).
+   - It cuts the ~11 trades that peaked above $1,500 and then gave back.
+2. **TP +$700 hurts** (t −2.4). TP 1000/2000 are neutral.
+3. **Late locks are noise.**
+   - +800→+400 never binds: the 3 ATR trail is already above +$400 by then.
+   - +600→+300 adds ~$300 in both halves (with TP1500: $24,547, t +3.10 vs no-lock; ≈ +$314 vs NONE+TP1500).
+4. **Selection control:** the best half-1 cell (+400→+200, TP1500, trail 2.5) LOSES on half 2 (−$2,347, t −1.05).
+   - So the arg-max is overfit. The robust choice is TP1500 with the 3.0 trail, with or without +600→+300.
+   - 40-cell grid caveat: t 2.78 on ~11 decisive trades is suggestive, not proven.
+
+**Recommended variant:** no early lock, 3.0 ATR trail, TP at +4.3R (+$1,500 at current size), optional +600→+300.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~

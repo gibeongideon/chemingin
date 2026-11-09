@@ -54,21 +54,8 @@
   "_venue_ab_note": "PARALLEL TO 360601 ON SWITCH, SAME PARAMETERS, SAME POOLED MODEL, SAME +$100 -> +$50 lock rule. Darwinex spread $0.44 vs Switch $0.21.",
   "_why_threshold_06": "Threshold 0.6 is the WALK-FORWARD-SELECTED cell, not the full-sample best. Re-running §3x's selection (trailing 3y, re-picked each January) gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48): threshold 0.6 / TP 0.6% / SL 0.5% is stable across four consecutive years and only max-hold flips. The full-sample best (0.5, 0.6%, 0.5%, 48) scored SR -0.441 and is deliberately NOT used.",
   "_expectation": "RUNS TO OBSERVE, NOT TO PAY. §3bv closed this family on MECHANISM: the detector's oracle is 0.497 precision at RR=1 against a required 0.503 — zero headroom before any model exists. §3bo found the 3.0-ATR trail is the ONLY non-negative exit cell (+2.22bp/fire against -4.15 at 1.0 and -2.31 at 2.0), and §3bn fixed the ceiling: a wide trail approaches buy-and-hold FROM BELOW and can never beat it, because the limit of an infinitely wide trail IS holding. risk_frac stays at 0.0025, half the champion's, for that reason.",
-  "lock_steps": [
-    [
-      100,
-      50
-    ],
-    [
-      200,
-      80
-    ],
-    [
-      300,
-      120
-    ]
-  ],
+  "lock_steps": [],
   "lock_unit": "usd",
-  "_lock_note": "User rule 2026-11-02 (+$100 -> +$50), extended 2026-11-09 to a ladder +$200 -> +$80, +$300 -> +$120; after the first lock the trail tightens 3.0 -> 2.5 ATR (trail_atr_locked). Applied each minute by scripts/v5_zigzag_trail_watch.py. §3dq backtest (539 live fires 2024-26, fixed event set): ladder + 2.5 = +0.007R/trade vs the old rule (t +0.84, not significant); tighter post-lock trails (2.0/1.5/1.0) all LOSE (t -1.3..-1.9). NO lock at all earns 2.4x more (t +2.16): the lock is the user's choice, not an edge.",
-  "trail_atr_locked": 2.5
+  "_lock_note": "VARIANT B (2026-11-09, §3dr): NO profit lock, 3.0xATR trail throughout, take-profit at 4.3 x the 3-ATR risk (~$1,500 at 0.06 lots; scales with size). Backtest 539 fires 2024-26: $24.2k vs $10.5k for the ladder, Sharpe 1.53 vs 1.07, win rate 41% vs 73%. Live A/B against Switch 360601, which keeps the user's ladder (+100/50, +200/80, +300/120, trail 2.5 after lock).",
+  "tp_r": 4.3
 }
