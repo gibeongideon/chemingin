@@ -62,7 +62,8 @@ def zz_alert(zz: dict | None, last_bar_alerted: str | None) -> tuple[str, str] |
     px = f"{pr.get('symbol', '')} {pr.get('price', 0):,.2f}"
     if p >= thr:
         sent = [s for s in (zz.get("sent") or []) if "BUY" in str(s) and "10009" in str(s)]   # 10009 = done
-        what = ("order placed" if sent else
+        what = (f"skipped: gold trend down (champion {zz.get('trend_fc', 0):.2f} < gate)" if zz.get("trend_gate_blocked") else
+                "order placed" if sent else
                 "no new order: already in a ZigZag trade" if zz.get("open_positions") else
                 "order NOT confirmed — check the bot log")
         return f"🎯 ZigZag SIGNAL · P {p:.2f}", f"{px} · threshold {thr:.2f} · {what}\nbar {zz['last_bar']}"

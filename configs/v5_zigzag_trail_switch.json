@@ -83,5 +83,10 @@
   ],
   "lock_unit": "usd",
   "_lock_note": "User rule 2026-11-02 (+$100 -> +$50), extended 2026-11-09 to a ladder +$200 -> +$80, +$300 -> +$120; after the first lock the trail tightens 3.0 -> 2.5 ATR (trail_atr_locked). Applied each minute by scripts/v5_zigzag_trail_watch.py. §3dq backtest (539 live fires 2024-26, fixed event set): ladder + 2.5 = +0.007R/trade vs the old rule (t +0.84, not significant); tighter post-lock trails (2.0/1.5/1.0) all LOSE (t -1.3..-1.9). NO lock at all earns 2.4x more (t +2.16): the lock is the user's choice, not an edge.",
-  "trail_atr_locked": 2.5
+  "trail_atr_locked": 2.5,
+  "trend_gate": {
+    "h4_csv": "data/XAUUSDs_H4_switch.csv",
+    "min_forecast": 0.5
+  },
+  "_trend_gate_note": "LIVE A/B from 2026-11-09 (§3dt): skip a ZigZag fire when the Book's champion gold forecast (last closed Switch H4 bar, the Book's own file) is < 0.5. Panel evidence: kept fires +0.30/+0.44 SR, skipped −0.15/−0.24, consistent in both models but NOT significant (timing-null p 0.35-0.59). Fail-open if the H4 file is >12h behind. Darwinex (360606) runs without the gate, so the two accounts also compare gate vs no gate (alongside lock-ladder vs TP)."
 }

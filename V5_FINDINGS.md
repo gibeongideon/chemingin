@@ -2696,6 +2696,64 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** do not deploy. Recovering a losing trade by adding is leverage on the losers.
 
+### §3dt — ZigZag panel study: improve the best variant, other markets, calendar features — no robust lift (2026-11-09, `scripts/v5_zigzag_panel_{probs,study}.py`)
+
+**Setup:**
+- Live ZigZag model (features, label, HistGB, 20k trailing bars, purge) trained POOLED on 26 CME futures.
+- Data: Databento H1 2010+, single provenance. Quarterly walk-forward 2018-01..2026-11.
+- Trade rule = best live variant V0 (P ≥ 0.60, 3 ATR trail, TP 4.3R, hold 120, long only). Estimated CFD round-trip costs. 200-shift random-timing null per market.
+- Second model adds hour (NY local, sin/cos) and weekday one-hot (user request).
+
+**A. Every market, V0 vs random timing, 2018-26:**
+- GC Sharpe 0.21 (null p 0.87; B&H 0.55). NQ 0.64 (= its B&H 0.63). BTC −0.16 (p 0.97). ETH −0.53.
+- FX, rates, grains: all negative.
+- **Family max-stat p 0.56** (best market 0.64 vs a random-timing max median of 0.67). The detector adds nothing over random entries on any market. This repeats §3dg on 8 years and 26 markets.
+
+**B. 48-variant exit grid.** The variant was chosen on the OTHER 25 markets 2018-21:
+- Pick: thr 0.70, trail 4 ATR, no TP, hold 240. On GC 2022-26: 1.03 vs V0 0.33, null p 0.06.
+- **It does NOT replicate on Switch with the live model, 2024-26:** V0 1.97 (null p 0.02, but TP selected on these data, §3dr) vs the pick 1.09 (p 0.15).
+- The ranking flips with model and data source, so no robust exit improvement exists.
+
+**C. GC filters:**
+- Champion ≥ 0.5: kept 0.30 vs skipped −0.15. Champion ≥ 1.0: 0.32. Both are directionally right in both models but not significant (null p 0.35-0.59).
+- 200-day EMA filter: nothing.
+
+**D. Diversifiers chosen on 2018-21:** only CL qualifies, and it adds nothing in 2022-26 (0.33 → 0.18 / 0.33).
+
+**Calendar features (hour/weekday): WORSE.**
+- GC 0.19 (p 0.95). Family max-stat p 1.00.
+- Selected variant on GC 2022-26 0.87 (p 0.23).
+
+**Verdict:**
+- Keep the live variants. The pooled-26 model is not better than the live gold+FX model on gold.
+- ZigZag's results come from long gold exposure plus a wide trail. The detector's timing is indistinguishable from random over 2018-26.
+- Only lead worth a live A/B: the champion-trend filter (skip fires when the champion forecast < 0.5). Consistent sign, unproven.
+
+### §3du — Nasdaq-100: the champion recipe fails; a plain long-hold sleeve is a weak, unproven add (2026-11-09, `scripts/v5_ndx_study.py`)
+
+**Executability (Switch):**
+- USTECs: $1/pt, min 0.1 lot (~$2.7k), spread 0.70bp, long swap −5.47%/yr.
+- NQ100.Z6s futures CFD: $20/pt, min 0.01 (~$5.5k), 1.10bp, swap-free, expires quarterly.
+- Darwinex: no Nasdaq.
+
+**Data:** CME NQ H4 (Databento, server clock), 2011-06..2026-11. The CFD's ~1.7%/yr extra swap is charged where noted.
+
+**1. Champion recipe on NQ:**
+- Full Sharpe 0.33 (0.25 with swap) vs constant-long-same-vol 0.51 vs B&H 0.78.
+- Timing t vs constant long at matched vol is negative in every era (−0.68..−1.10), except 2022 (+0.02).
+- 2022 bear: −5.6% (DD −5.2%) vs B&H −33%, but 2023-26: −7.9% while NQ +106%.
+- The recipe's drawdown control works in the one bear but is paid for with whipsaw in every bull. Equity trends are choppier than gold's.
+
+**2. Book with an NDX champion sleeve** (2019+):
+- XAU+BTC 1.02 → XAU+BTC+NDX 0.87 (t −0.82 at matched vol). It HURTS.
+- Earlier "XAU+BTC+NDX 1.69" (FTMO era, broker data) does not survive clean data.
+
+**3. NDX as a plain long HOLD sleeve** (~10% vol, lagged 1y vol scaling, swap charged):
+- Book 0.92 → 1.04, better in both halves (0.80 → 0.91, 1.02 → 1.15), t +0.67. NOT significant.
+- Correlation with XAU 0.04, with BTC 0.20.
+
+**Verdict:** do not trade Nasdaq with the trend recipe or ZigZag (§3dt: ZigZag NQ = B&H). The only defensible use is an untimed long-hold diversifier, and that lift is unproven.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~

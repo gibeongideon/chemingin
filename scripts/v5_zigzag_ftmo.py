@@ -222,6 +222,32 @@ def main() -> None:
     print(f"P(bottom) {st.prob:.4f}  threshold {thr:.2f}  -> "
           f"{'FIRES' if st.fires else 'no fire'}")
 
+    # ---- TREND GATE (§3dt, live A/B on Switch from 2026-11-09) ----
+    # Skip a fire when the champion's gold forecast (last CLOSED H4 bar of the Book's own Switch file)
+    # is below `min_forecast`: dip-buys made money with the trend up (+0.30/+0.44 SR) and lost with it
+    # down (-0.15/-0.24) in both panel models — consistent sign, NOT significant (null p 0.35-0.59).
+    # FAIL-OPEN: an unreadable or stale file leaves the fire untouched (behaves as before the gate).
+    fires, trend_fc, gate_blocked = st.fires, None, False
+    gate = cfg.get("trend_gate")
+    if gate and fires:
+        try:
+            from src.v5.xau_dual_signals import champion_signal  # noqa: PLC0415
+            h4 = pd.read_csv(ROOT / gate["h4_csv"], usecols=["time", "close"], parse_dates=["time"])
+            h4 = h4.drop_duplicates("time").set_index("time").sort_index()
+            h4 = h4[h4.index + pd.Timedelta(hours=4) <= srv_now] if srv_now is not None else h4
+            lag_h = (df.index[-1] - h4.index[-1]).total_seconds() / 3600
+            if lag_h > 12:
+                print(f"  trend gate: H4 file {lag_h:.0f}h behind the H1 feed -> FAIL-OPEN (gate ignored)")
+            else:
+                trend_fc = float(champion_signal(h4["close"]).iloc[-1])
+                gate_blocked = trend_fc < float(gate.get("min_forecast", 0.5))
+                print(f"  trend gate: champion forecast {trend_fc:.2f} (bar {h4.index[-1]}) "
+                      f"{'< ' if gate_blocked else '>= '}{gate.get('min_forecast', 0.5)} -> "
+                      f"{'SKIP this fire (gold trend down)' if gate_blocked else 'allowed'}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  trend gate: error {exc!r} -> FAIL-OPEN (gate ignored)")
+        fires = fires and not gate_blocked
+
     # PROSPECTIVE order — computed every run, fired or not, so the alert can always show
     # the pair and the exact levels you would place if the threshold were met.
     # ATR of COMPLETED H1 bars (Wilder), the frame the trade is HELD on -- 3bl's method rule:
@@ -301,7 +327,7 @@ def main() -> None:
                   f"(closes at {max_hold}h; TP/SL are server-side)")
 
     # ---- 2. entry ----
-    if st.fires and not held:
+    if fires and not held:
         if st.stale_hours > 3:
             print(f"  SKIP entry: feed is {st.stale_hours:.1f}h stale")
         else:
@@ -313,7 +339,7 @@ def main() -> None:
                             f"prob {st.prob:.3f} >= {thr}",
                             dict(entry=round(float(ask), info.digits), sl=sl, tp=tp,
                                  close_by=close_by, age_h=None)))
-    elif st.fires and held:
+    elif fires and held:
         print("  fires, but already in a position — no pyramiding")
 
     if not actions:
@@ -392,7 +418,8 @@ def main() -> None:
         computed_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         login=ai.login, server=ai.server, equity=float(ai.equity), symbol=symbol,
         bars=len(df), last_bar=st.asof, stale_hours=st.stale_hours,
-        prob=st.prob, threshold=thr, fires=st.fires, prospective=prospective,
+        prob=st.prob, threshold=thr, fires=fires, model_fires=st.fires, trend_fc=trend_fc,
+        trend_gate_blocked=gate_blocked, prospective=prospective,
         arm=st.arm, n_train=st.n_train, aux_used=list(st.aux_used),
         aux_rejected=[list(x) for x in st.aux_rejected],
         aux_missing=[list(x) for x in aux_missing],

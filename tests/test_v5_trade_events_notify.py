@@ -53,3 +53,11 @@ def test_dry_run_state_never_alerts_and_unsent_signal_says_so():
     assert zz_alert(zz, None) is None                                         # dry run: silent
     head, body = zz_alert(dict(zz, executed=True), None)
     assert "SIGNAL" in head and "NOT confirmed" in body                       # live but nothing sent
+
+
+def test_trend_gate_block_is_reported_as_skip():
+    from scripts.v5_trade_events_notify import zz_alert
+    zz = dict(prob=0.66, threshold=0.6, last_bar="b", open_positions=0, executed=True, sent=[],
+              trend_gate_blocked=True, trend_fc=0.31, prospective=dict(symbol="XAUUSDs", price=4100.0))
+    head, body = zz_alert(zz, None)
+    assert "SIGNAL" in head and "trend down" in body and "0.31" in body
