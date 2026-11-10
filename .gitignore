@@ -40,3 +40,8 @@ data/v5_runs/zigzag_live_wf/*_H1.csv
 data/v5_runs/zigzag_bert/bert.pt
 data/databento/
 data/zigzag_more/
+
+# ZigZag replication package: price data and build outputs stay out of git
+docs/zigzag-replication.zip
+docs/zigzag-replication/data/
+docs/zigzag-replication/*.csv

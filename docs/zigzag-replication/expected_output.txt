@@ -1,0 +1,52 @@
+§2 data and leak screen
+  EURUSDs: 60,000 bars, leak 0.023 -> use
+  GBPUSDs: 30,000 bars, leak 0.013 -> use
+  USDJPYs: 30,000 bars, leak 0.006 -> use
+  XAUUSDs: 60,000 bars 2016-09-12 18:00:00 .. 2026-11-05 19:00:00, leak 0.015
+§5 walk-forward model (monthly refits)
+  2024-01: trained on 64,329 rows, 30 fires
+  2024-02: trained on 65,383 rows, 29 fires
+  2024-03: trained on 66,391 rows, 20 fires
+  2024-04: trained on 67,399 rows, 28 fires
+  2024-05: trained on 68,455 rows, 41 fires
+  2024-06: trained on 69,559 rows, 25 fires
+  2024-07: trained on 70,519 rows, 30 fires
+  2024-08: trained on 71,623 rows, 26 fires
+  2024-09: trained on 72,679 rows, 32 fires
+  2024-10: trained on 73,687 rows, 25 fires
+  2024-11: trained on 74,791 rows, 24 fires
+  2024-12: trained on 75,799 rows, 28 fires
+  2025-01: trained on 76,807 rows, 27 fires
+  2025-02: trained on 77,863 rows, 38 fires
+  2025-03: trained on 78,823 rows, 23 fires
+  2025-04: trained on 79,831 rows, 41 fires
+  2025-05: trained on 79,997 rows, 32 fires
+  2025-06: trained on 79,997 rows, 33 fires
+  2025-07: trained on 79,997 rows, 40 fires
+  2025-08: trained on 79,996 rows, 25 fires
+  2025-09: trained on 79,996 rows, 23 fires
+  2025-10: trained on 79,996 rows, 39 fires
+  2025-11: trained on 79,996 rows, 24 fires
+  2025-12: trained on 79,996 rows, 42 fires
+  2026-01: trained on 79,996 rows, 39 fires
+  2026-02: trained on 79,996 rows, 18 fires
+  2026-03: trained on 79,996 rows, 50 fires
+  2026-04: trained on 79,996 rows, 32 fires
+  2026-05: trained on 79,996 rows, 35 fires
+  2026-06: trained on 79,996 rows, 42 fires
+  2026-07: trained on 79,996 rows, 34 fires
+  2026-08: trained on 79,997 rows, 27 fires
+  2026-09: trained on 79,997 rows, 42 fires
+  2026-10: trained on 79,997 rows, 31 fires
+  2026-11: trained on 79,997 rows, 2 fires
+§6 backtest
+§7 results
+  trades 510 = 3.44 per week; fire rate 6.4% of bars
+  win 41.2%  avg win +1.07R  avg loss -0.54R  expectancy +0.125R  total +63.8R
+  exits {'stop': 500, 'tp': 9, 'open': 1}  median hold 16h
+  equity at 0.25% risk +17.10%  maxDD 2.75%
+  SHARPE +1.58   block-bootstrap 95% CI [+0.54, +2.59]
+  per year {2024: 1.16, 2025: 2.65, 2026: 0.79}
+  2x spread +1.48   no TP +1.51
+  buy & hold gold, same days, with swap: Sharpe +0.93
+  random timing (300): median +1.29, 95th +1.75, p 0.150
