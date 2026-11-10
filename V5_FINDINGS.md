@@ -2789,6 +2789,32 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** with §3dt that is 41 markets, and on none does the detector beat random timing. ZigZag's only use is long gold. Market hunting for ZigZag is closed.
 
+### §3dx — ZigZag variant B on ALL gold history: the 1.58 is a 2024-26 result (2026-11-10, `scripts/v5_zigzag_long_history.py`)
+
+**Setup:**
+- Exact live model and variant B rule (re-proved at 1.58 on Switch 2024-26 by `v5_zigzag_champion_reproof.py`, probabilities rebuilt at corr 1.0000; standalone package `docs/zigzag-replication/`).
+- Monthly walk-forward, 300-shift random-timing null inside the test window.
+- CME: Databento GC H1, pooled with 6E/6B/6J, test 2012-01..2026-11 (14.9 years); no swap (carry is in the back-adjustment).
+- Switch: XAUUSDs H1, pooled with EURUSDs/GBPUSDs/USDJPYs, test 2018-01..2026-11 (8.9 years); swap −6%/yr.
+
+**Results:**
+
+| | CME 2012-26 | Switch 2018-26 |
+|---|---|---|
+| Trades/week | 3.23 | 3.31 |
+| Win %, expectancy | 37.2%, +0.009R | 37.8%, +0.032R |
+| **Sharpe** (95% CI) | **+0.21** [−0.30, +0.70] | **+0.42** [−0.26, +1.08] |
+| Pre-2024 / 2024-26 | +0.06 / +0.81 | −0.21 / **+1.58** |
+| Hold gold, same days | +0.29 | +0.48 |
+| Random timing median, p | +0.10, p 0.27 | +0.46, p 0.56 |
+| 2× spread | −0.00 | +0.19 |
+| Max drawdown at 0.25% | 9.8% | 8.0% |
+
+- Down years on CME: 2013 (gold −28%) −0.95, 2014 −0.64, 2015 −0.78, 2021 −1.12, 2023 −1.19. 2025 alone (+2.18 CME / +2.65 Switch) carries most of the total.
+- The Switch run reproduces 1.58 on 2024-26 exactly; CME scores 0.81 on the same years with a different feed and aux set.
+
+**Verdict:** variant B is a long-gold exposure with a 3 ATR trail. Over 9-15 years it earns about gold's own Sharpe or less, does not beat random timing, does not survive 2× cost on CME, and loses in gold bear years. The 1.58 is the 2024-26 bull market. Keep it on demo/small risk; do not scale it on the strength of 1.58.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~
