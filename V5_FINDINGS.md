@@ -2815,6 +2815,27 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** variant B is a long-gold exposure with a 3 ATR trail. Over 9-15 years it earns about gold's own Sharpe or less, does not beat random timing, does not survive 2× cost on CME, and loses in gold bear years. The 1.58 is the 2024-26 bull market. Keep it on demo/small risk; do not scale it on the strength of 1.58.
 
+### §3dy — Regime-adaptive ZigZag (trend gates, short tops in downtrends): no variant survives (2026-11-10, `scripts/v5_zigzag_regime.py`)
+
+**Setup:** 8 pre-registered variants on the §3dx long histories (CME GC 2012-26, Switch 2018-26). Gates use the previous day's close only. Top detector = the identical live model trained on MIRRORED prices (C/p, high'=C/low). Short swap 0 CME, −1%/yr Switch. 200-shift random-timing null with the regime mask held fixed; family max-stat.
+
+| Variant | CME SR | CME 2013-15 | Switch SR | t vs V0 (CME / Switch) | 2× cost (CME / Switch) | null p (CME / Switch) |
+|---|---|---|---|---|---|---|
+| V0 always long | 0.21 | −0.78 | 0.42 | — | 0.00 / 0.19 | 0.25 / 0.56 |
+| L200 long above 200d SMA | 0.21 | −1.31 | 0.29 | −0.29 / −0.99 | 0.07 / 0.11 | 0.58 / 0.92 |
+| **LEMA long while 50d EMA rising** | **0.37** | −0.75 | **0.55** | +0.37 / +0.19 | 0.25 / 0.39 | 0.30 / 0.86 |
+| LEQ long while last 20 trades > 0R | 0.29 | −0.79 | 0.53 | −0.05 / −0.18 | 0.14 / 0.39 | 0.40 / 0.70 |
+| S200 short tops below 200d | −0.18 | +0.43 | −0.32 | −1.01 / −1.52 | −0.33 / −0.46 | 0.94 / 0.82 |
+| LS200 long/short by 200d | 0.04 | −0.09 | 0.04 | −0.63 / −1.50 | −0.16 / −0.19 | 0.87 / 0.98 |
+| LSEMA long/short by EMA slope | 0.18 | +0.17 | 0.37 | −0.09 / −0.20 | −0.01 / 0.15 | 0.75 / 0.83 |
+| LSEQ long/short by equity filter | 0.15 | −0.22 | 0.05 | −0.20 / −1.10 | −0.06 / −0.20 | 0.72 / 0.81 |
+
+- Family max-stat: CME best LEMA 0.37 vs random-timing max median 0.41 (p 0.60); Switch 0.55 vs 0.82 (p 0.87).
+- **Shorting tops helps in the bear years and nowhere else:** S200 earns +0.93 in 2013, +0.85 in 2015, +1.75 in 2018, but loses in 2014, 2016-17, 2020-21 and 2024. Over the whole period every long/short variant is below always-long. Fourth confirmation of kill-the-shorts on gold.
+- **LEMA is the only variant above V0 in both sources** (+0.16 / +0.13 Sharpe on half the trades, better at 2× cost), but t is +0.37 / +0.19 and random entries inside the same EMA-up regime do as well (null median 0.27 / 0.78). The gain is the gate (less exposure in falling markets), not the detector.
+
+**Verdict:** no regime-adaptive ZigZag clears its null. If anything is kept, it is the 50-day-EMA-rising gate as a cheap long-only filter, a lead to watch rather than a proven improvement. Do not add shorts.
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~
