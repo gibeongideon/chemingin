@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Minute-by-minute TRAIL WATCHER for the ZigZag harness (360601 Switch, 360597 FundingPips).
+"""Minute-by-minute TRAIL WATCHER for the ZigZag harness (100001 broker, 100001 broker).
 
-WHY THIS EXISTS. v5_zigzag_ftmo.py ratchets its 3.0xATR trail, but only once an hour, because
+WHY THIS EXISTS. v5_zigzag_executor.py ratchets its 3.0xATR trail, but only once an hour, because
 the ratchet lives inside the pass that also retrains the pooled model (~13s of bridge-holding
 work). Requested 2026-11-02: track an open ZigZag position every minute and move the stop as
 soon as it is earned. This file is the ratchet alone — no model, no entries, no exits.
@@ -25,10 +25,10 @@ user prefers securing profit over expectancy; this is a demo observation harness
 
 CHEAP WHEN FLAT. Positions under these magics are only ever opened by the hourly job, which
 records `open_positions` in its state file after every pass. If that says 0 the watcher exits
-without touching the bridge: 18815 is shared by seven timers and contention has already killed
+without touching the bridge: 18000 is shared by seven timers and contention has already killed
 a firing pass once (2026-11-02). A missing or unreadable state file means connect anyway.
 
-    python scripts/v5_zigzag_trail_watch.py --config configs/v5_zigzag_trail_switch.json
+    python scripts/v5_zigzag_trail_watch.py --config configs/zigzag_variant_b.example.json
     python scripts/v5_zigzag_trail_watch.py --config ... --execute     # actually raise stops
 """
 from __future__ import annotations
@@ -56,7 +56,7 @@ def now_utc() -> str:
 
 def h1_atr(mt5, symbol: str, now: pd.Timestamp, n_bars: int = 400) -> float:
     """Wilder ATR(14) of CLOSED H1 bars, dropped by the same rule as fetch_h1_closed in
-    v5_zigzag_ftmo.py so both jobs compute the same trail distance. 400 bars is plenty: the
+    v5_zigzag_executor.py so both jobs compute the same trail distance. 400 bars is plenty: the
     EWM weight left on the first bar is (13/14)^400 ~ 1e-13. `now` is the SERVER tick time —
     bar stamps are on the broker clock, and testing them against host UTC (as this did until
     2026-11-03) discarded the newest 2-3 closed bars."""

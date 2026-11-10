@@ -3,7 +3,7 @@
 
 User rule: +$100 -> lock +$50 (live), add +$200 -> lock +$80 and +$300 -> lock +$120, and "find a
 sweet spot to trail the SL slowly after locking +50".
-Live sizing risks ~0.25% x $141k = ~$352 per trade (3 ATR stop), so $X = X/352 R.
+Live sizing risks ~0.25% x the account = ~≈0.25% of equity per trade (3 ATR stop), so $X = X/352 R.
 GRID: ladder {NONE, L1 = live [100->50], L3 = user [100->50, 200->80, 300->120]} x post-lock trail
 k in {3.0 (live), 2.5, 2.0, 1.5, 1.0} x ATR (before the first lock the stop trails 3.0 ATR as live).
 EVENT SET HELD FIXED (memory: breakeven-stop-refuted-and-event-set-rule): every variant exits the
@@ -99,7 +99,7 @@ def main() -> None:
                          meanR=round(R.mean(), 4), totR=round(R.sum(), 2), usd_total=round(R.sum() * R_USD),
                          sharpe=round(sharpe(ret), 2), dR_vs_live=round(d.mean(), 4), t_vs_live=round(tt, 2)))
     df = pd.DataFrame(rows).sort_values(["ladder", "post_lock_trail"], ascending=[True, False])
-    txt = (f"ZigZag Switch H1 {START:%Y-%m-%d}..{t[-1]}, {len(ent)} entries (live fires, fixed event set), "
+    txt = (f"ZigZag broker H1 {START:%Y-%m-%d}..{t[-1]}, {len(ent)} entries (live fires, fixed event set), "
            f"R = ${R_USD:.0f}\n" + df.to_string(index=False) +
            "\n\nt_vs_live = paired t of per-trade R against the LIVE rule (L1 +$100->+$50, 3.0 ATR trail).\n")
     print(txt)

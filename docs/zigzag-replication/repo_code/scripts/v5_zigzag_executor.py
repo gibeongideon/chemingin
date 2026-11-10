@@ -1,4 +1,4 @@
-"""ZIGZAG bottom-detector OBSERVATION HARNESS — FTMO demo, bridge 18814.
+"""ZIGZAG bottom-detector OBSERVATION HARNESS — broker demo, bridge 18000.
 
 *** THIS STRATEGY HAS NEGATIVE EXPECTANCY AND IS NOT A RECOMMENDATION. ***
 V5_FINDINGS §3x: all 48 grid cells negative full-sample (best SR -0.44), walk-forward
@@ -31,11 +31,11 @@ DESIGN CHOICES THAT MATTER
     runs hourly.
   * Double safety lock: `--live --execute` both required to send anything. Default is a dry
     plan. `--execute` is ignored on a non-demo account unless `--live` is also passed.
-  * Writes state to `data/v5_runs/zigzag_ftmo_state.json` for the notifier, so the manual
+  * Writes state to `data/v5_runs/zigzag_state.json` for the notifier, so the manual
     channel and the executor never disagree about what fired.
 
-    python scripts/v5_zigzag_ftmo.py                      # dry plan
-    python scripts/v5_zigzag_ftmo.py --live --execute      # actually trade the demo
+    python scripts/v5_zigzag_executor.py                      # dry plan
+    python scripts/v5_zigzag_executor.py --live --execute      # actually trade the demo
 """
 from __future__ import annotations
 
@@ -54,8 +54,8 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.v5_zigzag_signal import AUX_SYMBOLS, bottom_probability, TOL  # noqa: E402
 
-CONFIG = ROOT / "configs" / "v5_zigzag_ftmo.json"
-STATE = ROOT / "data" / "v5_runs" / "zigzag_ftmo_state.json"
+CONFIG = ROOT / "configs" / "zigzag_variant_b.example.json"
+STATE = ROOT / "data" / "v5_runs" / "zigzag_state.json"
 TF_H1 = 16385
 FETCH_BARS = 30_000
 
@@ -85,7 +85,7 @@ def fetch_aux(mt5, symbols, now: pd.Timestamp | None = None) -> tuple[dict, list
 
 def server_now(mt5, symbol: str) -> pd.Timestamp | None:
     """'Now' on the BROKER clock, from the newest tick. MT5 stamps bars and ticks at server time
-    (Switch/FTMO: NY+7, UTC+2/+3), so any 'is this bar closed / how old is it' test must be
+    (the broker: NY+7, UTC+2/+3), so any 'is this bar closed / how old is it' test must be
     written in that frame — never against the host's UTC (memory: mt5-server-clock-vs-host-clock).
     With the market shut the last tick is Friday's, which is still the right frame: every bar
     before it is closed. None if no tick could be read."""
@@ -154,7 +154,7 @@ def main() -> None:
     tp_r = float(cfg.get("tp_r", 0.0) or 0.0)       # take-profit in units of the 3-ATR risk; 0 = none
 
     from mt5linux import MetaTrader5
-    # RETRY: 18815 is shared by seven timers, two of them polling every 5 minutes since
+    # RETRY: 18000 is shared by seven timers, two of them polling every 5 minutes since
     # 2026-11-02. A terminal already serving another client returns (-6, 'Authorization failed')
     # on initialize(), indistinguishable from a real credential fault.
     mt5, _last = None, None
@@ -222,8 +222,8 @@ def main() -> None:
     print(f"P(bottom) {st.prob:.4f}  threshold {thr:.2f}  -> "
           f"{'FIRES' if st.fires else 'no fire'}")
 
-    # ---- TREND GATE (§3dt, live A/B on Switch from 2026-11-09) ----
-    # Skip a fire when the champion's gold forecast (last CLOSED H4 bar of the Book's own Switch file)
+    # ---- TREND GATE (§3dt, live A/B on broker from 2026-11-09) ----
+    # Skip a fire when the champion's gold forecast (last CLOSED H4 bar of the Book's own broker file)
     # is below `min_forecast`: dip-buys made money with the trend up (+0.30/+0.44 SR) and lost with it
     # down (-0.15/-0.24) in both panel models — consistent sign, NOT significant (null p 0.35-0.59).
     # FAIL-OPEN: an unreadable or stale file leaves the fire untouched (behaves as before the gate).
@@ -403,7 +403,7 @@ def main() -> None:
         held_now = held
 
     # Each config gets its OWN state file. The notifiers read
-    # data/v5_runs/zigzag_ftmo_state.json; a second harness writing the same path would feed
+    # data/v5_runs/zigzag_state.json; a second harness writing the same path would feed
     # them a mixture of two accounts' states and silently corrupt the dedupe cursor.
     # BUG FIXED 2026-10-19: the previous form was
     #     state_path = ROOT / cfg.get("state_file", STATE.name)

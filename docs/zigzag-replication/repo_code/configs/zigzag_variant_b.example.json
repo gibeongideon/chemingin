@@ -1,0 +1,20 @@
+{
+  "_note": "Example settings for the live executor (scripts/v5_zigzag_executor.py) and trail watcher. Strategy values are the ones backtested in replicate.py; port, magic and symbol names are placeholders for your own MT5 setup.",
+  "symbol": "XAUUSD",
+  "aux_symbols": ["EURUSD", "GBPUSD", "USDJPY"],
+  "timeframe": "H1",
+  "threshold": 0.6,
+  "max_hold_bars": 120,
+  "risk_frac": 0.0025,
+  "exit_mode": "atr_trail",
+  "trail_atr": 3.0,
+  "tp_r": 4.3,
+  "lock_steps": [],
+  "lock_unit": "usd",
+  "tp_pct": 0.006,
+  "sl_pct": 0.005,
+  "port": 18000,
+  "magic": 100001,
+  "run_id": "zigzag-variant-b",
+  "state_file": "zigzag_variant_b_state.json"
+}

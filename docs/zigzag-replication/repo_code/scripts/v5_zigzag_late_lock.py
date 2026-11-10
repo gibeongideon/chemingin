@@ -2,7 +2,7 @@
 """ZigZag LATE lock + high take-profit (§3dr, user request 2026-11-09).
 
 §3dq: no lock at all beat every early lock (+$100 -> +$50 etc.). User: "a lock after a long win and a
-TP high enough to take the best profits". Same 539 live fires, EVENT SET FIXED, R = $352, swap included.
+TP high enough to take the best profits". Same 539 live fires, EVENT SET FIXED, R = ≈0.25% of equity, swap included.
 GRID (pre-registered, 40 cells):
   lock    NONE | +$400 -> +$200 | +$600 -> +$300 | +$800 -> +$400
   TP      none | +$700 | +$1000 | +$1500 | +$2000      (limit at entry + TP; gap above fills at open)
@@ -103,7 +103,7 @@ def main() -> None:
     d2 = (R - base)[~half]
     q = np.percentile(mfe_usd, [50, 75, 90, 95, 99])
     live = ROOT / "data/v5_runs/zigzag_lock_ladder/report.txt"
-    txt = (f"ZigZag Switch H1 {START:%Y-%m-%d}..{t[-1]}, {len(ent)} entries (fixed event set), R = ${R_USD:.0f}\n"
+    txt = (f"ZigZag broker H1 {START:%Y-%m-%d}..{t[-1]}, {len(ent)} entries (fixed event set), R = ${R_USD:.0f}\n"
            f"peak open profit (MFE) per trade, $: median {q[0]:.0f}, 75% {q[1]:.0f}, 90% {q[2]:.0f}, "
            f"95% {q[3]:.0f}, 99% {q[4]:.0f}; share reaching $400 {100 * (mfe_usd >= 400).mean():.1f}%, "
            f"$800 {100 * (mfe_usd >= 800).mean():.1f}%, $1500 {100 * (mfe_usd >= 1500).mean():.1f}%\n\n"

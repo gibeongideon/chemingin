@@ -10,7 +10,7 @@ Everything needed is in this folder:
 | File | What it is |
 |---|---|
 | `replicate.py` | The whole pipeline in one file (~280 lines). No other project code is needed. |
-| `data/*.csv` | Four H1 price files from the Switch Markets MT5 feed. |
+| `data/*.csv` | Four H1 price files from a retail MT5 broker feed. |
 | `expected_output.txt` | The exact console output you should get. |
 | `expected_trades.csv` | All 510 trades, for a line-by-line diff. |
 | `expected_probs.csv` | The model probability for every gold bar, to check the model on its own. |
@@ -213,7 +213,7 @@ pnl_R = (exit − entry + entry × swap × days_held / 365) / R
 lots = 0.25% × equity / (3 × ATRᵢ × 100 oz)
 ```
 
-Each trade therefore risks the same 0.25% of equity regardless of volatility. At $141k equity that is about $352 per R.
+Each trade therefore risks the same 0.25% of equity regardless of volatility. On a $100,000 account that is $250 per R.
 
 **One position at a time.** After an exit on bar j, bar j's own probability may trigger the next entry at `open[j+1]`, as the live bot would.
 
@@ -343,8 +343,8 @@ The exit-rule tests use a hand-built flat market (open = close = 100, high 100.5
 | `scripts/v5_zigzag_live_wf.py` | The original walk-forward, which the probabilities here come from. Its `simulate()` is the older variant with a profit lock. |
 | `scripts/v5_zigzag_champion_reproof.py` | The project's own run of this re-proof. |
 | `scripts/v5_zigzag_lock_ladder.py`, `v5_zigzag_late_lock.py` | The exit studies that chose variant B: no profit lock, 3 ATR trail, TP at 4.3 R. |
-| `scripts/v5_zigzag_ftmo.py` | The **live executor**, run hourly. It reads the broker's H1 feed, calls `bottom_probability()`, sizes the order as 0.25% equity / (3 ATR × contract size), and sends a BUY with the SL and TP attached. |
+| `scripts/v5_zigzag_executor.py` | The **live executor**, run hourly. It reads the broker's H1 feed, calls `bottom_probability()`, sizes the order as 0.25% equity / (3 ATR × contract size), and sends a BUY with the SL and TP attached. |
 | `scripts/v5_zigzag_trail_watch.py` | The **live trail**, run every minute. It moves the stop up to the peak minus 3 ATR and never lowers it. |
-| `configs/v5_zigzag_trail_*.json` | Live settings. Darwinex and FTMO-B run variant B (`lock_steps: []`, `tp_r: 4.3`). Switch runs the user's profit-lock ladder plus a trend gate. Account fields have been removed. |
+| `configs/zigzag_variant_b.example.json` | Example live settings for variant B (`lock_steps: []`, `tp_r: 4.3`). Port, magic number and symbol names are placeholders for your own MT5 setup. |
 
 **Live versus backtest.** The live bot retrains every hour, while the backtest retrains monthly. The live trail checks every minute, while the backtest checks once per H1 bar. Neither difference is in the backtest's favour.

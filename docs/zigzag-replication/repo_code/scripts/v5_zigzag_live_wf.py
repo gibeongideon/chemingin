@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Walk-forward Sharpe of the LIVE ZigZag harness (magic 360601) on Switch, 2024-01 .. now.
+"""Walk-forward Sharpe of the LIVE ZigZag harness (magic 100001) on broker, 2024-01 .. now.
 
-Replays `configs/v5_zigzag_trail_switch.json` as deployed, reusing the live code's own
+Replays `configs/zigzag_variant_b.example.json` as deployed, reusing the live code's own
 `_frame` (features + zigzag label) and the same HistGradientBoosting settings:
   * POOLED model: gold + EURUSDs/GBPUSDs/USDJPYs H1, trailing 20,000 bars per series,
     TOL+1 purge, aux series truncated at the cut. Labels are rebuilt on data TRUNCATED at each
@@ -10,12 +10,12 @@ Replays `configs/v5_zigzag_trail_switch.json` as deployed, reusing the live code
   * fire when P(bottom) >= 0.60 on a closed H1 bar -> BUY at the next bar's open + $0.25 spread
   * stop 3.0 x ATR14(H1) below entry, ratcheted 3.0 ATR behind the highest high (on bar close)
   * lock: once the peak is +0.29R, floor the stop at +0.146R (the live +$100 -> +$50 rule at
-    0.25% risk on ~$137k), toggle with --no-lock
+    0.25% risk on the account), toggle with --no-lock
   * max hold 120 bars, one position at a time, long swap -6%/yr
   Equity at the live 0.25% risk; Sharpe from daily returns, sqrt(252). Benchmark: holding gold
   (with the same swap) over the same days.
 
-    python scripts/v5_zigzag_live_wf.py --fetch     # on the VPS, under a bridge lock
+    python scripts/v5_zigzag_live_wf.py --fetch     # on the server, under a bridge lock
     python scripts/v5_zigzag_live_wf.py
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ def fetch(port: int) -> None:
         d.index.name = "time"
         d.to_csv(OUT / f"{s}_H1.csv")
         print(s, len(d), d.index[0], "->", d.index[-1])
-    # NO m.shutdown(): bridge 18815 is shared.
+    # NO m.shutdown(): bridge 18000 is shared.
 
 
 def load(s: str) -> pd.DataFrame:
@@ -147,7 +147,7 @@ def sharpe(r: pd.Series) -> float:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fetch", action="store_true")
-    ap.add_argument("--port", type=int, default=18815)
+    ap.add_argument("--port", type=int, default=18000)
     a = ap.parse_args()
     if a.fetch:
         fetch(a.port)
@@ -163,7 +163,7 @@ def main() -> None:
         aux[s] = d
     p = probs(gold, aux)
     p.to_csv(OUT / "probs.csv")
-    lines = [f"Switch XAUUSDs H1, walk-forward {START:%Y-%m-%d} -> {gold.index[-1]}, "
+    lines = [f"broker XAUUSDs H1, walk-forward {START:%Y-%m-%d} -> {gold.index[-1]}, "
              f"pooled with {sorted(aux)}"]
     for lock in (True, False):
         tr, ret = simulate(gold, p, lock)

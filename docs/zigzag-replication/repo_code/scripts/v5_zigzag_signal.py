@@ -196,7 +196,7 @@ def bottom_probability(df: pd.DataFrame, threshold: float, tp_pct: float, sl_pct
     last = df.index[score_i]
     # `now` must be in the SAME frame as df's index. MT5-fed callers pass the server tick time;
     # the host-UTC default is right only for UTC-stamped data and reads a server-stamped feed
-    # 2-3h FRESHER than it is (v5_zigzag_ftmo's >3h entry gate could not see a 5h-stale feed).
+    # 2-3h FRESHER than it is (v5_zigzag_executor's >3h entry gate could not see a 5h-stale feed).
     ref = now if now is not None else pd.Timestamp.now(tz="UTC").tz_localize(None)
     stale = (ref - last).total_seconds() / 3600
     return ZigzagState(asof=str(last), close=float(df["close"].iloc[score_i]),
