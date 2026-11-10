@@ -1,0 +1,23 @@
+ZigZag fall-gate study, SWITCH gold H1, test 2018-01-01 -> 2026-11-05 19:00:00
+V0 (no gate): trades 1528, Sharpe +0.42; down-day base rate 46.5%
+
+STEP 1 ORACLE: block entries on TRUE down days, flag correct with probability a
+  a=1.00: blocked 46% of days, trades 525, Sharpe +3.52 (vs +0.42)
+  a=0.80: blocked 49% of days, trades 659, Sharpe +2.18 (vs +0.42)
+  a=0.70: blocked 48% of days, trades 742, Sharpe +1.06 (vs +0.42)
+  a=0.60: blocked 50% of days, trades 747, Sharpe +0.99 (vs +0.42)
+  a=0.55: blocked 48% of days, trades 839, Sharpe +0.68 (vs +0.42)
+
+STEP 2 PREDICTORS (block new entries while flagged; null = same gate on random days)
+      gate  blocked_days  trades  down_rate_blocked  down_rate_allowed  ret_bp_blocked  ret_bp_allowed   SR   dSR  t_vs_V0  null_med     p  SR_2x bear_13_15  y24_26
+CB_day 0.5          10.0    1070               83.5               42.3          -105.3            17.4 0.72  0.29     1.30      0.38 0.000   0.52       None    2.04
+CB_24h 0.5          15.0    1111               71.9               42.1           -72.2            18.3 0.44  0.02    -0.25      0.38 0.290   0.24       None    1.66
+CB_day 1.0           1.0    1396               90.5               46.1          -266.0             7.5 0.53  0.11     1.26      0.42 0.005   0.31       None    1.80
+CB_24h 1.0           4.0    1364               71.4               45.5          -102.2             9.1 0.50  0.07     0.47      0.40 0.115   0.27       None    1.70
+   HMM 0.5          33.0    1007               45.6               46.9             6.0             4.5 0.07 -0.36    -1.89      0.37 0.905  -0.15       None    1.13
+   HMM 0.7          25.0    1129               46.0               46.7             7.6             4.1 0.19 -0.23    -1.51      0.37 0.840  -0.03       None    1.19
+   CUSUM 3           4.0    1479               44.7               46.6            28.3             4.1 0.35 -0.08    -1.32      0.42 0.835   0.11       None    1.43
+   CUSUM 5           1.0    1508               50.0               46.5            24.6             4.8 0.37 -0.06    -1.41      0.42 0.940   0.13       None    1.50
+
+family max-stat: best CB_day 0.5 +0.72 vs shifted-gate max median +0.51, 95th +0.70, p 0.030
+down_rate_* = share of down days among blocked/allowed days (CB: same day; daily gates: the day they act on)

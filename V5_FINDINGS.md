@@ -2836,6 +2836,62 @@ broken or stale pipeline so silence is never ambiguous.
 
 **Verdict:** no regime-adaptive ZigZag clears its null. If anything is kept, it is the 50-day-EMA-rising gate as a cheap long-only filter, a lead to watch rather than a proven improvement. Do not add shorts.
 
+### §3dz — Fall-day gates for ZigZag: the INTRADAY CIRCUIT BREAKER passes; HMM, CUSUM and a cross-asset ML fall predictor do not (2026-11-10, `scripts/v5_zigzag_fall_gate.py`)
+
+**Setup:** gates block NEW ZigZag variant B entries while they flag fall risk (open trades keep their stop). CME GC 2012-26 and Switch 2018-26 (§3dx histories, cached probabilities). 10/8 pre-registered cells. Null = the SAME gate mask shifted to random dates (same blocked share and clustering, wrong days), 200 draws; family max-stat.
+
+**Oracle ceiling (control #5):** blocking TRUE down days gives Sharpe 3.31 (CME) / 3.52 (Switch) vs 0.21 / 0.42. But a fall-day flag must be **≥ 60% accurate** to reach ~0.6-1.0, and 55% buys only +0.15. The base rate of down days is 49% / 47%.
+
+| Gate | Blocked days | CME SR (V0 0.21) | p | Switch SR (V0 0.42) | p |
+|---|---|---|---|---|---|
+| **CB_day 0.5**: today already down > 0.5 D1 ATR from the day's open → no more buys today | 13% / 10% | **0.41** | **0.010** | **0.72** | **0.000** |
+| **CB_day 1.0**: same at 1.0 ATR | 2% / 1% | **0.56** (t vs V0 +4.12) | **0.000** | **0.53** | **0.005** |
+| CB_24h 0.5 / 1.0 (trailing 24 bars) | 18% / 5% | 0.34 / 0.24 | 0.12 / 0.29 | 0.44 / 0.50 | 0.29 / 0.12 |
+| HMM bear state > 0.5 / 0.7 (prior close, filtered) | 17% / 11% | 0.06 / 0.10 | 0.91 / 0.88 | 0.07 / 0.19 | 0.91 / 0.84 |
+| CUSUM downward alarm h 3 / 5 | 5% / 2% | 0.19 / 0.19 | 0.58 / 0.72 | 0.35 / 0.37 | 0.84 / 0.94 |
+| ML cross-asset fall-day (8 CME mkts), block 30% / 50% | 21% / 54% | 0.12 / 0.36 | 0.70 / 0.10 | — | — |
+
+- **Family max-stat passes in BOTH sources:** CME p 0.010, Switch p 0.030.
+- **The ML fall-day classifier has out-of-sample AUC 0.510.** Next-day direction of gold is not predictable from 8 cross-asset markets. The HMM bear state's blocked days are down 47.7% vs 49.1% allowed: no information.
+- **Why the circuit breaker works:** ZigZag fires AFTER falls, and a fire that comes on a day already down hard is a falling knife.
+  - The blocked fires traded alone: CME −0.024 / −0.068 / −0.134 R at k 0.5 / 0.75 / 1.0, against +0.04 R kept. The losses deepen monotonically with k.
+  - Switch is the same: −0.021 / −0.052 / −0.056 R.
+  - This is the 3rd application of the skipped-sample law (waiting for / buying a dip selects losers) and the FIRST time it is used as a gate.
+- **Robustness:**
+  - Both halves improve in every cell, except Switch k1.0's first half (−0.09 vs −0.18, still better).
+  - Years better at k1.0: 12/15 CME, 7/9 Switch. At k0.5: 9/15 and 5/9.
+  - 2× cost: 0.26-0.52.
+- **Caveat:** the absolute level is still ~gold's own Sharpe over the long histories (CME hold 0.29, Switch 0.48). This repairs ZigZag; it does not make it a new edge. k was picked from 2 values; the family test covers that.
+
+**Verdict:** PASS (first ZigZag lift to clear a family null in two sources). Recommended rule: **CB_day 1.0**. If the broker day's price is already down more than 1.0 × yesterday's D1 ATR(14) from today's first open, take no new ZigZag buys until the next broker day. It is the most consistent across years, blocks only 1-2% of days, and has the steepest dose-response. Live deployment needs the user's go.
+
+### §3ea — Free external data (FRED macro regimes, Binance BTC funding): 0 of 10 cells (2026-11-10, `scripts/v5_free_data_gates.py`)
+
+**Setup:**
+- User request: start from the free sources, don't buy.
+- Shifted-gate null, 200 draws, family max-stat per part.
+- GDELT news tone could not be fetched: the API refuses both this IP and the VPS.
+
+**A. FRED regimes block ZigZag entries** (publication-safe lags; CPIAUCNS is never revised, used from the 1st of m+2):
+
+| Gate (on share CME / Switch) | CME SR (V0 0.21) | p | Switch SR (V0 0.42) | p |
+|---|---|---|---|---|
+| HIKE: fed funds +25bp over 6 months (19% / 27%) | 0.22 | 0.36 | 0.57 | 0.13 |
+| Y2UP: 2y yield up over 3 months (59% / 55%) | 0.43 | 0.06 | 0.53 | 0.19 |
+| BEDOWN: breakevens down over 20 days (47% / 45%) | 0.20 | 0.38 | 0.46 | 0.31 |
+| CPIDN: CPI YoY falling (47% / 45%) | 0.02 | 0.80 | 0.06 | 0.81 |
+
+- Family p 0.17 (CME) / 0.43 (Switch).
+- CPIDN has the WRONG sign: ZigZag earns more inside disinflation (0.26 / 0.52).
+- Y2UP is the nearest miss. It overlaps §3bh's real-yield closure.
+
+**B. BTC funding crowding (flat when 7-day funding is above its trailing 80th/90th percentile) vs holding BTC 2021-26:**
+- Sharpe 0.28 / 0.34 vs hold 0.47. Null p 0.88 / 0.85, family p 0.97.
+- **The premise is backwards:** crowded-long days return +22.5 / +27.6 bp vs +5.7 / +6.5 otherwise. corr(funding, next-day return) −0.016.
+- This is the same reversal as volume zones and COT.
+
+**Verdict:** closed. Free macro and crypto-funding data add nothing as stand-aside gates. The only surviving fall-avoidance rule remains the price-based intraday circuit breaker (§3dz).
+
 ## Operational notes
 
 - ~~Live dual bots reconcile hourly via `xau-dual` user timer; the systemd service intermittently marks `failed` on a hung `winedevice.exe` at teardown — teardown fix pending.~~

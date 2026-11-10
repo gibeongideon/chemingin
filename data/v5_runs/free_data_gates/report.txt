@@ -1,0 +1,24 @@
+A. FRED macro regimes -> ZigZag variant B (block new entries while the regime is ON)
+
+CME (V0 Sharpe +0.21)
+  gate  on_pct  trades   SR   dSR  SR_inside_regime  null_med     p
+  HIKE    19.0    2095 0.22  0.01              0.01      0.19 0.355
+  Y2UP    59.0    1044 0.43  0.23             -0.09      0.09 0.060
+BEDOWN    47.0    1360 0.20 -0.00              0.09      0.14 0.375
+ CPIDN    47.0    1298 0.02 -0.19              0.26      0.15 0.795
+family: best Y2UP +0.43 vs shifted max median +0.30, p 0.170
+
+SWITCH (V0 Sharpe +0.42)
+  gate  on_pct  trades   SR   dSR  SR_inside_regime  null_med     p
+  HIKE    27.0    1143 0.57  0.15             -0.19      0.29 0.130
+  Y2UP    55.0     663 0.53  0.10              0.07      0.24 0.190
+BEDOWN    45.0     857 0.46  0.03              0.06      0.33 0.305
+ CPIDN    45.0     865 0.06 -0.37              0.52      0.27 0.805
+family: best HIKE +0.57 vs shifted max median +0.54, p 0.425
+
+B. Binance BTC funding -> holding BTC, 2021-01..now (crypto days, sqrt 252 kept for comparability)
+         gate  flat_pct   SR  hold_SR  ret_bp_when_flagged  ret_bp_otherwise  null_med     p
+crowded>80pct      19.0 0.28     0.47                 22.5               5.7      0.44 0.880
+crowded>90pct      11.0 0.34     0.47                 27.6               6.5      0.46 0.845
+family: best +0.34 vs shifted max median +0.53, p 0.965
+corr(7d funding at t-1, BTC return t) -0.016
