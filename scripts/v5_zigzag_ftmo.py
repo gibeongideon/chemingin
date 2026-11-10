@@ -152,6 +152,7 @@ def main() -> None:
     exit_mode = cfg.get("exit_mode", "pct_bracket")
     trail_atr = float(cfg.get("trail_atr", 3.0))
     tp_r = float(cfg.get("tp_r", 0.0) or 0.0)       # take-profit in units of the 3-ATR risk; 0 = none
+    entry_limit_atr = float(cfg.get("entry_limit_atr", 0.0) or 0.0)   # 0 = market entry
 
     from mt5linux import MetaTrader5
     # RETRY: 18815 is shared by seven timers, two of them polling every 5 minutes since
@@ -248,6 +249,47 @@ def main() -> None:
             print(f"  trend gate: error {exc!r} -> FAIL-OPEN (gate ignored)")
         fires = fires and not gate_blocked
 
+    # ---- §3dz INTRADAY CIRCUIT BREAKER (config `circuit_breaker_atr`, absent = off) ----------
+    # "If the broker day is already down more than k x YESTERDAY's D1 ATR(14) from today's first
+    # open, take no new ZigZag buys until the next broker day." Recommended k = 1.0.
+    #
+    # WHY IT EXISTS: ZigZag fires AFTER falls, so a fire on a day already down hard is a falling
+    # knife. §3dz measured the blocked fires traded ALONE at -0.024 / -0.068 / -0.134 R for
+    # k 0.5 / 0.75 / 1.0 against +0.04 R for the kept ones — losses deepening monotonically with
+    # k, which is the dose-response that makes it a mechanism rather than a fitted threshold.
+    # It is the FIRST ZigZag lift to clear a family max-stat null in two independent sources
+    # (CME p 0.010, Switch p 0.030), improves both halves in every cell, and blocks only 1-2% of
+    # days at k 1.0. It REPAIRS ZigZag (CME 0.21 -> 0.56); it does not make it a new edge.
+    #
+    # The latch is reproduced exactly: §3dz takes a cummax of the per-bar condition within the
+    # day, so once the breaker trips it stays on. Taking the day's LOWEST CLOSE against the
+    # first open is the same test, done in one line.
+    #
+    # FAIL-OPEN, like the trend gate: any error leaves the fire untouched. A gate that blocks on
+    # its own bugs is worse than no gate.
+    cb_k = cfg.get("circuit_breaker_atr")
+    cb_blocked, cb_move, cb_atr = False, None, None
+    if cb_k and fires:
+        try:
+            dayix = df.index.normalize()
+            d1 = df.groupby(dayix).agg(high=("high", "max"), low=("low", "min"),
+                                       close=("close", "last"), open=("open", "first"))
+            pc = d1["close"].shift(1)
+            tr_ = pd.concat([d1["high"] - d1["low"], (d1["high"] - pc).abs(),
+                             (d1["low"] - pc).abs()], axis=1).max(axis=1)
+            atr_d1 = tr_.ewm(alpha=1 / 14, adjust=False).mean().shift(1)   # YESTERDAY's ATR
+            today = dayix[-1]
+            cb_atr = float(atr_d1.loc[today])
+            todays = df[dayix == today]
+            cb_move = float(todays["close"].min() - float(todays["open"].iloc[0]))
+            cb_blocked = bool(np.isfinite(cb_atr) and cb_move < -float(cb_k) * cb_atr)
+            print(f"  circuit breaker: day move {cb_move:+.2f} vs trigger "
+                  f"{-float(cb_k) * cb_atr:+.2f} ({cb_k} x prior D1 ATR {cb_atr:.2f}) -> "
+                  f"{'BLOCK new buys today (falling knife)' if cb_blocked else 'allowed'}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  circuit breaker: error {exc!r} -> FAIL-OPEN (gate ignored)")
+        fires = fires and not cb_blocked
+
     # PROSPECTIVE order — computed every run, fired or not, so the alert can always show
     # the pair and the exact levels you would place if the threshold were met.
     # ATR of COMPLETED H1 bars (Wilder), the frame the trade is HELD on -- 3bl's method rule:
@@ -284,7 +326,14 @@ def main() -> None:
           f"SL {prospective['sl']}  TP {prospective['tp']}")
 
     held = [p for p in (mt5.positions_get(symbol=symbol) or []) if p.magic == magic]
-    print(f"open under magic {magic}: {len(held)}")
+    # A RESTING LIMIT COUNTS AS BEING IN THE TRADE. Without this the limit arm would place a
+    # fresh order every hour the signal stayed above threshold, ending up with a stack of
+    # pending buys at descending prices — a scale-in ladder nobody asked for, and §3bs already
+    # measured scaling in as leverage rather than edge.
+    pending = ([o for o in (mt5.orders_get(symbol=symbol) or []) if o.magic == magic]
+               if entry_limit_atr else [])
+    print(f"open under magic {magic}: {len(held)}"
+          + (f", resting limit orders: {len(pending)}" if entry_limit_atr else ""))
     actions = []
 
     # ---- 0. RATCHET the trailing stop (atr_trail mode only) ----
@@ -327,7 +376,7 @@ def main() -> None:
                   f"(closes at {max_hold}h; TP/SL are server-side)")
 
     # ---- 2. entry ----
-    if fires and not held:
+    if fires and not held and not pending:
         if st.stale_hours > 3:
             print(f"  SKIP entry: feed is {st.stale_hours:.1f}h stale")
         else:
@@ -341,6 +390,9 @@ def main() -> None:
                                  close_by=close_by, age_h=None)))
     elif fires and held:
         print("  fires, but already in a position — no pyramiding")
+    elif fires and pending:
+        print(f"  fires, but a limit order is already resting at "
+              f"{pending[0].price_open} — no stacking")
 
     if not actions:
         print("  ACTION: none")
@@ -376,16 +428,40 @@ def main() -> None:
                                magic=magic, comment=cfg["run_id"][:31],
                                type_filling=mt5.ORDER_FILLING_IOC)
                 else:
+                    # LIMIT ARM (config `entry_limit_atr`, absent = market as before). Rests a
+                    # BUY LIMIT `entry_limit_atr` x ATR below the ask instead of paying the
+                    # offer. Brackets are measured from the LIMIT price, not the ask, so the arm
+                    # keeps the same R multiple rather than a wider stop.
+                    #
+                    # *** THE FILL IS NOT FREE AND THIS REPO HAS MEASURED THE BILL TWICE. ***
+                    # §3bc: FILLED -22.8bp vs SKIPPED +17.9bp, t -5.23. Waiting for a dip SELECTS
+                    # LOSERS — the fires that come back to you are the ones that keep going. So
+                    # this arm is expected to fill on the worse subset of signals, and the
+                    # report must compare the arms on the FILLED subset as well as overall or it
+                    # will credit the exit rule for a selection effect.
+                    px_ref = ask
+                    if entry_limit_atr:
+                        px_ref = round(ask - entry_limit_atr * atr_h1, info.digits)
                     if exit_mode == "atr_trail":
-                        sl = round(ask - trail_atr * atr_h1, info.digits)
-                        tp = round(ask + tp_r * trail_atr * atr_h1, info.digits) if tp_r > 0 else 0.0
+                        sl = round(px_ref - trail_atr * atr_h1, info.digits)
+                        tp = round(px_ref + tp_r * trail_atr * atr_h1, info.digits) if tp_r > 0 else 0.0
                     else:
-                        sl = round(ask * (1 - sl_pct), info.digits)
-                        tp = round(ask * (1 + tp_pct), info.digits)
-                    req = dict(action=mt5.TRADE_ACTION_DEAL, symbol=symbol, volume=vol,
-                               type=mt5.ORDER_TYPE_BUY, price=ask, sl=sl, tp=tp,
-                               magic=magic, comment=cfg["run_id"][:31],
-                               type_filling=mt5.ORDER_FILLING_IOC)
+                        sl = round(px_ref * (1 - sl_pct), info.digits)
+                        tp = round(px_ref * (1 + tp_pct), info.digits)
+                    if entry_limit_atr:
+                        # Expire with the signal. An unfilled limit left resting would fill days
+                        # later on a signal that no longer exists, which is a different strategy.
+                        exp = int(time.time()) + int(float(cfg.get("limit_expire_h", 24)) * 3600)
+                        req = dict(action=mt5.TRADE_ACTION_PENDING, symbol=symbol, volume=vol,
+                                   type=mt5.ORDER_TYPE_BUY_LIMIT, price=px_ref, sl=sl, tp=tp,
+                                   magic=magic, comment=cfg["run_id"][:31],
+                                   type_time=mt5.ORDER_TIME_SPECIFIED, expiration=exp,
+                                   type_filling=mt5.ORDER_FILLING_RETURN)
+                    else:
+                        req = dict(action=mt5.TRADE_ACTION_DEAL, symbol=symbol, volume=vol,
+                                   type=mt5.ORDER_TYPE_BUY, price=ask, sl=sl, tp=tp,
+                                   magic=magic, comment=cfg["run_id"][:31],
+                                   type_filling=mt5.ORDER_FILLING_IOC)
                 r = mt5.order_send(req)
                 rc = getattr(r, "retcode", r)
                 print(f"    sent {kind}: retcode {rc} "
@@ -420,6 +496,7 @@ def main() -> None:
         bars=len(df), last_bar=st.asof, stale_hours=st.stale_hours,
         prob=st.prob, threshold=thr, fires=fires, model_fires=st.fires, trend_fc=trend_fc,
         trend_gate_blocked=gate_blocked, prospective=prospective,
+        cb_blocked=cb_blocked, cb_move=cb_move, cb_atr=cb_atr, cb_k=cb_k,
         arm=st.arm, n_train=st.n_train, aux_used=list(st.aux_used),
         aux_rejected=[list(x) for x in st.aux_rejected],
         aux_missing=[list(x) for x in aux_missing],
