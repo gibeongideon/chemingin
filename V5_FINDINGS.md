@@ -8466,3 +8466,51 @@ Hold gold over the same days: 0.93.
    - It is NOT higher risk-adjusted return. This repeats CONTROL #2 ("never beats the metal").
 3. **The D1 port understates the live H4 version** (2016+: 0.75 here vs 1.08 on H4, consistent with "D1 anything ≤0.44" in the July search). The H4 edge cannot be tested pre-2015 (no H4 data).
    - Either H4 sampling adds real value, or the H4 1.08 is partly the in-sample choice made on 2015+ data. **Only a live record separates the two.**
+
+### §3eb — Stop slippage is a VENUE property, and we already run on the good one
+
+`scripts/v5_stop_slippage.py`. Prompted by a Darwinex fill on 2026-11-10: a stop at 4102.10
+filled at 4090.80, costing $45.20 on 0.04 lots — 27.55bp against the 3.5bp budget §3cj was
+testing. One fill is not a rate, so the whole history was measured instead.
+
+**The data needs no modelling.** When MT5 closes a position on its stop, the closing deal's
+comment records the triggering level (`[sl 4102.10]`); comparing it to the deal's `price` gives
+realised slippage exactly. Note the closing deal's own magic is 0 when the SERVER closes it, so
+the side must be taken from the OPENING deal (the §3cw magic-on-close trap again).
+
+| venue | n | mean bp | median | worst | >5bp | total $ |
+|---|---|---|---|---|---|---|
+| **Switch** | **42** | **0.00** | 0.00 | **0.00** | **0%** | **$0.00** |
+| Maven | 25 | 0.90 | 0.50 | 4.09 | 0% | $37.83 |
+| Darwinex | 1 | 27.55 | — | 27.55 | 100% | $45.20 |
+
+**Switch filled at EXACTLY the stop price on all 42 stop-outs.** Independently verified inside
+this session: position #50957748's stop was observed live at 3929.91 and the deal closed at
+3929.91.
+
+**And it was not untested.** Checking the M15 bar each stop-out landed in (Switch median range
+4.80):
+
+* **9 of 42 landed in bars ≥3× the median range**, worst **8.6× (41.08)** on 2026-11-05 16:30.
+* Two more at 6.7×, one of which (2026-11-06 15:30, range 32.29) **fell 100% of its range** — a
+  pure one-way collapse.
+* The Darwinex bar that slipped was 24.93 = **3.8× its median, 100% one-way** — i.e. Switch has
+  absorbed *harder* bars than the one Darwinex slipped on, with zero slippage.
+
+**So slippage here is a venue property, not a market property, and the live book is already on
+the venue that does not have it.** Darwinex was already flagged expensive ($0.44 spread,
+~−10%/yr swap); add slippage to that list.
+
+**The standard remedies are all worse, and the 11:00 bar prices them:**
+
+| remedy | verdict |
+|---|---|
+| **stop-LIMIT at the level** | price went 4113.11 → 4088.18 straight through 4102.10 and never traded back above it that hour. **It would not have filled**, leaving the position long into 4076 — a bounded loss converted into an unbounded one. |
+| **wider stop** | §3bn: 3.0 ATR is the optimum; widening loses on its own terms. |
+| **smaller size** | cuts the dollar slippage proportionally and the rate not at all — the §3ao sizing dial again (§3cy). |
+| **guaranteed stop** | not offered on these MT5 CFD accounts. |
+| **venue choice** | the only one that works, and it is already done. |
+
+**Action: none.** Keep stops server-side and attached to the order (already the case, so they do
+not depend on the bot being alive), keep the live book on Switch, and re-run this script as
+Darwinex accumulates fills — n=1 is an observation, not a rate.
