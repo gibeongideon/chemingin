@@ -1,0 +1,11 @@
+ZigZag variant B re-proof, Switch XAUUSDs H1 2024-01-01 -> 2026-11-05 19:00:00 (148 weeks)
+probabilities rebuilt from scratch: 16,865 scored bars, corr vs cached §3dg 1.0000; fire rate 6.4% of H1 bars
+trades 510 = 3.44/week (median week 3, max 8, weeks with 0 trades 0%)
+win 41.2%  avg win +1.07R  avg loss -0.54R  expectancy +0.125R/trade  total +63.8R
+exits: {'stop': 500, 'tp': 9, 'open': 1}  median hold 16h, time in market 63%
+at 0.25% risk: +17.10% (+5.49%/yr), maxDD 2.75%
+SHARPE +1.58   block-bootstrap 95% CI [+0.54, +2.59]
+per year Sharpe {2024: 1.16, 2025: 2.65, 2026: 0.79}   trades/R by year {2024: (167, np.float64(14.9)), 2025: (178, np.float64(38.8)), 2026: (165, np.float64(10.1))}
+2x spread: +1.48   no TP: +1.51
+random timing (same fire count, circular shift, 300): median +1.29, 95th +1.75, p 0.150
+hold gold same days (with swap): +67.3%, Sharpe +0.93, daily corr with ZigZag +0.26

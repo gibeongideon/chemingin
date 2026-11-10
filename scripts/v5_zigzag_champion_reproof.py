@@ -66,7 +66,7 @@ def run(g, pr, tp_r=TP_R, spread=SPREAD, fire=None):
         days = (t[j] - t[s]).total_seconds() / 86400
         pnl = px - e + e * SWAP * days / 365
         trades.append((t[s], t[j], pnl / risk, j - s, why))
-        i = j + 1 if j > i else i + 1                         # flat again: may re-enter after exit
+        i = j                     # flat after bar j: bar j's own signal may fire the next entry (as live)
     tr = pd.DataFrame(trades, columns=["t_in", "t_out", "R", "bars", "exit"])
     days = pd.date_range(START.normalize(), t[-1].normalize(), freq="D")
     ret = pd.Series(0.0, index=days)
@@ -108,8 +108,15 @@ def main() -> None:
     lo, med, hi = block_boot(ret)
     rng = np.random.default_rng(13)
     fires = np.isfinite(pr) & (pr >= THR)
-    nl = np.array([sharpe(run(gold, pr, fire=np.roll(fires, int(k)))[1])
-                   for k in rng.integers(500, len(fires) - 500, 300)])
+    s0 = int((gold.index < START).sum())                      # shift ONLY within the test window
+    seg = fires[s0:]
+
+    def shifted(k):
+        z = fires.copy()
+        z[s0:] = np.roll(seg, k)
+        return z
+    nl = np.array([sharpe(run(gold, pr, fire=shifted(int(k)))[1])
+                   for k in rng.integers(500, len(seg) - 500, 300)])
     gd = gold[gold.index >= START].close.resample("D").last().dropna()
     gr = gd.pct_change().dropna() + SWAP / 252
     gr = gr[gr.index.dayofweek < 5]
