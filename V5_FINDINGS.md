@@ -8622,3 +8622,92 @@ the `vs HOLD` column first and refuses to name a winner under 12 matched episode
 §3co/§3dq/§3dg are five independent measurements that converting open profit into closed profit
 early loses money. **Nothing here is a prediction that this will work. It is a measurement that
 settles it on the user's own fills instead of on another replay.**
+
+### §3ee — ZigZag at higher frequency: the cap is the detector, not the one-at-a-time rule (2026-11-11, `scripts/v5_zigzag_frequency.py`)
+
+**Ask:** more frequent ZigZag trades, high accuracy, most profitable. Markets, BTC, gates, exits and
+calendar features are closed (§3dt-§3dy), and tighter targets raise the win rate while cutting the
+money (§3cx/§3cy). The untested lever was variant B's one-position-at-a-time rule. Idea from outside
+the repo: entry diversification (tranching) — up to K positions open, at least GAP bars apart, each
+at 1/K of the risk. Nine cells fixed before the first run; cached walk-forward probabilities; paired
+t vs V0 at matched vol; family = White reality check on the centred difference matrix.
+
+| cell | CME trades/wk | CME SR | t vs V0 | Switch trades/wk | Switch SR | t vs V0 |
+|---|---|---|---|---|---|---|
+| V0 (live rule) | 3.23 | 0.21 | — | 3.31 | 0.42 | — |
+| CB (circuit breaker, §3dz) | 2.82 | **0.56** | **+4.40** | 3.03 | 0.53 | +1.43 |
+| K2/K3/K5, gap 24 | 2.21 | 0.14 | −0.44 | 2.34 | 0.33 | −0.45 |
+| K3, gap 8 | 3.17 | 0.24 | +0.33 | 3.46 | 0.41 | −0.11 |
+| threshold 0.50 | **5.20** | 0.02 | −0.96 | **5.11** | 0.24 | −0.75 |
+| threshold 0.50 + K3/24 | 3.29 | 0.17 | −0.16 | 3.31 | 0.07 | −1.06 |
+| CB + K3/24 | 2.06 | 0.27 | +0.35 | 2.21 | 0.35 | −0.35 |
+
+Known answers reproduced (V0 0.21/0.42, CB 0.56/0.53). Family p: CME 0.000, Switch 0.311 — and
+the only cell carrying it is CB, which is §3dz again, not a frequency result.
+
+**Why tranching cannot add trades.** V0 has a position open only **53-57% of the time** and 99% of
+exits are stops, so trades are short and the slot is usually free. K2, K3 and K5 are IDENTICAL —
+K never binds; fires arrive in clusters, and spacing them 24 bars apart removes trades instead of
+adding them. The only real frequency lever is a lower threshold, and it buys 5.2 trades/week at a
+Sharpe of 0.02 / 0.24 with expectancy −0.002R on CME. Win rate is 35-39% in every cell.
+
+**Verdict.** No frequency variant survives. Frequency is not a free dial on this detector: the
+extra trades are the lower-probability fires. The one improvement on the table remains the
+circuit breaker (fewer trades, not more), still awaiting a go. To take more risk on the same
+signal, raise `risk_frac` (§3ao: a pure dial), not the trade count.
+
+### §3ef — Noise-band intraday momentum on gold: the direction is real, the spread takes all of it (2026-11-11, `scripts/v5_noise_band_momentum.py`)
+
+**Ask:** "any strategy of any form that can be profitable as intraday, XAUUSD", not limited to
+prior instructions. Chosen from outside the repo: Zarattini, Aziz & Barbon 2024 (SSRN 4824172,
+SPY Sharpe 1.33) on Gao et al. 2018. Long while price is above `max(open, prev close) x (1 +
+sigma(t))`, short below the mirror band, flat inside; `sigma(t)` = 14-session mean absolute move
+from the open at that time of day; flat at the session close. **No intrabar stop**, so the M15
+path problem that made §3di's gold ORB unmeasurable does not arise. Six cells fixed in advance:
+sessions FULL (18:00 ET), LDN (03:00), NY (08:00-16:00) x long/short, long-only. Cost $0.30 round
+trip. Null: the same position matrix on other days' returns — same turnover, cost and long bias.
+
+| cell | M15 2015-26 gross | net | 2x cost | null p | CME H1 2010-26 gross | net | 2x cost | null p |
+|---|---|---|---|---|---|---|---|---|
+| NY long/short | **+0.81** | +0.05 | −0.70 | 0.000 | **+0.68** | +0.25 | −0.17 | 0.000 |
+| NY long-only | +0.60 | +0.01 | −0.56 | 0.013 | +0.50 | +0.19 | −0.11 | 0.013 |
+| LDN long/short | +0.40 | −0.65 | −1.66 | 0.017 | +0.59 | +0.05 | −0.48 | 0.007 |
+| FULL long/short | +0.48 | −0.91 | −2.24 | 0.030 | +0.27 | −0.45 | −1.16 | 0.067 |
+
+Family max-stat p **0.013 (M15) and 0.007 (CME)**: the timing is real in two independent sources,
+the short side included (NY long/short beats long-only, 10/12 and 11/17 years positive). Unlike
+§3di's ORB, the DIRECTION carries information here.
+
+**But the net Sharpe is +0.05 and +0.25**, and negative at twice the cost. Gross Sharpe falls about
+2.5 (M15) / 1.4 (CME) per dollar of round-trip cost, so the breakeven spread is ~$0.32 / $0.47 and
+at Switch's live $0.25 the estimate is +0.18 / +0.32. At a raw-spread $0.12 it would be ~+0.5 in
+both. Same wall as §3di, the fast trend runner and the fade: a real intraday effect whose size is
+the spread ([[intraday-breakeven-table]]).
+
+**Verdict: real, sub-cost at every venue we trade. Not deployed.** Not tuned after the first run —
+no band multiplier, lookback or session was changed. What would reopen it: a venue with gold at
+<= $0.12 all-in, or using the band state as a same-day filter on a slower strategy (untested).
+
+### §3eg — Telegram went quiet: an unquoted argument list, and a mode that was working as asked (2026-11-11)
+
+* **FTMO trade events were dead for 16 hours.** `deploy/trade-events-ftmo.sh` passed `--bots` as
+  three separately quoted words; argparse exited 2 on all **477** runs from 2026-11-10 18:59 UTC.
+  A live ZigZag BUY (0.05 XAUUSD @ 4,025.51, +$119 floating) was opened unannounced. Fixed to one
+  comma-separated argument; catch-up TRADED and +$50 messages delivered (HTTP 200). **A wrapper
+  edit needs one real run and a look at the log, not just a restart of the timer.**
+* **The advisor was not broken** — `ADVISOR_ALERTS=switch` (§3ec) sends only on a BUY/SELL switch
+  plus a 12:00 UTC heartbeat, and the bias had not changed. User then asked for hourly back: new
+  mode `hourly` = switch at once + status every 60 min, still no 3-state announcement.
+* Seen while there, not fixed: `xau-btc-fp.service` fails with "Authorization failed" (FundingPips
+  trial login) and `mt5-terminal-axi.service` is in a failed state.
+
+**§3ee follow-up — circuit breaker DEPLOYED 2026-11-11** (user: "yes add the circuit breaker").
+`circuit_breaker_atr: 1.0` added to all six live ZigZag configs (Switch 360601, Darwinex 360606 /
+360610, FTMO 360608 / 360609, FundingPips 360597). The executor block was already in
+`v5_zigzag_ftmo.py`, config-gated and fail-open; before switching it on, the live logic was checked
+bar-for-bar against `v5_zigzag_fall_gate.circuit` on the Switch H1 history — **60,000 bars, 0
+mismatches**, 220 of 2,620 days trip (8.4%). It blocks new entries only; open positions, the trail
+and max-hold are untouched. The phone alert for a blocked fire now reads "skipped: circuit breaker"
+(it would have read "order NOT confirmed — check the bot log"). First live pass after deploy: FTMO
+360608, `cb_k 1.0` in state, no fire (P 0.38), trail raised normally. The arm comparisons (B vs C,
+Switch vs Darwinex) are unaffected because every arm got the same gate on the same day.

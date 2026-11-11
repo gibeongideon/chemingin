@@ -25,7 +25,11 @@ flock -n 9 || { echo "$(date -u +%FT%TZ) previous run still going — skipping" 
 # from Buy to sell or vice versa not hourly"). The hourly status was also the liveness proof, so
 # one heartbeat a day replaces it -- 1 message instead of 23, and total silence still means the
 # pipeline is down rather than the market being quiet. Outage and health alerts are untouched.
-export ADVISOR_ALERTS=switch
+#
+# 2026-11-11 (user: "let the Adviser also send hourly"): `hourly` = the switch at once PLUS a
+# status every 60 min while gold is quoting. Still no 3-state announcement. The hourly status is
+# the liveness proof again, so the daily heartbeat is unused in this mode (kept for `switch`).
+export ADVISOR_ALERTS=hourly
 export ADVISOR_HEARTBEAT_HOUR=12
 # The card must not claim nobody is trading this. Stated HERE, by the deployment, because the
 # message module cannot know -- the old hard-coded "no bot trades these signals" went stale the

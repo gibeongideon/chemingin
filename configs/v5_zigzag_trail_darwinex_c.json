@@ -75,5 +75,7 @@
   "entry_limit_atr": 0.5,
   "limit_expire_h": 24,
   "post_lock_trail_atr": 2.5,
-  "_AB_NOTE": "Arm C on Darwinex, paired with B (magic 360606). Identical construction to the FTMO pair (360608 vs 360609), which makes the two venues a replication rather than two one-off experiments. Darwinex also carries the \u00a73eb slippage finding (one stop fill at 27.55bp vs Switch's 42/42 at exactly the level), so the LIMIT arm is of extra interest here: a resting limit is filled AT its price or not at all, so it cannot slip on entry the way a market order can."
+  "_AB_NOTE": "Arm C on Darwinex, paired with B (magic 360606). Identical construction to the FTMO pair (360608 vs 360609), which makes the two venues a replication rather than two one-off experiments. Darwinex also carries the \u00a73eb slippage finding (one stop fill at 27.55bp vs Switch's 42/42 at exactly the level), so the LIMIT arm is of extra interest here: a resting limit is filled AT its price or not at all, so it cannot slip on entry the way a market order can.",
+  "circuit_breaker_atr": 1.0,
+  "_circuit_breaker_note": "ON since 2026-11-11 (user: 'yes add the circuit breaker'). No new ZigZag buys for the rest of the broker day once an H1 close is more than 1.0 x yesterday's D1 ATR(14) below the day's first open. Measured in 3dz (CME 0.21->0.56, t +4.12; Switch 0.42->0.53) and again in 3ee (t +4.40 / +1.43). It blocks entries only: open positions, the trail and max-hold are untouched. Fail-open on any error. Remove the key to switch it off."
 }

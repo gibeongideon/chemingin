@@ -65,6 +65,10 @@ def zz_alert(zz: dict | None, last_bar_alerted: str | None) -> tuple[str, str] |
     if p >= thr:
         sent = [s for s in (zz.get("sent") or []) if "BUY" in str(s) and "10009" in str(s)]   # 10009 = done
         what = (f"skipped: gold trend down (champion {zz.get('trend_fc', 0):.2f} < gate)" if zz.get("trend_gate_blocked") else
+                # §3dz circuit breaker: without this branch a blocked fire read "order NOT confirmed".
+                (f"skipped: circuit breaker — gold already down {abs(zz.get('cb_move') or 0):,.0f} today "
+                 f"(limit {float(zz.get('cb_k') or 0) * float(zz.get('cb_atr') or 0):,.0f}), no buys until tomorrow")
+                if zz.get("cb_blocked") else
                 "order placed" if sent else
                 "no new order: already in a ZigZag trade" if zz.get("open_positions") else
                 "order NOT confirmed — check the bot log")

@@ -1,12 +1,12 @@
 {
   "created_on": "2026-10-30",
-  "_WARNING": "NEGATIVE EXPECTANCY. This is an OBSERVATION HARNESS, not a strategy. V5_FINDINGS §3x: all 48 grid cells negative full-sample (best SR -0.44, DD -41.2%); walk-forward SR -0.76 / DD -35.7% against buy-and-hold's +0.79; paired t -3.72; 0 of 8 years better; DSR 0.000; PBO 0.024. Deployed on a DEMO account at the user's explicit request to watch the documented detector operate live. DO NOT point this at a funded account.",
+  "_WARNING": "NEGATIVE EXPECTANCY. This is an OBSERVATION HARNESS, not a strategy. V5_FINDINGS \u00a73x: all 48 grid cells negative full-sample (best SR -0.44, DD -41.2%); walk-forward SR -0.76 / DD -35.7% against buy-and-hold's +0.79; paired t -3.72; 0 of 8 years better; DSR 0.000; PBO 0.024. Deployed on a DEMO account at the user's explicit request to watch the documented detector operate live. DO NOT point this at a funded account.",
   "purpose": "Live observation of the ZigZag bottom detector whose CLASSIFICATION numbers are this project's best (71% precision @ 22% recall, 75% @ 10%, 80% @ 5%, PR-AUC 0.60, 2.1-2.4x lift over a 33.5% random base) but whose TRADED form is disproven. The gap between those two facts is the project's central finding.",
   "firm": "Darwinex",
-  "account_type": "DEMO ONLY — the executor refuses to send on an account not flagged demo",
+  "account_type": "DEMO ONLY \u2014 the executor refuses to send on an account not flagged demo",
   "port": 18817,
   "symbol": "XAUUSD",
-  "_symbol_note": "Resolve the exact FTMO name at first run — FTMO has used both XAUUSD and suffixed variants. The executor prints symbol_info at startup.",
+  "_symbol_note": "Resolve the exact FTMO name at first run \u2014 FTMO has used both XAUUSD and suffixed variants. The executor prints symbol_info at startup.",
   "magic": 360606,
   "run_id": "v5-zigzag-trail-darwinex",
   "timeframe": "H1",
@@ -14,18 +14,18 @@
   "tp_pct": 0.006,
   "sl_pct": 0.005,
   "max_hold_bars": 120,
-  "_params_note": "The WALK-FORWARD-SELECTED cell, not the full-sample best. Re-running §3x's selection (trailing 3y, re-picked each January) gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48). Threshold 0.6 / TP 0.6% / SL 0.5% is stable across four consecutive years; only max-hold flips. The full-sample best (0.5, 0.6%, 0.5%, 48) scored SR -0.441 and is deliberately NOT used.",
+  "_params_note": "The WALK-FORWARD-SELECTED cell, not the full-sample best. Re-running \u00a73x's selection (trailing 3y, re-picked each January) gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48). Threshold 0.6 / TP 0.6% / SL 0.5% is stable across four consecutive years; only max-hold flips. The full-sample best (0.5, 0.6%, 0.5%, 48) scored SR -0.441 and is deliberately NOT used.",
   "risk_frac": 0.0025,
   "_risk_note": "0.25% of equity per trade. Deliberately small: the strategy is expected to lose, so this is sized to make the losses observable rather than material. With SL at 0.5% of price, one trade risks ~$250 on 100K. Backtest activity was 84-176 active days/year, so expect roughly 60-100 trades/year.",
   "expected_behaviour": {
     "trades_per_year": "60-100 (backtest showed 84-176 active days/yr)",
-    "win_rate": "the detector is 71% precise at flagging bottoms, but the TRADE win rate is far lower — TP is +0.6% and SL is -0.5%, so precision at flagging a pivot does not translate into a favourable payoff",
+    "win_rate": "the detector is 71% precise at flagging bottoms, but the TRADE win rate is far lower \u2014 TP is +0.6% and SL is -0.5%, so precision at flagging a pivot does not translate into a favourable payoff",
     "expected_pnl": "NEGATIVE. Per-year walk-forward Sharpe was -0.91/-1.03/-1.81/-1.87/-0.38/+1.19/+0.34/-3.83 for 2019-2026. Two of eight years were positive.",
     "what_to_watch": "whether the live fill quality, spread and slippage match the $0.448 round-trip the backtest charged. That is the one thing a live run can teach that the backtest cannot."
   },
   "exits": {
-    "tp": "server-side, attached to the order — does not need the bot alive",
-    "sl": "server-side, attached to the order — does not need the bot alive",
+    "tp": "server-side, attached to the order \u2014 does not need the bot alive",
+    "sl": "server-side, attached to the order \u2014 does not need the bot alive",
     "max_hold": "requires the bot; hourly timer closes anything older than 48h"
   },
   "safety": [
@@ -35,7 +35,7 @@
     "no pyramiding: will not add to an existing position under this magic",
     "reads the BROKER's own H1 feed, never the CSVs (which are 2,063h stale and are a different feed)"
   ],
-  "_no_window_manager_note": "No window manager is installed on any Xvfb display, so MT5 dialogs cannot be focused by clicking over VNC. Manual login works but is fiddly. If this recurs, either install a lightweight WM on :101 or drive the login by keyboard with xdotool clearing fields via ~30x BackSpace + ~30x Delete — never a select-all.",
+  "_no_window_manager_note": "No window manager is installed on any Xvfb display, so MT5 dialogs cannot be focused by clicking over VNC. Manual login works but is fiddly. If this recurs, either install a lightweight WM on :101 or drive the login by keyboard with xdotool clearing fields via ~30x BackSpace + ~30x Delete \u2014 never a select-all.",
   "aux_symbols": [
     "EURUSD",
     "GBPUSD",
@@ -52,10 +52,12 @@
   "_trail_note": "atr_trail with trail_atr 3.0. *** THE RATCHET WAS BROKEN UNTIL 2026-10-28: v5_zigzag_ftmo.py used an undefined `bid`, raising NameError on EVERY pass with an open position -- 291 passes, 0 ratchet decisions, process exiting 1 each time, so the stop never moved and the max-hold exit never ran either. The live tell was three closed trades at -248.94/-243.36/-246.35, a $5.58 spread on losses that should vary if a trail had ratcheted. FIXED. *** But the CEILING still stands (3bn): a wide trail approaches buy-and-hold FROM BELOW and can never beat it, because the limit of an infinitely wide trail IS holding. This runs to OBSERVE the fixed ratchet, not because the ZigZag is expected to profit -- 3bv closed it on mechanism (oracle 0.497 at RR=1 against a required 0.503: zero headroom before any model exists).",
   "_aux_note": "Darwinex FX tickers carry NO suffix (verified 2026-11-06: EURUSD/GBPUSD/USDJPY trade_mode 4, 30,000 H1 bars each from 2022-01), so the pooled detector trains on the same gold + FX panel as the Switch run.",
   "_venue_ab_note": "PARALLEL TO 360601 ON SWITCH, SAME PARAMETERS, SAME POOLED MODEL, SAME +$100 -> +$50 lock rule. Darwinex spread $0.44 vs Switch $0.21.",
-  "_why_threshold_06": "Threshold 0.6 is the WALK-FORWARD-SELECTED cell, not the full-sample best. Re-running §3x's selection (trailing 3y, re-picked each January) gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48): threshold 0.6 / TP 0.6% / SL 0.5% is stable across four consecutive years and only max-hold flips. The full-sample best (0.5, 0.6%, 0.5%, 48) scored SR -0.441 and is deliberately NOT used.",
-  "_expectation": "RUNS TO OBSERVE, NOT TO PAY. §3bv closed this family on MECHANISM: the detector's oracle is 0.497 precision at RR=1 against a required 0.503 — zero headroom before any model exists. §3bo found the 3.0-ATR trail is the ONLY non-negative exit cell (+2.22bp/fire against -4.15 at 1.0 and -2.31 at 2.0), and §3bn fixed the ceiling: a wide trail approaches buy-and-hold FROM BELOW and can never beat it, because the limit of an infinitely wide trail IS holding. risk_frac stays at 0.0025, half the champion's, for that reason.",
+  "_why_threshold_06": "Threshold 0.6 is the WALK-FORWARD-SELECTED cell, not the full-sample best. Re-running \u00a73x's selection (trailing 3y, re-picked each January) gives 2023/2024/2025 = (0.6, 0.6%, 0.5%, 24) and 2026 = (0.6, 0.6%, 0.5%, 48): threshold 0.6 / TP 0.6% / SL 0.5% is stable across four consecutive years and only max-hold flips. The full-sample best (0.5, 0.6%, 0.5%, 48) scored SR -0.441 and is deliberately NOT used.",
+  "_expectation": "RUNS TO OBSERVE, NOT TO PAY. \u00a73bv closed this family on MECHANISM: the detector's oracle is 0.497 precision at RR=1 against a required 0.503 \u2014 zero headroom before any model exists. \u00a73bo found the 3.0-ATR trail is the ONLY non-negative exit cell (+2.22bp/fire against -4.15 at 1.0 and -2.31 at 2.0), and \u00a73bn fixed the ceiling: a wide trail approaches buy-and-hold FROM BELOW and can never beat it, because the limit of an infinitely wide trail IS holding. risk_frac stays at 0.0025, half the champion's, for that reason.",
   "lock_steps": [],
   "lock_unit": "usd",
-  "_lock_note": "VARIANT B (2026-11-09, §3dr): NO profit lock, 3.0xATR trail throughout, take-profit at 4.3 x the 3-ATR risk (~$1,500 at 0.06 lots; scales with size). Backtest 539 fires 2024-26: $24.2k vs $10.5k for the ladder, Sharpe 1.53 vs 1.07, win rate 41% vs 73%. Live A/B against Switch 360601, which keeps the user's ladder (+100/50, +200/80, +300/120, trail 2.5 after lock).",
-  "tp_r": 4.3
+  "_lock_note": "VARIANT B (2026-11-09, \u00a73dr): NO profit lock, 3.0xATR trail throughout, take-profit at 4.3 x the 3-ATR risk (~$1,500 at 0.06 lots; scales with size). Backtest 539 fires 2024-26: $24.2k vs $10.5k for the ladder, Sharpe 1.53 vs 1.07, win rate 41% vs 73%. Live A/B against Switch 360601, which keeps the user's ladder (+100/50, +200/80, +300/120, trail 2.5 after lock).",
+  "tp_r": 4.3,
+  "circuit_breaker_atr": 1.0,
+  "_circuit_breaker_note": "ON since 2026-11-11 (user: 'yes add the circuit breaker'). No new ZigZag buys for the rest of the broker day once an H1 close is more than 1.0 x yesterday's D1 ATR(14) below the day's first open. Measured in 3dz (CME 0.21->0.56, t +4.12; Switch 0.42->0.53) and again in 3ee (t +4.40 / +1.43). It blocks entries only: open positions, the trail and max-hold are untouched. Fail-open on any error. Remove the key to switch it off."
 }

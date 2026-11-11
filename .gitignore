@@ -46,3 +46,4 @@ docs/zigzag-replication.zip
 docs/zigzag-replication/data/
 docs/zigzag-replication/*.csv
 data/free_data/
+data/v5_runs/noise_band_momentum/

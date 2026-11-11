@@ -120,8 +120,14 @@ def alerts_mode() -> str:
     more than 26h of silence means the pipeline is down -- so switching it off without a
     replacement would make a dead timer indistinguishable from a quiet market. The daily
     heartbeat is that replacement, and it is one message a day instead of twenty-three.
+
+    'hourly' (user, 2026-11-11: "let the Adviser also send hourly") = the BUY/SELL switch at once
+    PLUS a status every STATUS_MINUTES, but still NO 3-state UP/NEUTRAL/DOWN announcement -- the
+    FTMO arms trade the bias, so that would be a message with no trade behind it. The hourly
+    status is the liveness proof again, so no heartbeat is needed in this mode.
     """
-    return "switch" if os.environ.get("ADVISOR_ALERTS", "").strip().lower() == "switch" else "full"
+    raw = os.environ.get("ADVISOR_ALERTS", "").strip().lower()
+    return raw if raw in ("switch", "hourly") else "full"
 
 
 def _status_minutes() -> int:
@@ -427,7 +433,7 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         # one heartbeat a day so that silence still means something is broken.
         mode = alerts_mode()
         last = _held_minutes(seen.get("status_sent"), now)
-        if flipped and mode != "switch":
+        if flipped and mode == "full":
             # the 3-state is what the Switch executor traded (2026-11-05): announce it at once,
             # and keep it ahead of the bias switch so `full` mode reads exactly as it did before.
             trigger, should = "change", True
