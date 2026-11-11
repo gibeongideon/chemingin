@@ -8711,3 +8711,41 @@ and max-hold are untouched. The phone alert for a blocked fire now reads "skippe
 (it would have read "order NOT confirmed — check the bot log"). First live pass after deploy: FTMO
 360608, `cb_k 1.0` in state, no fire (P 0.38), trail raised normally. The arm comparisons (B vs C,
 Switch vs Darwinex) are unaffected because every arm got the same gate on the same day.
+
+### §3eh — Sizing the best ZigZag by its probability: a small lift with the right sign in both sources, not yet significant (2026-11-11, `scripts/v5_zigzag_prob_sizing.py`)
+
+**Ask:** "apply capital management based on prediction probability to see if Sharpe increases,
+using our best ZigZag." Base = variant B + circuit breaker (§3dz, live since 2026-11-11), flat
+0.25% risk. Priors written into the script before the run were AGAINST: probability sizing failed
+twice on the trend bot, and §3bz/§3bk found high-P bars no better. Five cells fixed in advance,
+every rule rescaled to the same average risk: FLAT, LIN (0.5x at P .60 → 1.5x at ≥ .80), STEP
+(2x at ≥ .70), KELLY (∝ P − 0.5), and INV (LIN reversed) as the sign control. Null: the same
+multipliers dealt to the trades at random, 2,000 times.
+
+| | CME 2012-26 (2,185 trades) | Switch 2018-26 (1,396 trades) |
+|---|---|---|
+| FLAT | 0.56 | 0.53 |
+| LIN | 0.62 (+0.07, t +0.85, shuffle p 0.095) | **0.66** (+0.13, t +1.24, p 0.039) |
+| STEP | **0.69** (+0.13, t +1.60, p 0.010) | 0.60 (+0.07, t +0.66, p 0.146) |
+| KELLY | 0.62 (+0.06, t +0.74, p 0.114) | **0.67** (+0.14, t +1.25, p 0.037) |
+| INV (sign control) | 0.49 (**−0.07**, p 0.889) | 0.41 (**−0.12**, p 0.961) |
+| family p (4 rules) | **0.021** | 0.061 |
+| Spearman(P, R) | +0.025 (halves +0.025 / +0.025) | +0.035 (halves +0.029 / +0.037) |
+
+**What is there.** Every probability-increasing rule is positive in both sources and the reversed
+rule is negative in both — the sign control behaves. The rank correlation between P and the trade's
+R is positive in all four half-samples. At twice the spread the lift survives (CME 0.36 → 0.44-0.50,
+Switch 0.31 → 0.39-0.46). Max drawdown is unchanged to slightly better.
+
+**What is not.** The lift is **+0.06 to +0.14 Sharpe**. No paired t vs FLAT reaches 2 (best +1.60).
+The best rule is different in each source (STEP on CME, KELLY on Switch), and STEP adds only in the
+first half on Switch (+0.24 / −0.05). The buckets are not monotone — on CME the top bucket
+(P ≥ .80, 42 trades) earns −0.008R and .65-.70 earns −0.006R. The two sources share 2018-26 and the
+same metal, so they are not independent. Spearman p is 0.19-0.24 in each source alone.
+
+**Verdict: a LEAD, not a result.** It is the first probability-sizing test in this repo with a
+consistent sign, which is why it is recorded rather than closed — and it contradicts the priors
+above, which were about the trend bot's meta-label and about bar returns, not about this
+detector's trades after the circuit breaker. Not deployed. If it is, LIN is the one to use: it is
+positive in both sources and both halves, has no cliff at a single threshold, and caps a trade at
+2x. Changing it on one arm only (e.g. FTMO 360608) keeps a flat-sized twin to compare against.

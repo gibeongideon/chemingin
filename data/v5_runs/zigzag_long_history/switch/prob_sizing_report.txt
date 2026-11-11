@@ -1,0 +1,20 @@
+ZigZag PROBABILITY SIZING, SWITCH gold H1, test 2018-01-01 -> 2026-11-05 19:00:00
+base = variant B + circuit breaker, flat 0.25% risk: 1396 trades, Sharpe +0.53, expectancy +0.043R, win 38.1%
+
+1. DOES A HIGHER PROBABILITY MEAN A BETTER TRADE?
+   P 0.60-0.65: n   821 (58.8%)  win  36.3%  expectancy +0.002R  (t +0.07)
+   P 0.65-0.70: n   383 (27.4%)  win  41.0%  expectancy +0.092R  (t +1.72)
+   P 0.70-0.75: n   102 ( 7.3%)  win  40.2%  expectancy +0.040R  (t +0.38)
+   P 0.75-0.80: n    44 ( 3.2%)  win  36.4%  expectancy +0.204R  (t +1.20)
+   P 0.80-1.00: n    46 ( 3.3%)  win  43.5%  expectancy +0.201R  (t +1.32)
+   Spearman(P, R) +0.0353 (p 0.188);  first half +0.0293, second half +0.0371
+
+2. SIZING RULES vs FLAT (same average risk)
+ rule  mult_min  mult_max   SR   dSR  t_vs_flat  SR_2x    h1    h2  maxDD  maxDD_flat  shuffle_med  shuffle95     p
+  LIN      0.65      1.96 0.66  0.13       1.24   0.45  0.26  0.05   6.16        6.76         0.51       0.65 0.039
+ STEP      0.88      1.76 0.60  0.07       0.66   0.39  0.24 -0.05   7.08        6.76         0.51       0.65 0.146
+KELLY      0.64      2.83 0.67  0.14       1.25   0.46  0.29  0.04   6.09        6.76         0.50       0.66 0.037
+  INV      0.41      1.22 0.41 -0.12      -1.68   0.20 -0.17 -0.08   8.72        6.76         0.52       0.62 0.961
+
+   h1/h2 = Sharpe change vs FLAT in each half.  FLAT at 2x spread: +0.31
+   family (4 rules): best KELLY +0.67 vs shuffled-size max median +0.58, 95th +0.68, p 0.061
