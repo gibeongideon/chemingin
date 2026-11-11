@@ -7,7 +7,10 @@ file was introduced to prevent ("the manual channel and the executor never disag
 senders import from here and neither formats anything itself.
 
 THE BANDS (user request 2026-09-10):
-    prob >= threshold (0.60)   TRADABLE      — the demo executor has already placed it
+    prob >= threshold (0.60)   TRADABLE      — ONLY if the state also shows the order was
+                                               actually sent (`executed` and a `sent` entry
+                                               with retcode 10009/10008); otherwise the same
+                                               fire is reported as SIGNAL (no order)
     NOTIFY_MIN (0.55) .. 0.60  NOT TRADABLE  — notification only, no order exists anywhere
     below 0.55                 silent
 
@@ -77,8 +80,22 @@ def build(s: dict, prev_band: str = "none") -> dict:
 
     pp = s.get("prospective") or {}
     slp, tpp = pp.get("sl_pct", 0.005), pp.get("tp_pct", 0.006)
+
+    # *** `actions` IS THE PLAN. `sent` IS WHAT REACHED A BROKER. ***
+    # They are not the same thing and this file used to treat them as one: any non-empty
+    # `actions` printed "The demo bot has already placed this", which is FALSE for every
+    # signal-only job. `zigzag-obs` runs v5_zigzag_ftmo.py WITHOUT --live --execute (trading
+    # disabled 2026-09-16, negative expectancy), so it writes actions + executed:false + sent:[]
+    # on every fire -- and on 2026-11-10 it mailed "already placed" for an order that existed
+    # nowhere. The same bug was fixed on the TELEGRAM path on 2026-11-09 (`zz_alert` ignores
+    # executed:false); the email path was missed. A notifier may only claim a fill the broker
+    # acknowledged.
+    sent_ok = [x for x in (s.get("sent") or [])
+               if int(x.get("retcode", 0) or 0) in (10009, 10008)]
+    placed = bool(s.get("executed")) and bool(sent_ok)
+
     if s.get("actions"):
-        L = ["TRADABLE", ""]
+        L = ["TRADABLE" if placed else "SIGNAL — NO ORDER PLACED", ""]
         for a in s["actions"]:
             if a["kind"] == "BUY":
                 L += [f"BUY {sym}   {a['vol']} lots", "",
@@ -90,11 +107,18 @@ def build(s: dict, prev_band: str = "none") -> dict:
                 L += [f"CLOSE {sym}   {a['vol']} lots", "",
                       f"  Opened at {a['entry']}, held {a.get('age_h')}h — 48h limit reached."]
             L.append("")
-        L.append("The demo bot has already placed this. Mirror it by hand if you want to.")
+        if placed:
+            L.append("The demo bot has already placed this. Mirror it by hand if you want to.")
+        else:
+            L.append("*** NOTHING HAS BEEN PLACED. *** This job scores the detector and stops;")
+            L.append("it runs without --live --execute, so no order exists at any broker.")
+            L.append("Acting on it is a manual decision, with the expectancy below in mind.")
         a0 = s["actions"][0]
-        # subject carries the order itself, so it is actionable from a phone lock screen
-        subj = (f"[zigzag] TRADABLE — BUY {a0['vol']} lots {sym} @ {a0['entry']}"
-                if a0["kind"] == "BUY" else f"[zigzag] CLOSE {a0['vol']} lots {sym}")
+        # subject carries the order itself, so it is actionable from a phone lock screen --
+        # and must say up front whether there is anything to act ON.
+        tag = "TRADABLE" if placed else "SIGNAL (no order)"
+        subj = (f"[zigzag] {tag} — BUY {a0['vol']} lots {sym} @ {a0['entry']}"
+                if a0["kind"] == "BUY" else f"[zigzag] {tag} — CLOSE {a0['vol']} lots {sym}")
     elif cur == "watch":
         L = ["NOT TRADABLE", "",
              f"{sym}   P(bottom) {prob:.3f}   needs {thr:.2f}", "",

@@ -58,7 +58,9 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 
 **Darwinex demo (3000112593, bridge 18817), concurrently since 2026-11-06: the same three — Book 360605 (gold only: Darwinex lists no BTC), ZigZag 360606, Trail-runner 360607.** Telegram reports TRADABLE / TRADED / CLOSED and a Saturday weekly P/L for both accounts.
 
-**FTMO demo (1515233856, $100k, bridge 18814), since 2026-11-09: ZigZag best variant only — magic 360608, no profit lock, 3 ATR trail, take-profit 4.3R (§3dr).** Same rule as Darwinex 360606; Switch 360601 runs the user's lock ladder + trend gate (live A/B).
+**FTMO demo (1515233856, $100k, bridge 18814), since 2026-11-09: ZigZag best variant — magic 360608, no profit lock, 3 ATR trail, take-profit 4.3R (§3dr).** Same rule as Darwinex 360606; Switch 360601 runs the user's lock ladder + trend gate (live A/B).
+
+**Also on FTMO since 2026-11-10: the advisor's BUY/SELL bias, as two arms at 0.25% risk (§3ed).** On a switch each arm closes an opposite leg that is in profit, keeps a losing one and closes it at **+$50**, and trails at 1.0×H4 ATR. They differ in one thing — **360611 opens a short on a SELL call, 360612 opens nothing** — so the live record measures the short leg and nothing else. The advisor now notifies **only on a BUY/SELL switch, plus one heartbeat a day** (`ADVISOR_ALERTS=switch`). **§3de replayed this bias at −25.0R over 28 years and −15.1R out of sample (p 0.955); it runs on demo as a live test of that number, under a pre-registered kill rule.**
 
 
 | Magic | System | Venue / bridge | Status |
@@ -67,7 +69,9 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 | **360598** | XAU+BTC book | FundingPips-Trial, 18816 | live, every 4h at :20 |
 | **360601** | ZigZag bottom detector + 3×ATR trail | Switch, 18815 | live hourly (:19) — **earns gold's drift, not timing** (§3dg/§3dk) |
 | 360597 | ZigZag + trail | FundingPips-Trial | live hourly (:24) |
-| ~~360602~~ | Advisor executor | Switch | **stopped 2026-11-06** (in-sample edge only, §3de); the advisor still notifies |
+| ~~360602~~ | Advisor executor | Switch | **stopped 2026-11-06** (in-sample edge only, §3de); stays disabled |
+| **360611** | Advisor BIAS executor, **long/short** — flip-and-hedge, +$50 rescue on a kept leg | FTMO demo, 18814 | **live 2026-11-10**, 5-min — a live test of §3de/§3bz, not an established edge |
+| **360612** | The same arm, **long-only** — a SELL call opens nothing. The control | FTMO demo, 18814 | **live 2026-11-10**, 5-min — isolates the short leg §3bz measured at −0.29..−0.52 Sharpe |
 | **360600** | Trail-runner: long-only buy-stop at the prior-day high + 3-ATR trail (`INTRADAY-TRAIL-SPEC.md`) | Switch | live, 5-min — the §3ch/§3dm lead |
 | ~~360599~~ | Fill probe | Switch | **stopped 2026-11-06** — trail-runner's live fills now supply the slippage data |
 | — | `xau-advisor` (5-min) + `advisor-notify` / `zigzag-notify` | Telegram + email | notifications |

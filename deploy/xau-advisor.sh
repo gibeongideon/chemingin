@@ -21,6 +21,17 @@ LOG=data/v5_runs/xau-advisor.log
 exec 9>/tmp/xau-advisor.lock
 flock -n 9 || { echo "$(date -u +%FT%TZ) previous run still going — skipping" >> "$LOG"; exit 0; }
 
+# NOTIFICATIONS: SWITCH ONLY (user, 2026-11-10: "only sent notification if the prediction change
+# from Buy to sell or vice versa not hourly"). The hourly status was also the liveness proof, so
+# one heartbeat a day replaces it -- 1 message instead of 23, and total silence still means the
+# pipeline is down rather than the market being quiet. Outage and health alerts are untouched.
+export ADVISOR_ALERTS=switch
+export ADVISOR_HEARTBEAT_HOUR=12
+# The card must not claim nobody is trading this. Stated HERE, by the deployment, because the
+# message module cannot know -- the old hard-coded "no bot trades these signals" went stale the
+# moment an executor was armed. Clear this line if the FTMO arms are ever disarmed.
+export ADVISOR_EXECUTORS="FTMO demo 1515233856 - magic 360611 (long/short) and 360612 (long-only), 0.25% risk, bias rule"
+
 echo "===== $(date -u +%FT%TZ) =====" >> "$LOG"
 
 # The compute step is allowed to fail: it writes `broken` into its own state file and the

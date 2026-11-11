@@ -1,0 +1,24 @@
+# Every 5 minutes at :15 seconds, stepping from minute :04.
+#
+# WHY :04/5 AND :15 SECONDS. The advisor computes on bridge 18815 at *:03/5:20 and writes its
+# state within ~9s (measured 2026-11-10; a cache miss, 6x a day, is the only slower case). Firing
+# 55s later means a BUY/SELL switch is acted on in the same 5-minute slot it is announced in,
+# which is the whole point of the 5-minute cadence -- the model itself only re-scores on a closed
+# H4 bar. MAX_STATE_AGE_MIN=16 refuses anything staler than two missed slots.
+#
+# AND WHY NOT :45. Bridge 18814 already has :00 (the hourly units), :27 (zigzag-trail-ftmo b/c)
+# and :45 (trade-events-ftmo, every 2 min). :15 leaves ~30s of clearance before :45 for both arms
+# to finish; the peer flock covers the overlap if they ever do not.
+#
+# Persistent=false: a missed slot is worthless by the time it would fire, and catching up a
+# backlog on boot would replay flips for episodes long since over.
+[Unit]
+Description=Timer for the XAUUSD advisor executor on FTMO (every 5 minutes)
+[Timer]
+OnCalendar=*-*-* *:04/5:15
+OnBootSec=150sec
+Persistent=false
+AccuracySec=5s
+Unit=xau-advisor-trader-ftmo.service
+[Install]
+WantedBy=timers.target

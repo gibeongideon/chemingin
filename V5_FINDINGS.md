@@ -8514,3 +8514,111 @@ the venue that does not have it.** Darwinex was already flagged expensive ($0.44
 **Action: none.** Keep stops server-side and attached to the order (already the case, so they do
 not depend on the bot being alive), keep the live book on Switch, and re-run this script as
 Darwinex accumulates fills — n=1 is an observation, not a rate.
+
+---
+
+### §3ec — Notifications: switch-only, with the heartbeat that replaces the liveness proof
+
+**User, 2026-11-10:** *"i want the Advisor to run every 5 minutes and only sent notification if
+the prediction change from Buy to sell or vice versa not hourly."*
+
+**The 5-minute half needed no change — it has been `*:03/5:20` since 2026-11-05,** and the
+cadence is already correct for the reason the compute step's own docstring gives: *"A 5-MINUTE
+CADENCE CANNOT MOVE A 9-HOUR PROBABILITY… the model is called once per closed H4 bar — 6 times a
+day, not 288."* Polling faster buys **latency of detection**, not a fresher probability. That is
+what was wanted; it was already built.
+
+**What did change is one setting, `ADVISOR_ALERTS=switch`** (`v5_xau_advisor_message.py`):
+
+| trigger | `full` (2026-11-06 behaviour) | `switch` (now) |
+|---|---|---|
+| BIAS BUY↔SELL switch | send | **send, immediately** |
+| 3-state UP/NEUTRAL/DOWN change | send | **suppressed** — the live arms trade the BIAS, so this would be a message with no trade behind it |
+| hourly status | send | **suppressed** |
+| daily heartbeat | — | **one, from `ADVISOR_HEARTBEAT_HOUR` (12 UTC)** |
+| `broken` / `health` / outage | send | send, unchanged |
+
+**THE TRAP THIS AVOIDS, RECORDED BECAUSE IT NEARLY SHIPPED.** The hourly status was also the
+liveness proof — the card's own words were *"more than 26h without any message means this
+pipeline is down, NOT that the direction is steady."* Deleting it without a replacement makes a
+**dead timer indistinguishable from a quiet market**, and the existing `broken` path does not
+close the gap: it fires on a stale *state file*, which requires the compute step to still be
+running. The daily heartbeat is the replacement — 1 message a day instead of 23, and silence
+still means something. **An alerting change that removes the only proof of life is a regression
+even when it is exactly what was asked for.**
+
+**Second fix, same file.** The card hard-coded *"No bot trades these signals (the executor, magic
+360602, was stopped 2026-11-06)"*. That sentence was true when written and false the moment an
+executor was armed. It is now `ADVISOR_EXECUTORS`, set by the deployment, defaulting to the
+honest "No bot is trading these signals." **A module cannot know what is deployed and must not
+guess.**
+
+---
+
+### §3ed — The advisor's BUY/SELL bias, armed live on FTMO as a two-arm test of §3bz
+
+**User, 2026-11-10:** *"i need to place a order in FTMO based on the buy or sell, when a the
+direction change close trade only if in profit and create oposite trade, also create oposite
+trade and not close it not in profit, create a paralel trates on top of Zigzag"*, and then
+*"when the direction change and the one with loss, wait as soon as it hit +50, close."*
+
+**THIS RULE WAS ALREADY BUILT, MEASURED AND SWITCHED OFF.** `scripts/v5_xau_advisor_trader.py`
+(magic 360602) implements it verbatim; §3de replayed it with 200 circular-shift timing nulls:
+
+| rule | span | trades | R | t | shuffle p |
+|---|---|---|---|---|---|
+| **BIAS** (the BUY/SELL call) | full 28y | 3408 | **−25.0** | −0.43 | 0.110 |
+| **BIAS** | OOS (5 mo) | 103 | **−15.1** | −1.87 | **0.955** |
+| STRONG (3-state) | full | 473 | +108.3 | 3.98 | 0.000 — **in-sample** |
+| STRONG | OOS | 14 | 0.0 | 0.01 | 0.405 |
+
+Buy-and-hold over the same span: **+1326.9%**. The user was shown these numbers, and the §3bz
+table below, before anything was armed, and chose to run it on demo with a control arm.
+
+**THE DESIGN DECISION THAT MAKES THIS A TEST RATHER THAN A REPEAT.** §3bz had already measured
+the user's own earlier phrasing of this idea (*"the opposite trigger should close the trade and
+create the opposite trade"*): long-only hysteresis **+0.932** Sharpe vs long/short **+0.641**,
+with the long-only arm ahead in **4 of 4** thresholds (+0.29/+0.49/+0.48/+0.52) — *"the
+flip-to-short half of the specification is the single most damaging component."* So two arms run,
+identical in every respect except that one:
+
+| | **360611 arm LS** | **360612 arm L** |
+|---|---|---|
+| BUY call | open long | open long |
+| SELL call | **open short** | **open nothing** |
+| opposite leg in profit on a flip | close | close |
+| opposite leg losing on a flip | keep, +$50 target | keep, +$50 target |
+| stop | 1.0×H4 ATR server-side, ratcheting | identical |
+
+Same signal, same episode gate, same ticks, same account, 0.25% risk each. **The gap between them
+is the short leg and nothing else** — the §3co event-set rule applied live.
+
+**Three implementation points worth keeping.**
+
+1. **The flip rule fires ONCE PER EPISODE, keyed on the call's own `since` timestamp.** The
+   earlier code evaluated "close the opposite leg if it is in profit" on whichever pass happened
+   to see it, which is a different rule for whichever arm is flat on that side, and would have
+   made the two arms incomparable.
+2. **The episode guard no longer blocks the CLOSE half.** It used to return early, so a leg that
+   turned profitable after a same-episode stop-out was stranded open against the advisor's own
+   call. Arm L — which opens nothing on a SELL — would never have closed anything.
+3. **The +$50 rescue is a SERVER-SIDE take-profit, not a poll.** It fires between runs and
+   survives the bot being down. The level solves `(tp − open)·volume·contract + swap = 50` and is
+   **recomputed every pass**, because gold's swap on FTMO is −92.26 points/lot/day long and would
+   otherwise walk the target out from under itself.
+
+**Live from 2026-11-10 19:00 UTC.** First fire: arm LS opened SELL 0.06 @ 4026.71, SL 4066.26
+(retcode 10009); arm L correctly opened nothing. Note that this first entry **joined an episode
+already 3h old**, so it is a late join rather than a clean flip entry — exclude it if the sample
+is ever close to a decision boundary.
+
+**KILL RULE, pre-registered before the first fill.** At **60 closed trades per arm or 90 days**,
+whichever comes first: **LS is disabled if it is net-negative AND below L**; **both are disabled
+if both are below buy-and-hold over the same window.** `scripts/v5_advisor_exec_report.py` prints
+the `vs HOLD` column first and refuses to name a winner under 12 matched episodes.
+
+**The prior stays what the file already says it is.** §3bh — `excess(LONG) + excess(SHORT) =
+−2·base` — means a hedge is net-flat exposure paying two spreads and two swaps, and §3cx/§3cy/
+§3co/§3dq/§3dg are five independent measurements that converting open profit into closed profit
+early loses money. **Nothing here is a prediction that this will work. It is a measurement that
+settles it on the user's own fills instead of on another replay.**

@@ -37,6 +37,7 @@ legible rather than implied. `seen` advances ONLY on a successful send
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -95,7 +96,42 @@ def _fmt_ci(ci) -> str:
     return f"CI [{float(ci[0]):.3f}, {float(ci[1]):.3f}]"
 
 
-STATUS_MINUTES = 60          # user 2026-11-06: hourly status + immediate on change             # a status message this often; a BUY/SELL switch sends at once
+STATUS_MINUTES = 60          # a status message this often; a BUY/SELL switch sends at once
+HEARTBEAT_HOUR = 12          # in `switch` mode, the one scheduled message of the day (UTC)
+
+
+def executors_line() -> list:
+    """Who, if anyone, is trading this signal right now. Set by the deployment, because this
+    module cannot know and MUST NOT GUESS -- the previous hard-coded 'No bot trades these
+    signals (magic 360602, stopped 2026-11-06)' stayed in the card after an executor was armed.
+    """
+    txt = os.environ.get("ADVISOR_EXECUTORS", "").strip()
+    if not txt:
+        return ["XAUUSD ADVISOR - information only. No bot is trading these signals."]
+    return ["XAUUSD ADVISOR - traded by: " + txt]
+
+
+def alerts_mode() -> str:
+    """'switch' = only a BUY/SELL switch, plus one daily heartbeat and any outage. 'full' = the
+    2026-11-06 behaviour (hourly status as well).
+
+    USER, 2026-11-10: "only sent notification if the prediction change from Buy to sell or vice
+    versa not hourly". The hourly status was also the liveness proof -- the card itself says
+    more than 26h of silence means the pipeline is down -- so switching it off without a
+    replacement would make a dead timer indistinguishable from a quiet market. The daily
+    heartbeat is that replacement, and it is one message a day instead of twenty-three.
+    """
+    return "switch" if os.environ.get("ADVISOR_ALERTS", "").strip().lower() == "switch" else "full"
+
+
+def _status_minutes() -> int:
+    raw = os.environ.get("ADVISOR_STATUS_MINUTES", "").strip()
+    return int(raw) if raw.isdigit() else STATUS_MINUTES
+
+
+def _heartbeat_hour() -> int:
+    raw = os.environ.get("ADVISOR_HEARTBEAT_HOUR", "").strip()
+    return int(raw) if raw.isdigit() and 0 <= int(raw) <= 23 else HEARTBEAT_HOUR
 
 
 def build(state: dict, reading: dict | None, meta: dict, seen: dict,
@@ -200,14 +236,13 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     held_s = ("" if held_b is None else f"{held_b:.0f} min" if held_b < 120
               else f"{held_b / 60:.1f}h")
     rate = f" P={obs_pct}" if observed is not None else ""
-    # executor 360602 was stopped 2026-11-06 (user kept only book/ZigZag/trail-runner on Switch)
     act = {"UP": "lean BUY", "DOWN": "lean SELL"}.get(name, "no lean")
     if frozen or health != "ok":
         subject = f"[xau-advisor] {name} HELD — {health} (no current reading)"
     elif side and flipped:
         subject = f"[xau-advisor] STRONG {name}{rate} (was {prev}) — {act}"
     elif switched:
-        subject = f"[xau-advisor] bias SWITCH -> {side} (was {prev_side}) — info, not traded"
+        subject = f"[xau-advisor] bias SWITCH -> {side} (was {prev_side})"
     elif side:
         subject = (f"[xau-advisor] {side} bias, held {held_s}"
                    + (" — market closed" if market_closed else "") + f"  [{name}]")
@@ -224,9 +259,10 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
     # ------------------------------------------------------------------ body
     L = []
     L.append("=" * 72)
-    L.append("XAUUSD ADVISOR — information only. No bot trades these signals (the executor,")
-    L.append("magic 360602, was stopped 2026-11-06: its edge was in-sample only, 0R out of sample).")
-    L.append("The BUY/SELL bias is also information only (it lost money in backtest).")
+    L.extend(executors_line())
+    L.append("MEASURED: V5_FINDINGS 3de replayed this BUY/SELL bias as P&L — -25.0R over 28 years")
+    L.append("and -15.1R in the 5-month out-of-sample window (timing-shuffle p 0.955). Anything")
+    L.append("trading it is a live test of that number, not a strategy with an established edge.")
     L.append("=" * 72)
     L.append("")
     if side:
@@ -316,9 +352,14 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         L.append("  The state above is FROZEN at the last good reading. It is not current.")
         L.append(f"  quiet rule : more than {QUIET_HOURS}h without any message means this")
         L.append("               pipeline is down, NOT that the direction is steady.")
+    elif alerts_mode() == "switch":
+        L.append("  You get a message the moment the BUY/SELL bias switches, and one")
+        L.append(f"  heartbeat a day from {_heartbeat_hour():02d}:00 UTC. Nothing else.")
+        L.append("  quiet rule : no heartbeat by the end of the day means this pipeline is")
+        L.append("               down, NOT that the direction is steady.")
     else:
-        L.append(f"  You get a message the moment the BUY/SELL bias switches, and a status")
-        L.append(f"  every {STATUS_MINUTES} min while the market is open.")
+        L.append("  You get a message the moment the BUY/SELL bias switches, and a status")
+        L.append(f"  every {_status_minutes()} min while the market is open.")
         L.append(f"  quiet rule : more than {QUIET_HOURS}h without any message means this")
         L.append("               pipeline is down, NOT that the direction is steady.")
     L.append(f"  held since : {state.get('since')}")
@@ -377,19 +418,28 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         new_seen = {**seen, "health_day": day, "health": health}
     elif side:
         # USER, 2026-11-05: "signal when overall switch from buy to sell or vice versa ... as
-        # soon as possible ... notify every 30 minutes and any time it changes". A switch sends
-        # on the first run that sees it (no confirmation delay); otherwise a status goes out
-        # every STATUS_MINUTES, or once a day while the market is closed.
+        # soon as possible". A switch sends on the first run that sees it, no confirmation delay.
+        #
+        # WHAT ELSE SENDS DEPENDS ON THE MODE (user, 2026-11-10). In `full` a status goes out
+        # every STATUS_MINUTES, or once a day while the market is closed. In `switch` there is no
+        # status at all and no 3-state announcement -- the BIAS is what the FTMO arms trade, so a
+        # 3-state change would be a message with no trade behind it -- just the switch itself and
+        # one heartbeat a day so that silence still means something is broken.
+        mode = alerts_mode()
         last = _held_minutes(seen.get("status_sent"), now)
-        if flipped:
-            # the STRONG state is what the executor trades (2026-11-05): announce it at once
+        if flipped and mode != "switch":
+            # the 3-state is what the Switch executor traded (2026-11-05): announce it at once,
+            # and keep it ahead of the bias switch so `full` mode reads exactly as it did before.
             trigger, should = "change", True
         elif switched:
             trigger, should = "switch", True
+        elif mode == "switch":
+            trigger = "heartbeat"
+            should = (seen.get("status_day") != day and now.hour >= _heartbeat_hour())
         elif market_closed:
             trigger, should = "status", seen.get("status_day") != day
         else:
-            trigger, should = "status", last is None or last >= STATUS_MINUTES - 0.5
+            trigger, should = "status", last is None or last >= _status_minutes() - 0.5
         new_seen = {**seen, "state": name, "day": day, "health": health}
         if should:
             new_seen.update(bias=side, status_sent=now.isoformat(), status_day=day)

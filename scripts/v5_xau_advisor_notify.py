@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -103,7 +104,8 @@ def main() -> None:
         if not a.dry:
             save_seen(SEEN, m["seen"])
     else:
-        print("(nothing sent — no switch, and the 30-min status is not due)")
+        print("(nothing sent — trigger %r did not qualify under ADVISOR_ALERTS=%s)"
+              % (m["trigger"], os.environ.get("ADVISOR_ALERTS", "full")))
 
 
 if __name__ == "__main__":

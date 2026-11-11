@@ -1,0 +1,11 @@
+[Unit]
+Description=XAUUSD advisor executor on FTMO — arms 360611 (long/short) + 360612 (long-only)
+After=mt5-terminal-ftmo.service
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/xau-advisor-trader-ftmo.sh
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xau-advisor-ftmo

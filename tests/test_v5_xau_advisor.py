@@ -270,6 +270,7 @@ def test_every_advisor_module_parses_under_the_serving_pythons_grammar():
     `feature_version` here makes the desktop refuse code the server cannot run.
     """
     targets = (sorted(ROOT.glob("scripts/v5_xau_advisor*.py"))
+               + sorted(ROOT.glob("scripts/v5_advisor_*.py"))
                + sorted(ROOT.glob("src/v5/xau_advisor*.py"))
                + sorted(ROOT.glob("src/v5/advisor_*.py"))
                + [ROOT / "scripts/v5_train_advisor.py", ROOT / "scripts/v5_feed_audit.py",
@@ -372,3 +373,96 @@ def test_a_strong_flip_sends_immediately_with_the_executor_action(meta):
     again = build({"name": "DOWN", "health": "ok", "since": str(NOW)}, _reading(0.72, meta),
                   meta, m["seen"], now=NOW + timedelta(minutes=10), bias=_bias("SELL", NOW, 0.6))
     assert not again["should_send"]
+
+
+# ---------------------------------------------------------------------------------------------
+# ADVISOR_ALERTS=switch (user, 2026-11-10: "only sent notification if the prediction change from
+# Buy to sell or vice versa not hourly"). The suppression must be surgical: the hourly status and
+# the 3-state announcement go, the switch and every outage path stay, and one heartbeat a day
+# replaces the liveness guarantee the hourly status used to provide.
+# ---------------------------------------------------------------------------------------------
+
+@pytest.fixture()
+def switch_mode(monkeypatch):
+    monkeypatch.setenv("ADVISOR_ALERTS", "switch")
+    monkeypatch.setenv("ADVISOR_HEARTBEAT_HOUR", "12")
+
+
+def _st(name="NEUTRAL", health="ok"):
+    return {"name": name, "health": health, "since": str(NOW)}
+
+
+def _seen(day, **kw):
+    base = {"state": "NEUTRAL", "bias": "BUY", "status_sent": NOW.isoformat(), "status_day": day}
+    base.update(kw)
+    return base
+
+
+def test_switch_mode_still_sends_the_bias_switch_at_once(meta, switch_mode):
+    m = build(_st(), _reading(0.50, meta), meta, _seen(NOW.strftime("%Y-%m-%d")),
+              now=NOW + timedelta(minutes=5), bias=_bias("SELL"))
+    assert m["trigger"] == "switch" and m["should_send"]
+
+
+def test_switch_mode_drops_the_hourly_status(meta, switch_mode):
+    day = NOW.strftime("%Y-%m-%d")
+    for hours in (1, 2, 5, 9):
+        m = build(_st(), _reading(0.50, meta), meta, _seen(day),
+                  now=NOW + timedelta(hours=hours), bias=_bias("BUY"))
+        assert not m["should_send"], f"{hours}h after the last message it must stay quiet"
+
+
+def test_switch_mode_drops_the_three_state_announcement(meta, switch_mode):
+    # the FTMO arms trade the BIAS, so a 3-state change is a message with no trade behind it
+    m = build(_st("DOWN"), _reading(0.72, meta), meta, _seen(NOW.strftime("%Y-%m-%d")),
+              now=NOW + timedelta(minutes=5), bias=_bias("BUY"))
+    assert not m["should_send"] and m["trigger"] == "heartbeat"
+
+
+def test_switch_mode_sends_one_heartbeat_a_day_and_only_after_the_hour(meta, switch_mode):
+    yesterday = (NOW - timedelta(days=1)).strftime("%Y-%m-%d")
+    early = build(_st(), _reading(0.50, meta), meta, _seen(yesterday),
+                  now=NOW.replace(hour=9), bias=_bias("BUY"))
+    assert not early["should_send"], "before 12:00 UTC there is no heartbeat yet"
+    due = build(_st(), _reading(0.50, meta), meta, _seen(yesterday),
+                now=NOW.replace(hour=12), bias=_bias("BUY"))
+    assert due["trigger"] == "heartbeat" and due["should_send"]
+    again = build(_st(), _reading(0.50, meta), meta, due["seen"],
+                  now=NOW.replace(hour=18), bias=_bias("BUY"))
+    assert not again["should_send"], "one a day, not one an hour"
+
+
+def test_switch_mode_never_silences_an_outage(meta, switch_mode):
+    broken = build(_st(), None, meta, _seen(NOW.strftime("%Y-%m-%d")), now=NOW,
+                   broken="bridge down", bias=_bias("BUY"))
+    assert broken["should_send"] and broken["trigger"] == "broken"
+    unhealthy = build(_st(health="stale"), _reading(0.50, meta), meta,
+                      _seen(NOW.strftime("%Y-%m-%d")), now=NOW + timedelta(minutes=5),
+                      bias=_bias("BUY"))
+    assert unhealthy["should_send"] and unhealthy["trigger"] == "health"
+
+
+def test_full_mode_is_unchanged_by_the_new_code(meta, monkeypatch):
+    monkeypatch.delenv("ADVISOR_ALERTS", raising=False)
+    day = NOW.strftime("%Y-%m-%d")
+    due = build(_st(), _reading(0.50, meta), meta, _seen(day), now=NOW + timedelta(minutes=60),
+                bias=_bias("BUY"))
+    assert due["trigger"] == "status" and due["should_send"]
+
+
+def test_the_card_names_whoever_is_trading_it(meta, monkeypatch):
+    monkeypatch.delenv("ADVISOR_EXECUTORS", raising=False)
+    off = build(_st(), _reading(0.50, meta), meta, {}, now=NOW, bias=_bias("BUY"))
+    assert "No bot is trading these signals" in off["body"]
+    monkeypatch.setenv("ADVISOR_EXECUTORS", "FTMO demo 360611/360612")
+    on = build(_st(), _reading(0.50, meta), meta, {}, now=NOW, bias=_bias("BUY"))
+    assert "FTMO demo 360611/360612" in on["body"]
+    assert "No bot is trading" not in on["body"]
+    # the measured result travels with it either way
+    assert "-15.1R" in on["body"] and "-15.1R" in off["body"]
+
+
+def test_no_banned_phrase_survives_the_new_subjects(meta, switch_mode):
+    m = build(_st(), _reading(0.50, meta), meta, _seen(NOW.strftime("%Y-%m-%d")),
+              now=NOW + timedelta(minutes=5), bias=_bias("SELL"))
+    assert not any(b in m["subject"].lower() for b in BANNED)

@@ -44,10 +44,14 @@ def test_breakeven_is_not_profit():
     assert decide("UP", "e2", "e1", [P(1, SELL, 0.0)])["hedge"] == [1]
 
 
-def test_hedge_then_flip_back_opens_nothing():
-    # losing BUY kept + SELL opened; advisor returns to UP -> a BUY already exists
+def test_hedge_then_flip_back_opens_nothing_but_resolves_the_short():
+    """CHANGED 2026-11-10. A BUY already exists, so nothing opens -- but the profitable SELL is
+    now taken. The old code returned early on 'same direction' and stranded that leg: it could
+    sit open against the advisor's own call forever. The close/keep half must run on every
+    genuine flip, or arm L (which opens nothing on a SELL call) would never close anything."""
     d = decide("UP", "e3", "e2", [P(1, BUY, -40), P(2, SELL, +10)])
-    assert d["open"] is None and d["close"] == []
+    assert d["open"] is None
+    assert d["close"] == [2] and d["hedge"] == []
 
 
 def test_neutral_and_unknown_never_enter():
@@ -86,7 +90,6 @@ def test_executor_trades_the_bias_not_the_three_state(tmp_path, monkeypatch):
                              "state": {"name": "NEUTRAL"},
                              "bias": {"side": "SELL", "since": "x1", "p_raw": 0.53}}))
     monkeypatch.setattr(T, "ADVISOR_STATE", f)
-    monkeypatch.setattr(T, "RULE", "BIAS")
-    assert T.read_advisor(now)[:2] == ("DOWN", "x1")
-    monkeypatch.setattr(T, "RULE", "STRONG")
-    assert T.read_advisor(now)[0] == "NEUTRAL", "STRONG rule ignores the bias"
+    # The rule is a CLI argument now (one script, two FTMO arms), not a module constant.
+    assert T.read_advisor(now, "BIAS")[:2] == ("DOWN", "x1")
+    assert T.read_advisor(now, "STRONG")[0] == "NEUTRAL", "STRONG rule ignores the bias"
