@@ -8870,3 +8870,44 @@ Family max-stat p 0.080 (CME) / 0.270 (Switch): **fails as pre-registered.** G_S
 the §3eh kind — the vetoed trades lose in BOTH sources (−0.57 / −0.30 Sharpe), so the H1 reading
 that is useless as a standalone call does carry a little about which ZigZag fires fail. It only
 skips 5-7% of fires. Not deployed; revisit only with fresh out-of-sample months.
+
+### §3en — Profit-scaled trail with a distance floor on ZigZag B: 0 of 8, every variant below the live 3-ATR trail in both sources (2026-11-12, `scripts/v5_zigzag_trail_shapes.py`)
+
+User: "trailing loss to go upward slowly as the profit goes up but avoid being too close". New vs
+§3cx (fractional lock, no floor): every rule keeps a MINIMUM distance to the running high.
+Fixed event set (CTRL's entries; CTRL reproduces `bt` to 0.0 R), research only.
+TAPER g/D: stop = high − max(D, 3 − g·profit_ATR)·ATR. FRAC f/D: stop = max(3-ATR trail,
+min(entry + f·(high − entry), high − D·ATR)).
+
+| rule | CME 2012-26 Sharpe | paired t | Switch 2018-26 Sharpe | paired t |
+|---|---|---|---|---|
+| **CTRL (live 3.0 ATR)** | **0.21** | — | **0.42** | — |
+| TAPER 0.25 / 1.5 | 0.01 | −0.63 | 0.11 | −1.88 |
+| TAPER 0.25 / 2.0 | 0.02 | −0.84 | 0.21 | −1.40 |
+| TAPER 0.5 / 1.5 | −0.18 | −1.55 | 0.09 | −1.70 |
+| TAPER 0.5 / 2.0 | −0.08 | −1.45 | 0.23 | −1.22 |
+| FRAC 0.33 / 1.5 | 0.04 | −0.78 | 0.21 | −1.14 |
+| FRAC 0.33 / 2.0 | −0.12 | −1.64 | 0.31 | −0.88 |
+| FRAC 0.5 / 1.5 | −0.04 | −0.94 | 0.16 | −1.24 |
+| FRAC 0.5 / 2.0 | −0.17 | −1.72 | 0.31 | −0.88 |
+
+Same shape as §3cx/§3cy: win rate rises (37% → 41-44%), giveback falls (0.85-0.89R → 0.51-0.76R),
+mean R falls — the trail's convexity is what pays. FRAC with a 1.5-ATR floor cuts maxDD
+(CME −10.1% → −6.6%, Switch −8.2% → −6.6%) but by lowering return; cutting lot size does that
+for free. **Trail family remains closed: the floor does not rescue profit-scaled stops.**
+
+### §3eo — ZigZag ranked by HIT RATE: 96% is reachable, but it is geometry, not skill (2026-11-12, `scripts/v5_zigzag_hit_rate.py`)
+
+User: "a variant with high accuracy, ignore the gain" (cf. the +$50 lock's ~70% wins). 96 cells
+per source (P threshold 0.60/0.70/0.80 × TP 0.25-1.5 ATR × SL 1-5 ATR × hold 24/120h), entries
+de-duplicated to one per 24h (fixed event set); every cell beside the SAME bracket on random bars.
+
+| setting | hit CME / Switch | random bracket | lift | EV R | trades/wk |
+|---|---|---|---|---|---|
+| P≥0.80, TP 0.25 ATR, SL 5 ATR, 120h | **96.3% / 96.7%** (both halves ≥ 95%) | 93.6% / 93.8% | +2.7 / +2.9pp | +0.012 / +0.016 | 0.11 / 0.20 |
+| P≥0.60, same bracket | 94.0% / 93.9% | 93.6% / 93.8% | +0.4 / 0.0pp | −0.012 | 2.2 / 2.4 |
+| **P≥0.80, TP 1.0 ATR, SL 3 ATR, 120h** | 78.0% / 77.2% | 71.8% / 73.7% | **+6.2 / +3.5pp** (largest) | +0.041 / +0.029 | 0.11 / 0.20 |
+
+The hit rate is bought by the bracket: TP 0.25 / SL 5 wins 94% on RANDOM entries. One loss costs
+~20 wins, so EV sits at ~0. The detector's own contribution is a few percentage points and only
+at P ≥ 0.80 (rare: 6–10 trades/yr). Same law as §3cx (lock 50% → 86% wins, −85% return).
