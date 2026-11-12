@@ -45,8 +45,14 @@ def mail(subj: str, body: str) -> None:
     to = e.get("REPORT_TO", user)
     if not (e.get("SMTP_HOST") and user and pw):
         sys.exit("incomplete creds in .env.mail")
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from scripts.v5_notify import threaded   # one Gmail thread for every alert (2026-11-12)
+    subj, body, th = threaded(subj, body)
     m = MIMEText(body)
     m["Subject"], m["From"], m["To"] = subj, user, to
+    for k, v in th.items():
+        m[k] = v
     with smtplib.SMTP(e["SMTP_HOST"], int(e.get("SMTP_PORT", "587")), timeout=30) as srv:
         srv.starttls(context=ssl.create_default_context())
         srv.login(user, pw)

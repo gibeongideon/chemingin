@@ -59,6 +59,25 @@ def env() -> dict:
     return e
 
 
+# ONE EMAIL THREAD (user, 2026-11-12: "can we have the email in single thread"). Gmail joins
+# messages into one conversation only when the SUBJECT matches and they REFERENCE a common
+# Message-ID. So every mail gets the same subject and In-Reply-To/References pointing at one fixed
+# id; the real subject moves to the first body line, which is what the inbox snippet shows.
+# MAIL_THREAD in .env.notify/.env.mail overrides the subject; MAIL_THREAD=off restores per-alert
+# subjects. Telegram is untouched — it has no subjects.
+THREAD_DEFAULT = "Trader36 alerts"
+THREAD_REF = "<trader36-alerts-thread@trader36.local>"
+
+
+def threaded(subj: str, body: str, e: dict | None = None) -> tuple[str, str, dict]:
+    """(subject, body, extra_headers) for an email; identity when threading is off."""
+    t = (os.environ.get("MAIL_THREAD") or (e or env()).get("MAIL_THREAD") or THREAD_DEFAULT).strip()
+    if t.lower() in ("off", "0", "no", "false"):
+        return subj, body, {}
+    return t, f"{subj}\n{'-' * min(len(subj), 60)}\n{body}", {"In-Reply-To": THREAD_REF,
+                                                              "References": THREAD_REF}
+
+
 # Cloudflare sits in front of api.resend.com (and others) and rejects Python's default
 # `Python-urllib/3.x` User-Agent on client fingerprint, returning a bare `HTTP 403 error code:
 # 1010` with no JSON body — which looks exactly like a bad API key and is not one. Verified
@@ -212,19 +231,23 @@ def _telegram(e: dict, subj: str, body: str) -> tuple[int, str]:
 def _send_one(ch: str, e: dict, subj: str, body: str) -> bool:
     """One channel. Never raises — a notifier that crashes takes its own timer down with it."""
     try:
+        hdrs = {}
+        if ch != "telegram":
+            subj, body, hdrs = threaded(subj, body, e)
         if ch == "telegram":
             code, resp = _telegram(e, subj, body)
         elif ch == "resend":
             code, resp = _post(
                 "https://api.resend.com/emails",
                 {"from": e.get("MAIL_FROM", "onboarding@resend.dev"),
-                 "to": [e["MAIL_TO"]], "subject": subj, "text": body},
+                 "to": [e["MAIL_TO"]], "subject": subj, "text": body, "headers": hdrs},
                 {"Authorization": f"Bearer {e['RESEND_API_KEY']}"})
         elif ch == "brevo":
             code, resp = _post(
                 "https://api.brevo.com/v3/smtp/email",
                 {"sender": {"email": e.get("MAIL_FROM", e["MAIL_TO"])},
-                 "to": [{"email": e["MAIL_TO"]}], "subject": subj, "textContent": body},
+                 "to": [{"email": e["MAIL_TO"]}], "subject": subj, "textContent": body,
+                 "headers": hdrs},
                 {"api-key": e["BREVO_API_KEY"]})
         elif ch in ("sendgrid", "smtp"):
             if ch == "sendgrid":
@@ -239,6 +262,8 @@ def _send_one(ch: str, e: dict, subj: str, body: str) -> bool:
                 frm = user
             m = MIMEText(body)
             m["Subject"], m["From"], m["To"] = subj, frm, to
+            for k, v in hdrs.items():
+                m[k] = v
             with smtplib.SMTP(host, port, timeout=TIMEOUT) as srv:
                 srv.starttls(context=ssl.create_default_context())
                 srv.login(user, pw)
