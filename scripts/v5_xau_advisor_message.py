@@ -280,6 +280,10 @@ def build(state: dict, reading: dict | None, meta: dict, seen: dict,
         L.append("             the bias is the model's LEAN, not a measured edge; the measured")
         L.append("             calls are only the UP / DOWN states of the direction below")
         L.append(f"             since {bias.get('since')}")
+        # User 2026-11-12 chose to leave a short-term call OUT: the H1 entry advisor (§3em) and
+        # the H4 8h panel are both coin flips (50.5% / 51.9% vs always-BUY 50.4% / 51.8%).
+        L.append("SHORT-TERM   none — no <=8h BUY/SELL has a measured edge (V5_FINDINGS 3em:")
+        L.append("             H1 model 50.5% vs 50.4% always-BUY). Treat the next hours as 50/50.")
         L.append("")
     arrow = {"DOWN": "v  DOWN", "UP": "^  UP", "NEUTRAL": "-  NEUTRAL"}.get(name, f"?  {name}")
     L.append(f"DIRECTION    {arrow}" + ("   (HELD — see HEALTH)" if frozen else ""))

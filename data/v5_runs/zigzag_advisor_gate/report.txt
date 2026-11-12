@@ -1,0 +1,17 @@
+ADVISOR -> ZIGZAG gates (see docstring)
+
+CME 2018-01..: ZigZag V0 Sharpe +0.28, 927 trades (fires with advisor coverage 1380)
+     gate  fires_blocked_pct  trades   SR   dSR  blocked_trades  SR_of_blocked  null_med     p
+  G_SHORT                7.0     883 0.40  0.12              75          -0.57      0.27 0.000
+G_GENERAL                7.0     868 0.18 -0.10              65           0.40      0.28 0.985
+ G_EITHER               13.0     830 0.28  0.00             130          -0.08      0.27 0.410
+  G_AGREE               97.0      32 0.50  0.22             907           0.23      0.18 0.080
+family: best G_AGREE +0.50 vs shifted-max median +0.31, p 0.080
+
+SWITCH 2018-01..: ZigZag V0 Sharpe +0.36, 1019 trades (fires with advisor coverage 1722)
+     gate  fires_blocked_pct  trades   SR   dSR  blocked_trades  SR_of_blocked  null_med    p
+  G_SHORT                5.0     987 0.39  0.03              64          -0.30      0.35 0.13
+G_GENERAL               10.0     945 0.36  0.00             107          -0.35      0.35 0.45
+ G_EITHER               14.0     917 0.40  0.04             152          -0.31      0.34 0.14
+  G_AGREE               94.0      71 0.18 -0.17             969           0.34      0.19 0.53
+family: best G_EITHER +0.40 vs shifted-max median +0.38, p 0.270

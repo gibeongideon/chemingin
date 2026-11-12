@@ -8834,3 +8834,39 @@ The one gold-specific echo (inside-bar-red on Switch XAU, +0.05–0.08 ATR, z +1
 does not appear in CME GC (z −1.2..+0.6) — same asset, different feed, so it is the feed.
 **Conclusion: repeated candle shapes on H4 exist only as 0.02-ATR biases that decay out of sample.**
 Step 3 (profitability) not run — no survivor to price.
+
+### §3em — H1 entry advisor: no edge once a daily-feature leak is removed; as a ZigZag veto, one weak lead (2026-11-12, `scripts/v5_h1_entry_advisor.py`, `scripts/v5_zigzag_advisor_gate.py`)
+
+User: a short-horizon (≤ 6-8h) BUY/SELL beside the general advisor, refreshed hourly, and "can
+this advisor give ZigZag some information to improve it". The advisor pipeline (`f_base` +
+`walk_forward`, yearly refits 2018-26, purged fit/select/calibrate) was refitted on H1, 12 cells
+(first-touch ±0.75/1.0/1.5 H1-ATR within 4/6/8h; close-to-close direction 4/6/8h), Switch XAUUSDs
+and CME GC.
+
+**THE FIRST RUN WAS A LEAK.** Every cell, both sources: AUC 0.55-0.62, 66-70% hit on the outer
+buckets, +2..+7pp over drift, family p 0.000. Cause: `f_base`'s `d1_slope`/`d1_z` take the DAILY
+close stamped 00:00, forward-fill, then `.shift(6)` — 24h on H4, only 6h on H1, so from 06:00 a row
+saw that day's close up to 18h early. Right-truncation probe: 77/110 rows changed with the
+original builder, 0/110 with `scripts/v5_h1_features.f_base_h1` (day value stamped at the day's
+END). Already known once — `v5_champ_meta_h1.f_base_tf` carries the same fix; reuse it.
+
+**Clean result — no edge.** Accuracy vs always-the-majority −0.7..+1.6pp, AUC 0.500-0.520, Brier
+skill negative in all 24 cells; family alignment null p **0.655** (Switch) / 0.055 (GC). The
+outer buckets hold 0.4-4% of hours and flip between halves. The H4 advisor's 8h panel (tier B,
+51.9% vs 51.8%) is no better. **A short-term BUY/SELL on gold at ≤ 8h is a coin flip in this
+feature set.**
+
+**Advisor → ZigZag gates** (variant B fires, 2018-26, OOS advisor rebuilt on the SAME bars,
+shifted-gate null 200 draws):
+
+| gate (skip the buy when …) | CME ΔSR | blocked trades' SR | p | Switch ΔSR | blocked SR | p |
+|---|---|---|---|---|---|---|
+| G_SHORT: H1 advisor says SELL (p_up ≤ 0.45) | **+0.12** | −0.57 | 0.000 | +0.03 | −0.30 | 0.13 |
+| G_GENERAL: H4 advisor DOWN (p ≥ 0.60) | −0.10 | +0.40 | 0.985 | 0.00 | −0.35 | 0.45 |
+| G_EITHER | 0.00 | −0.08 | 0.41 | +0.04 | −0.31 | 0.14 |
+| G_AGREE: buy only when H1 says BUY | (32 trades) | | 0.08 | −0.17 | | 0.53 |
+
+Family max-stat p 0.080 (CME) / 0.270 (Switch): **fails as pre-registered.** G_SHORT is a lead of
+the §3eh kind — the vetoed trades lose in BOTH sources (−0.57 / −0.30 Sharpe), so the H1 reading
+that is useless as a standalone call does carry a little about which ZigZag fires fail. It only
+skips 5-7% of fires. Not deployed; revisit only with fresh out-of-sample months.
