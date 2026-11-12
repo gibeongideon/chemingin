@@ -1,0 +1,9 @@
+[Unit]
+Description=ZigZag best variant on FTMO-Demo 1515233856 - magic 360608 (schedule)
+[Timer]
+OnCalendar=*-*-* *:01:40
+Persistent=false
+AccuracySec=10s
+Unit=zigzag-trail-ftmo-b.service
+[Install]
+WantedBy=timers.target

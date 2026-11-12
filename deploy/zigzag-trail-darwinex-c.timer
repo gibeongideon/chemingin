@@ -1,0 +1,12 @@
+# Offset from the matching B arm so the two never contend for the same bridge second.
+[Unit]
+Description=ZigZag arm C on Darwinex demo 3000112593 - magic 360610 (schedule)
+
+[Timer]
+OnCalendar=*-*-* *:04:40
+Persistent=false
+AccuracySec=10s
+Unit=zigzag-trail-darwinex-c.service
+
+[Install]
+WantedBy=timers.target

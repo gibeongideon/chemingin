@@ -1,0 +1,8 @@
+[Unit]
+Description=Hourly zigzag-trail reconcile on FundingPips
+[Timer]
+OnCalendar=*-*-* *:05:40
+Persistent=true
+AccuracySec=60s
+[Install]
+WantedBy=timers.target

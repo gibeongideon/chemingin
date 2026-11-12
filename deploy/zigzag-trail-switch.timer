@@ -2,7 +2,7 @@
 Description=Hourly run of the Switch ZigZag trail bot
 
 [Timer]
-OnCalendar=*-*-* *:19:00
+OnCalendar=*-*-* *:01:10
 Persistent=false
 
 [Install]
