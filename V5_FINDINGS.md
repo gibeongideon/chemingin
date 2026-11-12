@@ -8763,3 +8763,74 @@ Four positions belonging to the stopped bots were LEFT OPEN at the user's instru
 360595 BTC 0.08 and gold 0.02; Darwinex 360605 gold 0.03, 360607 gold 0.04). They carry only their
 server-side stops — nothing trails, rebalances or time-limits them — and their P&L still moves the
 account equity that the ZigZag bots size from.
+
+### §3ej — VWAP + 9/30 EMA: VWAP subtracts, the EMA timing is real but sub-cost (2026-11-12, `scripts/v5_vwap_ema.py`)
+
+User: "Now lets try VWAP and 9 & 30 ema". Pre-registered retail recipe: LONG while EMA9 > EMA30 AND
+close > session VWAP, SHORT on the mirror, flat when they disagree and at session end. Decided at
+bar close, held over the next bar (no same-bar VWAP use — the §3bi circularity). **Real volume
+only**: Switch tick_volume is 60% zeros, so Binance 1m klines (BTC, ETH 2017-08+, PAXG gold token
+2020-08+; M5/M15/H1) and CME futures H1 (Databento, 12 roots 2010-26, roll sessions skipped).
+Arms EMA / VWAP / COMBO × LS / LO = 126 cells. Cost/side: crypto 4.5bp, PAXG and GC $0.15, other
+CME 1.5 ticks. Null: circular shift of the position vector, GROSS Sharpe, family max-stat.
+
+| result | value |
+|---|---|
+| COMBO-LS (the recipe) net Sharpe | negative in **21/21** markets; positive in both halves 0/21 |
+| paired t, COMBO − EMA (daily net) | **< −2 in 17/21**, > +2 in 0/21 — VWAP SUBTRACTS |
+| cells net-positive | 10/126, **all without the VWAP filter** |
+| long-only beating buy-and-hold | 1/63 |
+| family max-stat (gross) | best ETH-M15 VWAP-LO +1.41 vs null-max median +0.96, p 0.010 — timing family real, money axis −1.55 net |
+| GC H1 COMBO | gross 1.05bp/trade (p 0.005) vs cost 1.89bp → net −0.47 |
+| PAXG all TFs | gross −4 to −7bp/trade: the token whipsaws, trend rules lose before cost |
+| best net cells | EMA-LO H1: BTC +0.31 (hold 0.83), ETH +0.37 (hold 0.69), both negative in the 2nd half |
+
+**Reading.** The 9/30 crossover carries a genuine gross timing signal on crypto and gold (1–8bp per
+trade, beats shifted timing), which is the same shape as §3ef: real at the micro level, below the
+spread. Lower timeframes are monotonically worse (M5 ~5,000 trades/yr). The VWAP agreement
+condition adds flips without adding direction. Not deployable on any account here; it would need
+≤ ~1bp round-trip gold cost AND still loses to holding.
+
+### §3ek — Friend's H4 sweep-and-reject short: no survivor; the sweep matters a little, gold's drift more (2026-11-12, `scripts/v5_sweep_reject_h4.py`)
+
+Rule as given: candle 2 sweeps above candle 1's high and closes back "below candle 1" (three
+readings: below its LOW / its BODY / its CLOSE), short at candle 3's open, stop at candle 2's high.
+Targets 1/2/3R, 24h time stop, stop-first. XAU and BTC ("BTCXAU" is not a symbol, §3bu), each in two
+single-provenance sources: Switch (2016/2019-26, spread floor $0.30 / 4.5bp) and CME GC 2010-26 /
+Binance BTC 2017-26. H4 resampled from H1 at bar OPEN; GC bars spanning a roll dropped; trades with
+a stop < 0.2 ATR from entry skipped in every arm (R undefined — two such trades produced −4,145R).
+
+| | result |
+|---|---|
+| family max-stat (36 cells, gross R, 400 shifts) | best BTC-switch body 3R +0.063 vs null-max median +0.041, **p 0.228** |
+| strict reading (close < candle-1 LOW) on gold | net **−0.06 to −0.12R** both sources, 1–7 of 11–17 years positive |
+| best cells | BTC-switch body 2R +0.011R net (4/8 yrs); XAU looser readings −0.03..−0.07R net |
+| vs random short, same stop (excess) | positive in 20/36 cells in both halves, 0.02–0.10R — eaten by cost |
+| vs no-sweep placebo | beats it in 30/36 — the sweep adds ~0.03–0.05R, too small to pay |
+| mirror (sweep the low, close back up → long) | beats the short on gold: drift, not pattern |
+| entering one bar later | better in 25/36 — the first bar after the pattern bounces against the short |
+
+Frequencies: strict ~60–70/yr, body ~110–150/yr, close ~200–310/yr. Closed — consistent with
+§3db (level sweeps, p 0.085) and §3v (ICT sweeps).
+
+### §3el — H4 candle-pattern census: 3 of 93 repeated in 2010-23, none held in the locked 2024-26 holdout (2026-11-12, `scripts/v5_candle_census.py`)
+
+Every H4 candle coded against the previous one (higher high? lower low? close zone vs the prior
+range, body sign = 32 codes); all 1/2/3-candle sequences firing ≥ 20×/asset-year (93 pattern ×
+horizon cells after the filter — 3-candle sequences are almost all too rare). Panel: 36 CME futures
+2010-26 pooled; target = next-open → close after 1/3/6 bars in ATR, minus each asset's period drift.
+REPEATED = discovery (2010-19) |z| above the 95th pct of the max-|z| circular-shift null (≈2.8–2.9),
+same sign and |z| > 2 in validation (2020-23), same sign in ≥ 70% of assets.
+
+| pattern (prev → this candle) | h | fires/yr | disc z | val z | **holdout 2024-26** |
+|---|---|---|---|---|---|
+| inside bar, closes in lower half, red → next bar UP | 1 | 88 | +5.63 | +3.00 | +0.003 ATR, z +0.43 (same sign, gone) |
+| breakout bar closing above prior high → inside bar, upper half, red → UP | 3 | 22 | +4.37 | +2.32 | **flipped**, z −0.83 |
+| outside bar closing above prior high, green → UP | 3 | 67 | +3.15 | +2.60 | **flipped**, z −0.58 |
+
+Effect sizes even in-sample are 0.02–0.06 ATR per fire, against a round-trip cost of 0.010 (XAU),
+0.016 (USTEC), 0.040 (BTC) ATR on Switch; on Switch the survivors split sign across XAU/BTC/USTEC.
+The one gold-specific echo (inside-bar-red on Switch XAU, +0.05–0.08 ATR, z +1.0..+2.4 per period)
+does not appear in CME GC (z −1.2..+0.6) — same asset, different feed, so it is the feed.
+**Conclusion: repeated candle shapes on H4 exist only as 0.02-ATR biases that decay out of sample.**
+Step 3 (profitability) not run — no survivor to price.
