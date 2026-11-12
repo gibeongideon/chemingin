@@ -8911,3 +8911,25 @@ de-duplicated to one per 24h (fixed event set); every cell beside the SAME brack
 The hit rate is bought by the bracket: TP 0.25 / SL 5 wins 94% on RANDOM entries. One loss costs
 ~20 wins, so EV sits at ~0. The detector's own contribution is a few percentage points and only
 at P ≥ 0.80 (rare: 6–10 trades/yr). Same law as §3cx (lock 50% → 86% wins, −85% return).
+
+### §3ep — Martingale on the high-hit ZigZag variants: ruin on the 94% variant, leverage on the rest (2026-11-12, `scripts/v5_zigzag_martingale.py`)
+
+One trade at a time; base risk 0.25% of equity; schemes FLAT, DOUBLE (x2 per loss, k ≤ 2/3/5),
+RECOVER (size one win to repay all losses, cap 25%), ANTI (x2 per win). Real sequence + 2,000
+iid bootstrap 5-year paths (signs are serially independent, §3cz).
+
+| variant | scheme | CME CAGR / maxDD | Switch CAGR / maxDD | P(DD ≥ 10%) CME / Switch | P(DD ≥ 50%) |
+|---|---|---|---|---|---|
+| V94 (P≥0.60, TP 0.25, SL 5; ~200/yr, 94% hit, −0.013..−0.016R) | FLAT | −0.76% / −11.2% | −0.67% / −7.0% | 0.2% / 0.1% | 0 |
+| | DOUBLE K3 | −1.00% / −14.4% | −0.59% / −6.5% | 0.7% / 0.4% | 0 |
+| | **RECOVER** | **−7.52% / −74.2%** | +0.98% / −6.8% | **55% / 55%** | 1.8% / 2.4% |
+| V96 (P≥0.80, TP 0.25, SL 5; 6-11/yr) | FLAT → RECOVER | +0.02 → +0.07% | +0.05 → +0.13% | ~0 | 0 |
+| V78 (P≥0.80, TP 1, SL 3; 6-11/yr, 78% hit) | FLAT | +0.07% / −0.9% | +0.11% / −1.6% | 0 | 0 |
+| | RECOVER | +0.37% / −1.2% | +0.65% / −5.2% | 4.5% / 8.9% | 0.2% / 0.3% |
+| | FLAT at 1% risk (matched) | +0.29% / −3.6% | +0.44% / −6.2% | 0 / 0.5% | 0 |
+| | FLAT at 2% risk | +0.56% / −7.2% | +0.84% / −12.2% | 6.6% / 20% | 0 |
+
+A negative-EV high-hit system cannot be fixed by a progression: RECOVER turns V94's −0.8%/yr
+into −7.5%/yr and a 55% chance of a 10% drawdown. On the positive variants a progression is
+leverage: RECOVER on V78 sits on the same return-vs-tail line as flat 1-2% sizing. All of it is
+< 1%/yr because the P≥0.80 variants trade 6-11 times a year.
