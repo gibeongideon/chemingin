@@ -8749,3 +8749,17 @@ above, which were about the trend bot's meta-label and about bar returns, not ab
 detector's trades after the circuit breaker. Not deployed. If it is, LIN is the one to use: it is
 positive in both sources and both halves, has no cliff at a single threshold, and caps a trade at
 2x. Changing it on one arm only (e.g. FTMO 360608) keeps a flat-sized twin to compare against.
+
+### §3ei — Only ZigZag trades from 2026-11-11 (operational)
+
+User: "stop Advisor Trades", then "Only zigzag to run". Disabled: `xau-advisor-trader-ftmo` (arms
+360611 / 360612, flat at the time; realised −$437.77 over 2 trades and −$225.04 over 1 since
+2026-11-10), `xau-btc-switch` (Book 360595), `trail-runner` (360600), `xau-darwinex` (Book 360605),
+`trail-runner-darwinex` (360607) and `xau-btc-fp` (360598, already failing on login). Still placing
+orders: the six `zigzag-trail-*` timers and the minute trail watcher. Signal-only jobs unchanged;
+the advisor card now reads "information only. No bot is trading these signals."
+
+Four positions belonging to the stopped bots were LEFT OPEN at the user's instruction (Switch
+360595 BTC 0.08 and gold 0.02; Darwinex 360605 gold 0.03, 360607 gold 0.04). They carry only their
+server-side stops — nothing trails, rebalances or time-limits them — and their P&L still moves the
+account equity that the ZigZag bots size from.

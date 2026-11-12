@@ -1,0 +1,9 @@
+[Unit]
+Description=ZigZag arm C on Switch demo - magic 360613 (schedule)
+[Timer]
+OnCalendar=*-*-* *:21:27
+Persistent=false
+AccuracySec=10s
+Unit=zigzag-trail-switch-c.service
+[Install]
+WantedBy=timers.target

@@ -12,6 +12,6 @@ mkdir -p data/v5_runs
 exec 9>/tmp/trade-events.lock
 flock -n 9 || { echo "$(date -u +%FT%TZ) previous run still going, skipping" >> "$LOG"; exit 0; }
 echo "===== $(date -u +%FT%TZ) $*" >> "$LOG"
-$PY scripts/v5_trade_events_notify.py --port 18815 "$@" >> "$LOG" 2>&1
+$PY scripts/v5_trade_events_notify.py --port 18815 --milestones "50,100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500" --no-sl-hint "$@" >> "$LOG" 2>&1
 echo "exit=$?" >> "$LOG"
 if [ "$(wc -l < "$LOG")" -gt 20000 ]; then tail -8000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"; fi

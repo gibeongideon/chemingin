@@ -1,0 +1,6 @@
+[Unit]
+Description=ZigZag arm C (limit entry + lock ladder) on Switch demo - magic 360613
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/zigzag-trail-switch-c.sh

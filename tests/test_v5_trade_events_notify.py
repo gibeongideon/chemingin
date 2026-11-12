@@ -61,3 +61,22 @@ def test_trend_gate_block_is_reported_as_skip():
               trend_gate_blocked=True, trend_fc=0.31, prospective=dict(symbol="XAUUSDs", price=4100.0))
     head, body = zz_alert(zz, None)
     assert "SIGNAL" in head and "trend down" in body and "0.31" in body
+
+
+def test_custom_milestone_ladder_fires_each_level_once():
+    import scripts.v5_trade_events_notify as m
+    old = m.MILESTONES
+    try:
+        m.MILESTONES = (50.0, 100.0, 200.0, 300.0)
+        m.BOTS[360608] = "ZigZag"
+        z = dict(magic=360608, profit=60.0, symbol="XAUUSD", volume=0.05, type=0, price=1.0, sl=0.9)
+        prev = {"positions": {}}
+        ev = m.milestones(prev, {"7": dict(z)})
+        assert [e[2]["level"] for e in ev] == [50.0]
+        prev = {"positions": {"7": {"hits": [50.0]}}}
+        ev = m.milestones(prev, {"7": dict(z, profit=105.0)})
+        assert [e[2]["level"] for e in ev] == [100.0]
+        prev = {"positions": {"7": {"hits": [50.0, 100.0]}}}
+        assert m.milestones(prev, {"7": dict(z, profit=150.0)}) == []
+    finally:
+        m.MILESTONES = old

@@ -34,7 +34,11 @@ export ADVISOR_HEARTBEAT_HOUR=12
 # The card must not claim nobody is trading this. Stated HERE, by the deployment, because the
 # message module cannot know -- the old hard-coded "no bot trades these signals" went stale the
 # moment an executor was armed. Clear this line if the FTMO arms are ever disarmed.
-export ADVISOR_EXECUTORS="FTMO demo 1515233856 - magic 360611 (long/short) and 360612 (long-only), 0.25% risk, bias rule"
+#
+# DISARMED 2026-11-11 (user: "stop Advisor Trades"): xau-advisor-trader-ftmo.timer is disabled and
+# both arms were flat, so the card must say nobody trades this. To re-arm, re-enable that timer and
+# restore: "FTMO demo 1515233856 - magic 360611 (long/short) and 360612 (long-only), 0.25% risk, bias rule"
+export ADVISOR_EXECUTORS=""
 
 echo "===== $(date -u +%FT%TZ) =====" >> "$LOG"
 

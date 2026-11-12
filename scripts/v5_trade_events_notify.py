@@ -30,11 +30,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 STATE = ROOT / "data" / "v5_runs" / "trade_events_state.json"
-BOTS = {360595: "Book (XAU+BTC champion)", 360601: "ZigZag", 360600: "Trail-runner"}
+BOTS = {360595: "Book (XAU+BTC champion)", 360601: "ZigZag (no lock)", 360600: "Trail-runner",
+        360613: "ZigZag-C (limit + lock)"}
 ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
                6: "BUY STOP LIMIT", 7: "SELL STOP LIMIT"}
 PEERS_BY_PORT = {
-    18815: ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock",
+    18815: ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock", "/tmp/zigzag-trail-switch-c.lock",
             "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock"),
     18814: ("/tmp/zigzag-trail-ftmo-b.lock", "/tmp/zigzag-trail-watch.lock"),
     18817: ("/tmp/xau-darwinex.lock", "/tmp/zigzag-trail-darwinex.lock",
@@ -140,6 +141,9 @@ def diff(prev: dict, orders: dict, positions: dict) -> list[tuple[str, str, dict
 
 
 MILESTONES = (50.0, 200.0, 300.0)   # user 2026-11-06: ZigZag floating +$50/+200/+300, so SL can be moved by hand
+# --milestones overrides per account (FTMO 2026-11-12: +50, +100, then every +100; report only, no lock).
+# --no-sl-hint swaps the "you may raise the SL" line for a plain "report only" note.
+SL_HINT = True
 
 
 def milestones(prev: dict, positions: dict) -> list[tuple[str, str, dict]]:
@@ -183,7 +187,11 @@ def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
     elif kind == "PROFIT":
         head = f"💰 +${x['level']:,.0f} REACHED · {bot}"
         line = (f"{side} {x['symbol']} {x['volume']} @ {x['price']:,.2f} · floating {money(x['profit'])}"
-                f" · SL {x['sl']:,.2f}\nYou may raise the SL (bot only ever raises it, never lowers)")
+                f" · SL {x['sl']:,.2f}\n"
+                + ("You may raise the SL (bot only ever raises it, never lowers)" if SL_HINT
+                   else "Lock ladder active: +$100→+$50, +$200→+$80, +$300→+$120, then 2.5×ATR trail"
+                   if "lock" in bot.lower() and "no lock" not in bot.lower()
+                   else "Report only: no lock; the bot trails the stop 3×ATR behind the high"))
     else:
         pnl, exit_px = close_details(m, t)
         head = f"🔴 CLOSED · {bot}"
@@ -221,9 +229,15 @@ def main() -> int:
     ap.add_argument("--label", default="Switch", help="account name shown in every message")
     ap.add_argument("--bots", default="",
                     help="magic=Name,... e.g. '360605=Book (XAU champion),360606=ZigZag,360607=Trail-runner'")
+    ap.add_argument("--milestones", default="",
+                    help="comma list of $ levels for ZigZag profit alerts, e.g. '50,100,200,300'")
+    ap.add_argument("--no-sl-hint", action="store_true", help="milestone alerts say 'report only, no lock'")
     a = ap.parse_args()
-    global LABEL, BRIDGE_PEERS, STATE
+    global LABEL, BRIDGE_PEERS, STATE, MILESTONES, SL_HINT
     LABEL = a.label
+    if a.milestones:
+        MILESTONES = tuple(sorted(float(x) for x in a.milestones.split(",") if x.strip()))
+    SL_HINT = not a.no_sl_hint
     BRIDGE_PEERS = PEERS_BY_PORT.get(a.port, ())
     if a.bots:
         BOTS.clear()

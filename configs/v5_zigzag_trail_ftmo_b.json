@@ -1,7 +1,7 @@
 {
   "created_on": "2026-11-09",
   "_WARNING": "NEGATIVE EXPECTANCY. This is an OBSERVATION HARNESS, not a strategy. V5_FINDINGS \u00a73x: all 48 grid cells negative full-sample (best SR -0.44, DD -41.2%); walk-forward SR -0.76 / DD -35.7% against buy-and-hold's +0.79; paired t -3.72; 0 of 8 years better; DSR 0.000; PBO 0.024. Deployed on a DEMO account at the user's explicit request to watch the documented detector operate live. DO NOT point this at a funded account.",
-  "purpose": "BEST ZigZag variant only (user 2026-11-09) on FTMO-Demo 1515233856 ($100k): no profit lock, 3.0xATR trail, take-profit 4.3 x the 3-ATR risk (\u00a73dr), threshold 0.60, risk 0.25%/trade, pooled gold+EURUSD/GBPUSD/USDJPY model. Same rule as Darwinex 360606. Bridge 18814 (prefix .mt5c). FTMO symbols carry NO suffix.",
+  "purpose": "BEST ZigZag variant only (user 2026-11-09) on FTMO-Demo 1515269330 ($100k): no profit lock, 3.0xATR trail, take-profit 4.3 x the 3-ATR risk (\u00a73dr), threshold 0.60, risk 0.25%/trade, pooled gold+EURUSD/GBPUSD/USDJPY model. Same rule as Darwinex 360606. Bridge 18814 (prefix .mt5c). FTMO symbols carry NO suffix.",
   "firm": "Darwinex",
   "account_type": "DEMO ONLY \u2014 the executor refuses to send on an account not flagged demo",
   "port": 18814,
