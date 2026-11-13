@@ -37,7 +37,8 @@ ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
 PEERS_BY_PORT = {
     18815: ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock", "/tmp/zigzag-trail-switch-c.lock",
             "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock"),
-    18814: ("/tmp/zigzag-trail-ftmo-b.lock", "/tmp/zigzag-trail-watch.lock"),
+    18814: ("/tmp/zigzag-trail-ftmo-b.lock", "/tmp/zigzag-trail-ftmo-v.lock",
+            "/tmp/zigzag-trail-watch.lock"),
     18817: ("/tmp/xau-darwinex.lock", "/tmp/zigzag-trail-darwinex.lock",
             "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner-darwinex.lock"),
 }
@@ -48,6 +49,29 @@ BRIDGE_PEERS = PEERS_BY_PORT[18815]
 ZZ_STATE_BY_PORT = {18815: "zigzag_trail_switch_state.json", 18817: "zigzag_trail_darwinex_state.json",
                     18814: "zigzag_trail_ftmo_b_state.json"}
 ZZ_WATCH = 0.55
+# PER-ARM STATE (§3eu A/B). The ZigZag signal is shared, but arm V applies a downside-vol SIZE
+# DIAL on top of it, and that decision is only visible in the arm's own state file. Without this
+# the phone shows two near-identical TRADED messages whose only difference is a lot size the
+# reader has to divide by hand to interpret.
+ARM_STATE = {360613: "zigzag_trail_ftmo_v_state.json"}
+
+
+def arm_note(magic: int) -> str:
+    """One line describing what this arm's own gate did on its last pass. Never raises — a
+    notifier that dies on a missing state file takes the whole trade feed down with it."""
+    fn = ARM_STATE.get(magic)
+    if not fn:
+        return ""
+    try:
+        d = json.loads((ROOT / "data" / "v5_runs" / fn).read_text())
+        t = d.get("vol_taper")
+        if t is None:
+            return ""
+        return ("\nsize dial: HALF (x%.2f) — downside vol above its median" % float(t)
+                if float(t) < 1.0 else
+                "\nsize dial: FULL — downside vol below its median")
+    except Exception:                                              # noqa: BLE001
+        return ""
 
 
 def zz_alert(zz: dict | None, last_bar_alerted: str | None) -> tuple[str, str] | None:
@@ -172,7 +196,9 @@ def close_details(m, ticket: str) -> tuple[float | None, float | None]:
 
 
 def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
-    bot = BOTS[x["magic"]]
+    # .get, not [] — a CLOSED event is replayed from the PREVIOUS snapshot, so a magic dropped
+    # from --bots between runs would otherwise crash the whole feed on its last close.
+    bot = BOTS.get(x["magic"], f"magic {x['magic']}")
     side = "BUY" if x["type"] == 0 else "SELL"
     sl = f" · SL {x['sl']:,.2f}" if x.get("sl") else ""
     if kind == "TRADABLE":
@@ -180,10 +206,12 @@ def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
         line = f"{ORDER_TYPES.get(x['type'], x['type'])} {x['symbol']} {x['volume']} @ {x['price']:,.2f}{sl}"
     elif kind == "TRADED":
         head = f"🟢 TRADED · {bot}"
-        line = f"{side} {x['symbol']} {x['volume']} @ {x['price']:,.2f}{sl}"
+        line = (f"{side} {x['symbol']} {x['volume']} @ {x['price']:,.2f}{sl}"
+                + arm_note(x["magic"]))
     elif kind == "RESIZED":
         head = f"🔵 TRADED (resized) · {bot}"
-        line = f"{side} {x['symbol']} {x['old_volume']} → {x['volume']} (entry {x['price']:,.2f})"
+        line = (f"{side} {x['symbol']} {x['old_volume']} → {x['volume']} (entry {x['price']:,.2f})"
+                + arm_note(x["magic"]))
     elif kind == "PROFIT":
         head = f"💰 +${x['level']:,.0f} REACHED · {bot}"
         line = (f"{side} {x['symbol']} {x['volume']} @ {x['price']:,.2f} · floating {money(x['profit'])}"
@@ -201,22 +229,63 @@ def message(m, kind: str, t: str, x: dict) -> tuple[str, str]:
     return head, f"{line}\n#{t} · {LABEL}"
 
 
+AB_ARMS = (360608, 360613)          # §3eu live A/B: full size vs the downside-vol size dial
+AB_CONFIG = ROOT / "configs" / "v5_zigzag_trail_ftmo_v.json"
+
+
+def ab_started() -> datetime | None:
+    """The day the A/B began (arm V's deployment). Before it, arm B has trades and arm V cannot,
+    so a 'trade counts differ' warning would be a false alarm every run of the first week."""
+    try:
+        return datetime.fromisoformat(
+            str(json.loads(AB_CONFIG.read_text())["deployed_on"])).replace(tzinfo=timezone.utc)
+    except Exception:                                                # noqa: BLE001
+        return None
+
+
 def weekly(m) -> tuple[str, str]:
+    """Realised P/L per bot over the last 7 days.
+
+    *** THE MAGIC-ON-CLOSE TRAP. *** This used to filter deals by `d.magic == magic`, which is
+    wrong and silently under-reported every bot here: a deal carries the magic of the ORDER that
+    produced it, so a position closed by a server-side SL or TP comes back with **magic 0**. The
+    ZigZag exits almost entirely on its trailing stop, so its closes were being dropped and the
+    weekly number drifted toward zero. `v5_zigzag_results.closed_trades` exists precisely to
+    avoid this — it collects position ids whose OPENING deal carries the magic and then takes
+    every deal belonging to those positions.
+    """
+    from scripts.v5_zigzag_results import closed_trades                  # noqa: PLC0415
     now = datetime.now(timezone.utc)
-    deals = m.history_deals_get(now - timedelta(days=7), now + timedelta(days=1)) or []
+    cutoff = now - timedelta(days=7)
     acct = m.account_info()
-    rows = []
+    rows, by_magic = [], {}
     for magic, name in BOTS.items():
-        mine = [d for d in deals if int(d.magic) == magic]
-        closes = [d for d in mine if int(d.entry) in (1, 2, 3)]
-        realised = sum(float(d.profit) + float(d.swap) + float(d.commission) for d in mine)
-        wins = sum(1 for d in closes if float(d.profit) + float(d.swap) > 0)
-        floating = sum(float(p.profit) for p in (m.positions_get() or []) if int(p.magic) == magic)
-        rows.append((name, realised, len(closes), wins, floating))
+        try:
+            tr = [t for t in closed_trades(m, magic, days=14)
+                  if t["close_time"] >= cutoff]
+        except Exception:                                                # noqa: BLE001
+            tr = []
+        realised = sum(float(t["net"]) for t in tr)
+        wins = sum(1 for t in tr if float(t["net"]) > 0)
+        floating = sum(float(p.profit) + float(p.swap)
+                       for p in (m.positions_get() or []) if int(p.magic) == magic)
+        rows.append((name, realised, len(tr), wins, floating))
+        by_magic[magic] = (name, realised, len(tr), floating)
     tot = sum(r[1] for r in rows)
     lines = [f"Week to {now:%a %d %b %Y} (last 7 days)"]
     for name, real, n, w, fl in rows:
         lines.append(f"• {name}: realised {money(real)} · {n} closed ({w} won) · open {money(fl)}")
+    # Head-to-head, so the A/B is readable without arithmetic on a phone.
+    if all(k in by_magic for k in AB_ARMS):
+        (nb, rb, cb, fb), (nv, rv, cv, fv) = (by_magic[AB_ARMS[0]], by_magic[AB_ARMS[1]])
+        started = ab_started()
+        ramping = started is not None and started > cutoff
+        warn = ("  ⚠ trade counts differ: a SIZE dial must not change WHICH trades happen"
+                if cb != cv and not ramping else "")
+        lines.append(f"A/B §3eu — V minus B: realised {money(rv - rb)} · open {money(fv - fb)}"
+                     f" · {cb} vs {cv} closed" + warn)
+        if ramping:
+            lines.append(f"   (A/B started {started:%d %b}; earlier arm-B trades are not paired)")
     lines.append(f"TOTAL realised {money(tot)} · equity ${float(acct.equity):,.2f}")
     return f"📊 WEEKLY P/L · {LABEL}", "\n".join(lines)
 
