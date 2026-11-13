@@ -8933,3 +8933,162 @@ A negative-EV high-hit system cannot be fixed by a progression: RECOVER turns V9
 into −7.5%/yr and a 55% chance of a 10% drawdown. On the positive variants a progression is
 leverage: RECOVER on V78 sits on the same return-vs-tail line as flat 1-2% sizing. All of it is
 < 1%/yr because the P≥0.80 variants trade 6-11 times a year.
+
+---
+
+### §3eq — Elliott Wave on the ZigZag pivots: a real oracle separation that dies at the exit
+
+**User, 2026-11-13:** *"Something to try Elliot Waves to improve Zigzag, do research and
+backtest"*, then: borrow from arXiv 2102.01499 (Qi/Khushi/Poon, *Event-Driven LSTM for Forex
+Price Prediction*) *"you must not replicate as it is, you can pick ideas"*.
+
+`scripts/v5_elliott_wave.py`. Both sources, H1: CME GC 2012-26 (104k bars) and Switch XAUUSDs
+2018-26 (52k bars), spread $0.25, Switch swap −6%/yr.
+
+**THE TESTABLE REDUCTION.** Elliott has three inviolable rules, but **only R1 is knowable at the
+moment you would trade** — R2 (wave 3 not the shortest) and R3 (wave 4 doesn't overlap wave 1)
+both need waves 4 and 5 to exist. So the tradeable claim is R1 (wave 2 holds above the start of
+wave 1) plus the Fibonacci guideline (wave 2 retraces 0.5–0.618), predicting a big wave 3.
+Universe = every consecutive L-H-L triple in the repo's own ZigZag pivot sequence, at three
+geometries (order/theta = 5/1.5, 10/2.5, 20/4.0). **The rule partitions the universe; it does not
+create it** — that is what makes this a test of the rule and not of exposure.
+
+**MEASURED FIRST, BECAUSE IT EXPLAINS EVERYTHING ELSE: THE CONFIRMATION TAX.** A ZigZag pivot is
+not knowable until `order` bars have printed and price has moved `theta` away. The paper is
+candid that its ZigZag "normally requires approximately an additional 40 bars to confirm". On
+gold the lag is shorter but the price is brutal:
+
+| geometry | lag median | lag p90 | **wave 1 already retraced back up at confirmation** |
+|---|---|---|---|
+| order 5 | 5 bars | 9–10 | **46–47%** |
+| order 10 | 10 bars | 27–29 | **49%** |
+| order 20 | 21 bars | 90–95 | **50–52%** |
+
+**By the time you know where the wave-2 low was, half of wave 1 has already been retraced back
+up.** Elliott tells you where the low *was*; the confirmation lag charges you half the next leg
+for the information.
+
+**THE TAUTOLOGY, QUANTIFIED.** Entering at the pivot's own extreme and exiting at the next
+pivot's extreme is buying the exact low and selling the exact high:
+
+| entry / exit | all triples EXCESS | win rate |
+|---|---|---|
+| pivot → pivot | **+1.17%** | **1.000** |
+| conf → pivot | +0.77% | 0.99 |
+| **conf → conf** | **+0.10%** | **0.48** |
+
+A 100% win rate becomes 48% and the excess falls 12×, on the same events. Fifth confirmation of
+`zigzag-oracle-must-enter-at-confirmation`.
+
+**CONTROL #5 — THE ORACLE SEPARATES, AND IT IS NOT TREND.** On the realistic conf/conf basis at
+order 10, R1-valid triples beat R1-violating ones in both sources. The max-stat null over the
+whole search (9 scale×mode combinations, 27 partitions, circular-shifted outcome, side chosen
+inside the null) passes in both — **but read the arg-max**:
+
+| source | best \|t\| | null p95 | p | arg-max |
+|---|---|---|---|---|
+| CME | 3.98 | 3.33 | 0.0095 | **t −3.98**, pivot/pivot, *R1-violating triples did BETTER* |
+| Switch | 4.29 | 3.51 | 0.0000 | t +4.29, conf/pivot, Elliott's direction |
+
+CME's only significant result **points against Elliott** and sits in the untradeable cell. The
+mechanism is mechanical: R1 selects *shallower* pullbacks, and a shallower pullback starts the
+next leg from a higher price, so low-to-high it is necessarily smaller.
+
+**THE TREND PLACEBO PASSES, WHICH IS THE SURPRISE.** R1 is a higher low, i.e. the oldest trend
+definition there is, and this repo's champion is a trend follower — so the obvious null is "R1 is
+a trend filter in costume". It is not. On this event universe `close > SMA50` carries **nothing**
+(t +0.88 / −1.10 / −0.56 on CME, +0.54 / +0.06 on Switch), while R1 separates *inside* the
+trend-up state: **+0.230% t +3.52 (CME o10)** and **+0.406% t +4.58 (Switch o10)**. The source of
+it is one cell, consistent across both feeds:
+
+> **trend UP & R1 VIOLATED: CME −0.107% (t −2.00), Switch −0.295% (t −4.28).**
+> In an uptrend, a pullback that breaks the prior swing low is a genuinely bad buy.
+
+**AND THEN IT DIES AT THE EXIT.** Everything above uses "sell at the next pivot high" — causal in
+*timing* but the identity of H3 is hindsight. Replacing it with a bracket a broker can hold
+(TP/SL in ATR × max hold, 27 cells), charging spread and carry, and benchmarking against the same
+bracket on random bars:
+
+| source | geometry | best sep \|t\| | null p95 | p | verdict |
+|---|---|---|---|---|---|
+| CME | order 5 | 1.61 | 2.61 | 0.4515 | FAILS |
+| CME | order 10 | 2.38 | 2.68 | 0.1065 | FAILS |
+| Switch | order 5 | 1.41 | 2.70 | 0.5885 | FAILS |
+| Switch | order 10 | 2.32 | 2.60 | 0.0980 | FAILS |
+
+**0 of 4 clear.** The direction stays right — the 3/1 and 3/2 brackets at order 10 give R1
++0.07R against −0.15R for the complement in both sources — but it never clears its own
+multiplicity bar, and the best cell is the arg-max of 27.
+
+**THE DECOMPOSITION THAT MATTERS.** `R1 − random bar` is positive everywhere (+0.03 to +0.145R).
+That is **the confirmation entry, which the ZigZag already is** — not Elliott. The
+Elliott-specific column is R1 vs not-R1 on the same event set, and that is the one that fails.
+Adding Elliott to the ZigZag would be paying for a label the ZigZag's own entry already supplies.
+
+**WHAT WAS BORROWED FROM 2102.01499, AND WHAT WAS REFUSED.** Borrowed: its e1→e2→e3 event spine
+(a ZigZag pivot is unusable until something causal confirms it) and event-anchored sample
+selection. **Refused: its entire evaluation.** The paper scores MSE/RMSE/MAE/MAPE on the *price
+level*, never trades it, never charges a spread, and never reports the naive "next price = last
+price" baseline that a near-random-walk makes almost unbeatable — its headline MAPE 0.194% on
+EUR/GBP 15-min is smaller than a typical bar. That is control #8 in its purest form. Its own
+conclusion names the real problem ("ZigZag requires approximately an additional 40 bars to
+confirm"), and §3eq is the measurement it never ran: on gold that lag costs ~half of wave 1.
+
+**VERDICT: CLOSED as a signal; one veto left open.** Elliott's rule set does not survive a
+tradeable exit in either source. The single cross-source-consistent, trend-independent,
+mechanically sensible fact is the **negative** one — *in an uptrend, buy-the-dip after the prior
+swing low has broken is a bad trade* (t −2.00 / −4.28). That is a veto on existing ZigZag fires,
+not a new entry, it costs nothing to evaluate, and it has NOT yet been tested on the live
+detector's own fires. Do not re-open the positive direction without a new data type.
+
+---
+
+### §3er — The §3eq veto, applied to the live ZigZag: it makes things WORSE. Do not add it.
+
+**User, 2026-11-13:** *"veto on existing ZigZag fires, what is the impact for this if we add?"*
+
+`scripts/v5_zigzag_elliott_veto.py`. The **deployed** rule, imported not reimplemented
+(`v5_zigzag_long_history.backtest`): P≥0.60, stop 3 ATR, trail 3 ATR, TP 4.3R, max hold 120, one
+position at a time, 0.25% risk, spread $0.25, Switch swap −6%/yr. CME 2012-26 (14.8y, 2,501
+fires) and Switch 2018-26 (8.8y, 1,528 fires).
+
+**THE CONTROL THAT DECIDES A FILTER.** A veto removes trades, and removing trades moves Sharpe
+and drawdown by itself. So the benchmark is NOT the unvetoed rule — it is a **random veto that
+drops the same NUMBER of fires**, resampled 250×. A filter must beat that distribution.
+(Sequencing matters too: because the harness holds one trade at a time, vetoing a fire can ALLOW
+a later one that was previously blocked, so a veto is not simply "fewer trades".)
+
+| veto | CME ΔSharpe | CME pctile vs random | Switch ΔSharpe | Switch pctile |
+|---|---|---|---|---|
+| **§3eq cell: trend-up & broke prior low** | **−0.032** | **8.8% ✗** | **−0.044** | **6.8% ✗** |
+| broke prior low, any trend | +0.058 | 94.4% ✗ | +0.252 | 98.8% ✓ |
+| plain `close < SMA50` (no Elliott) | **+0.244** | **99.6% ✓** | +0.186 | 91.2% ✗ |
+
+**1. THE FLAGGED LEAD IS REFUTED.** §3eq's one surviving cell, applied to the live detector's own
+fires, is **worse than dropping the same number of trades at random — in both sources** (8.8th
+and 6.8th percentile). It also barely bites: 67 and 39 fires out of 2,501 and 1,528. And the
+inverse check inverts the sign — keeping ONLY the vetoed fires gives EV **+0.069R (CME) and
++0.201R (Switch)** against a base of +0.009R / +0.032R, i.e. the cell §3eq called bad has the
+*highest* EV per trade on this event set (n 58 / 34, so noisy, but it is not negative).
+
+**The mechanism of the failure is the event set.** §3eq measured over *every* L-H-L triple; the
+ZigZag fires on a model-selected subset. An effect measured on one event set does not transfer to
+another — the same lesson as §3co's event-set rule, arriving from the opposite direction.
+
+**2. THE VARIANT THAT LOOKS GOOD IS NOT ELLIOTT.** The unconditional "broke the prior low" veto
+passes on Switch (98.8%) and misses on CME (94.4%). But a **plain SMA50 trend filter, which
+contains no Elliott content at all**, passes on CME (99.6%) with a *bigger* ΔSharpe (+0.244 vs
++0.058) and misses on Switch (91.2%). The two alternate sources and neither clears both. Whatever
+is there is "do not buy in a downtrend", and the Elliott framing is decoration on top of it —
+which is also what `regime-gate-champion-disproven` found when it gated the champion by ADX
+(SR 1.08→1.01, drawdown WORSE, paired-t −2.88).
+
+**3. THE FRAME THAT MATTERS MOST.** The base rule's own Sharpe bootstrap CI is **[−0.303, +0.703]
+on CME and [−0.265, +1.077] on Switch** — not distinguishable from zero in either source, exactly
+as §3dg/§3dx already recorded. Every delta above is far inside those bands. This is filter-tuning
+on top of a strategy whose edge is not established, and the right response to that is not a better
+filter.
+
+**ACTION: none. Nothing deployed, no config touched.** §3eq is now closed in both directions: the
+positive direction died at the exit, and the negative direction dies on the live event set. The
+Elliott programme is finished unless a new data type arrives.
