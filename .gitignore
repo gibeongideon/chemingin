@@ -47,3 +47,5 @@ docs/zigzag-replication/data/
 docs/zigzag-replication/*.csv
 data/free_data/
 data/v5_runs/noise_band_momentum/
+# §3eq-§3eu research output (regenerate with the scripts; not source)
+data/v5_runs/elliott/

@@ -68,6 +68,7 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 | **360595** | XAU+BTC 50/50 champion book (`configs/v5_xau_btc_switch.json`) | Switch demo, 18815 | **live**, every 4h at :50 |
 | **360598** | XAU+BTC book | FundingPips-Trial, 18816 | live, every 4h at :20 |
 | **360601** | ZigZag bottom detector + 3×ATR trail | Switch, 18815 | live hourly (:19) — **earns gold's drift, not timing** (§3dg/§3dk) |
+| **360613** | ZigZag arm **V** — identical to FTMO arm B (360608) except the §3eu downside-vol **SIZE DIAL**: half size when downside_vol(500) ≥ median(2000) | FTMO demo, 18814 | **live 2026-11-13**, hourly :02:20 — live A/B vs 360608; a dial, not a veto (§3et/§3eu) |
 | 360597 | ZigZag + trail | FundingPips-Trial | live hourly (:24) |
 | ~~360602~~ | Advisor executor | Switch | **stopped 2026-11-06** (in-sample edge only, §3de); stays disabled |
 | **360611** | Advisor BIAS executor, **long/short** — flip-and-hedge, +$50 rescue on a kept leg | FTMO demo, 18814 | **live 2026-11-10**, 5-min — a live test of §3de/§3bz, not an established edge |

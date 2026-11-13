@@ -9092,3 +9092,188 @@ filter.
 **ACTION: none. Nothing deployed, no config touched.** §3eq is now closed in both directions: the
 positive direction died at the exit, and the negative direction dies on the live event set. The
 Elliott programme is finished unless a new data type arrives.
+
+---
+
+### §3es — Downtrend guards swept: the trend family is redundant with the live gate; a DOWNSIDE-VOL gate is not
+
+**User, 2026-11-13:** *"any other way to try to guard when in downtrend, explore"*.
+
+`scripts/v5_zigzag_downtrend_guards.py`, `scripts/v5_zigzag_guard_robust.py`. Twelve guards on
+the **deployed** rule (imported, not reimplemented), CME 2012-26 and Switch 2018-26.
+
+**TWO GUARDS WERE ALREADY LIVE AND HAD NEVER BEEN TESTED THIS WAY:** the §3dz circuit breaker
+(k=1.0, on all six configs since 2026-11-11) and the champion `trend_gate` (Switch 360601 only).
+So the sweep starts as an audit, not an invention.
+
+**THE CONTROL (new in §3er, and it is the whole study).** A guard removes trades, and removing
+trades moves Sharpe and drawdown by itself. Every guard is scored against a **random veto that
+drops the SAME NUMBER of fires**, 200 resamples. **The bar, set before looking: the 95th
+percentile in BOTH sources.** A useless guard clears one source 5% of the time and both 0.25% of
+the time, so across ~12 guards the family-wise error is ~2.7%.
+
+**STANDALONE SWEEP — 2 of 12 clear both sources.** Everything in the trend family (SMA50, SMA200,
+EWMAC 16/64, EWMAC 32/128) clears CME at 99-100% and lands at **92-94% on Switch**, i.e. the
+family straddles the bar; its members agree on only 0.68-0.92 of bars, so it is ~2-3 effective
+bets, not one. Survivors: **120-bar return > 0** (99.0 / 97.0) and **downside vol below its
+rolling median** (99.0 / 100.0). **Both LIVE guards fail the bar**: breaker k=1.0 at 100.0 / 83.0,
+champion gate at 100.0 / 86.0 — decisive on CME, a coin on Switch.
+
+**ALL FOUR SURVIVORS HELP IN BOTH HALVES OF BOTH SOURCES** (split 2019-05 / 2022-06), which is
+rare here — §3dn/§3dx killed a 1.58 Sharpe on exactly this test.
+
+**THEN THE TEST THAT DECIDES DEPLOYMENT: INCREMENTAL OVER WHAT IS ALREADY RUNNING.** Measuring a
+new guard against the *unguarded* rule overstates it, because the live guards already remove some
+of the same fires. Percentile vs a random same-size drop **from the live baseline**:
+
+| addition | CME / breaker | CME / breaker+champ | Switch / breaker | Switch / breaker+champ |
+|---|---|---|---|---|
+| trend only (120-bar ret) | 99.5 PASS | **61.5 fail** | 99.0 PASS | **91.0 fail** |
+| **downside vol only** | **96.5 PASS** | **97.0 PASS** | **99.5 PASS** | **99.0 PASS** |
+| trend AND low-vol | 96.5 PASS | **84.5 fail** | 100.0 PASS | 99.0 PASS |
+
+**THE TREND COMPONENT IS A SUBSTITUTE FOR THE CHAMPION GATE, NOT A COMPLEMENT.** Add a trend
+filter on top of the champion gate — which *is* a trend filter — and CME goes to the 61.5th
+percentile with Sharpe **−0.122**. The gate already does that job. This is why the incremental
+test exists: standalone, "trend only" looked like a +0.257 Sharpe win.
+
+**THE DOWNSIDE-VOL GATE IS THE ONLY ADDITION THAT PASSES 4 OF 4.** On the full live Switch
+configuration (breaker + champion gate):
+
+| | Switch | CME |
+|---|---|---|
+| live baseline | Sharpe +0.616, CAGR +1.62%, maxDD −5.81%, 101/yr | +0.584, +1.29%, −4.56%, 74/yr |
+| **+ downside-vol gate** | **+0.957, +1.99%, −2.48%, 52/yr** | **+0.679, +1.23%, −2.42%, 43/yr** |
+| delta | **+0.341 Sharpe, +0.37pp CAGR, +3.33pp DD** | +0.094 Sharpe, −0.06pp CAGR, **+2.14pp DD** |
+
+It roughly **halves maximum drawdown in both sources** at flat-to-better CAGR. On a prop account
+the binding constraint is the drawdown wall, not the return, so that is the axis that matters.
+
+The rule: `downside vol(500) < its own rolling median(2000)`, where downside vol is the std of
+negative H1 returns. Both windows are rolling and causal; the gate is evaluated on the fire bar's
+close and the entry is the next open. **Neither window was swept** — one untuned cell, which is
+the main reason to take it more seriously than the trend family.
+
+**WHAT THIS DOES NOT ESTABLISH.** The base rule's own Sharpe CI is [−0.30,+0.70] CME and
+[−0.26,+1.08] Switch — not distinguishable from zero, per §3dg/§3dx. This improves the
+*risk-adjusted shape* of something whose edge is not established; it does not establish it. Trade
+count roughly halves. And the half-sample test above was run on the standalone guard, not the
+incremental one.
+
+**RECOMMENDED ACTION: a live A/B on ONE arm, not six** — the repo's established pattern. Nothing
+was deployed by this study; no config was touched.
+
+---
+
+### §3et — The vol gate is REGIME INSURANCE, not alpha: it fails the incremental half-sample bar 4/8
+
+**User, 2026-11-13:** *"re-run the half-sample check incrementally first, then next you wire up"*.
+
+`scripts/v5_zigzag_vol_gate_halves.py`. §3es left one honest gap: its both-halves check ran on the
+STANDALONE guard while the deployment case was INCREMENTAL. §3es itself showed how far those can
+diverge — "trend only" went from a +0.257 Sharpe win standalone to the 61.5th percentile,
+Sharpe −0.122, once the champion gate was already present.
+
+**Bar, written before the run:** every half at or above the 90th percentile against a random veto
+dropping the same number of fires, none below the 50th. The random control is re-derived per half
+from the same 200 draws, so a half is never scored against the other half's distribution.
+
+| source / live baseline | 1st half | 2nd half |
+|---|---|---|
+| CME / breaker | **97.5%** | 62.5% |
+| CME / breaker + champion gate | **100.0%** | 85.5% |
+| Switch / breaker | **100.0%** | 80.0% |
+| Switch / breaker + champion gate | **100.0%** | 84.5% |
+
+**4 of 8. THE BAR FAILS — but look at how it fails: it is perfectly systematic.** Every FIRST half
+is 97.5-100%. Every SECOND half is 62-86%. Not one cell is below the median, so the gate never
+actively hurts; it simply stops adding.
+
+**The halves are regimes, and that is the whole result:**
+
+| | baseline Sharpe | gated Sharpe | delta |
+|---|---|---|---|
+| CME 2012-2019 (gold bear) | +0.238 | **+0.474** | **+0.235** |
+| CME 2019-2026 (bull) | +0.606 | +0.526 | −0.080 |
+| Switch 2018-2022 | −0.100 | **+0.614** | **+0.714** |
+| Switch 2022-2026 (bull) | +1.015 | +1.070 | +0.055 |
+| Switch 2018-2022, on the full live gate stack | +0.055 | **+0.734** | **+0.678** |
+
+**THE VOL GATE RESCUES BAD REGIMES AND ADDS NOTHING IN GOOD ONES.** It turns a −0.100 Sharpe
+stretch into +0.614 and a +0.055 into +0.734; against a +1.0 baseline it is worth +0.05. That is
+the signature of **insurance**, not of an edge — and it is consistent with the full-sample result
+that it roughly halves maximum drawdown at flat CAGR (§3es). It is also why the second halves look
+weak: a guard that removes trades in a strong bull has almost no room to beat a random drop, since
+the random drop is also removing trades from a +0.9 to +1.1 Sharpe stretch.
+
+**WHY THIS MATTERS MORE THAN THE HEADLINE.** §3es's full-sample numbers (Sharpe +0.616 → +0.957 on
+the live Switch stack) are an average over both regimes, and that average is carried almost
+entirely by the first half. Quoting the full-sample Sharpe as the expected improvement would be
+quoting a bull-market-free average to someone who will run it in a bull market.
+
+**VERDICT: do not deploy it as a Sharpe improvement.** The defensible narrower claim is that it is
+drawdown insurance whose premium is small (never below median in any half) and whose payout
+arrives in exactly the regimes that break prop accounts. Deploying on *that* basis is a risk
+decision, not a research conclusion, and it belongs to the user. §3es's "recommended action: a
+live A/B on one arm" is hereby qualified: the A/B is still the right instrument, but what it would
+be testing is insurance, and a bull market will not settle it either way.
+
+---
+
+### §3eu — Downside vol as a SIZE DIAL, not a veto: 16/16 cells pass, both halves, both sources
+
+**User, 2026-11-13:** test the size-reduction variant before wiring. `scripts/v5_zigzag_vol_taper.py`.
+
+Instead of blocking a fire when downside vol is elevated, **take it at half size**. Two reasons
+this is the better shape: §3cx/§3cy closed the giveback family with the instruction *"to shrink
+swings cut LOT SIZE, never scale out"* — a veto is the crudest size dial, size 0 — and, decisively,
+**the event set stays FIXED**, so §3co is satisfied by construction. The exit path is
+size-independent (stop and trail in ATR, TP in R), so each trade's R is unchanged and the variants
+are exact rather than re-simulated. Control: a RANDOM conditional cut half-sizing the SAME NUMBER
+of trades, 200 resamples — uniform risk is a pure dial (`xau-riskfrac-sizing-table`, Sharpe
+invariant +1.02 across 0.25-4%), so any Sharpe change must come from the conditioning.
+
+| size on high-vol fires | CME/breaker | CME/+champ | Switch/breaker | Switch/+champ |
+|---|---|---|---|---|
+| 0.75 | +0.055 (96%) | +0.063 (100%) | +0.105 (99%) | +0.108 (100%) |
+| **0.50** | **+0.109 (98%)** | **+0.122 (98%)** | **+0.215 (100%)** | **+0.218 (100%)** |
+| 0.25 | +0.155 (97%) | +0.170 (99%) | +0.319 (100%) | +0.316 (100%) |
+| 0.00 | +0.183 (99%) | +0.200 (100%) | +0.397 (99%) | +0.386 (100%) |
+
+**16 of 16 cells clear the 95th percentile, and all 16 improve BOTH halves.** CAGR rises too
+(Switch/+champ 1.62% → 1.86% at size 0.5) while maxDD falls (−5.81% → −2.80%): not an exposure
+trade-off at all, because the high-downside-vol fires carry negative expectancy.
+
+**WHY THE VETO FAILED ITS SECOND HALF AND THE TAPER DOES NOT — this is the mechanism, and it is
+reusable.** §3et's veto was weak in every second half (62-86%). The taper is strong in all of
+them. The difference is not the signal, it is the EVENT SET: the harness holds one position at a
+time, so **skipping a fire frees the slot for a later, different fire**. The veto was destroying
+information by reshuffling which trades got taken; the taper keeps the same trades and only sizes
+them. Note that size 0.00 here is NOT the §3es veto — it occupies the slot — and it beats the
+veto, which is the proof.
+
+**ROBUSTNESS, AND IT IS NOT UNIFORMLY GOOD.** I had claimed the 500/2000 windows as "never swept".
+Having now swept them, that claim must be withdrawn — **500/2000 is the arg-max of three**:
+
+| conditioner (size 0.5, full live stack) | CME ΔSharpe / pctile | Switch ΔSharpe / pctile |
+|---|---|---|
+| downside vol 250/1000 | +0.045 / **89.3% ✗** | **−0.034 / 47.3% ✗** |
+| **downside vol 500/2000** | **+0.122 / 100.0% ✓** | **+0.218 / 100.0% ✓** |
+| downside vol 1000/4000 | +0.085 / 96.7% ✓ | +0.219 / 98.7% ✓ |
+| TOTAL vol 500/2000 | −0.006 / 58.7% ✗ | +0.206 / 98.7% ✓ |
+
+The short window **fails in both sources** — on Switch it is below the median. So the
+neighbourhood is flat on the slow side and breaks on the fast side, which is a sensible shape
+(short windows are noisy) rather than a knife edge: **2 of 3 windows pass in both sources**, and
+1000/4000 is nearly as good (+0.085/+0.219), so the arg-max inflation is ~0.04 Sharpe on CME and
+~0 on Switch. The DOWNSIDE specification matters on CME (total vol −0.006, 58.7%) and does not on
+Switch (+0.206, 98.7%).
+
+**Honest effect estimate after deflating for the window search: ~+0.10 Sharpe on CME and ~+0.22 on
+Switch at size 0.50, with maxDD improving 1.7-3.0pp.** The base rule's own Sharpe remains
+undistinguishable from zero ([−0.30,+0.70] / [−0.26,+1.08]), so this improves the shape of
+something unestablished — but unlike §3et it does so in every regime tested, not only the weak one.
+
+**ACTION: deploy at size 0.50, windows 500/2000, as a live A/B against the ungated arm on ONE
+demo account.** Not 0.25 or 0.00 — those are the corner of a monotone curve, and the corner is
+where a dial stops being a measurement.

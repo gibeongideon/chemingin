@@ -302,7 +302,43 @@ def main() -> None:
           f"exit_mode={exit_mode}" + (f" trail {trail_atr}xATR = {trail_atr*atr_h1:.2f}"
                                       if exit_mode == "atr_trail" else ""))
 
-    risk_usd_p = ai.equity * risk_frac
+    # ---- §3eu DOWNSIDE-VOL SIZE DIAL (config `vol_taper`, absent = off) --------------------
+    # "Take the fire, but at half size when downside volatility is elevated." A SIZE dial, not a
+    # gate, for two measured reasons:
+    #   * §3cx/§3cy closed the giveback family with "to shrink swings cut LOT SIZE, never scale
+    #     out"; a veto is size 0, the crudest setting of the same dial.
+    #   * §3et vs §3eu: the VETO version was weak in every second half (62-86th pctile) while the
+    #     taper is strong in all of them (16/16 cells >= 95th). The difference is the EVENT SET --
+    #     this harness holds one position at a time, so SKIPPING a fire frees the slot for a
+    #     later, different fire, and that reshuffling destroyed the information. Sizing keeps the
+    #     same trades.
+    # Windows are 500/2000 H1 bars; §3eu swept them: 250/1000 FAILS in both sources (89th CME,
+    # 47th Switch), 500/2000 and 1000/4000 both pass. FAIL-OPEN at full size on any problem --
+    # a sizing bug must never silently shrink the book to nothing.
+    taper, taper_note = 1.0, "off"
+    vt = cfg.get("vol_taper")
+    if vt:
+        try:
+            w = int(vt.get("window", 500))
+            mw = int(vt.get("median_window", 2000))
+            _r = df["close"].pct_change()
+            _dn = _r.where(_r < 0, 0.0).rolling(w).std()
+            _med = _dn.rolling(mw).median()
+            cur, med = float(_dn.iloc[-1]), float(_med.iloc[-1])
+            if np.isfinite(cur) and np.isfinite(med):
+                if cur >= med:
+                    taper = float(vt.get("mult", 0.5))
+                    taper_note = (f"downside vol {cur:.6f} >= median {med:.6f} "
+                                  f"-> HIGH VOL, size x{taper}")
+                else:
+                    taper_note = f"downside vol {cur:.6f} < median {med:.6f} -> calm, full size"
+            else:
+                taper_note = f"only {len(df)} bars, need {w + mw} -> FAIL-OPEN (full size)"
+        except Exception as exc:                                        # noqa: BLE001
+            taper_note = f"error {exc!r} -> FAIL-OPEN (full size)"
+        print(f"  vol taper: {taper_note}")
+
+    risk_usd_p = ai.equity * risk_frac * taper
     if exit_mode == "atr_trail":
         stop_dist_p = trail_atr * atr_h1
         lots_p = risk_usd_p / (stop_dist_p * contract)
@@ -320,7 +356,7 @@ def main() -> None:
                        tp=(round(ask + tp_r * trail_atr * atr_h1, info.digits) if tp_r > 0 else 0.0)
                           if exit_mode == "atr_trail"
                           else round(ask * (1 + tp_pct), info.digits),
-                       lots=round(lots_p, 2),
+                       lots=round(lots_p, 2), vol_taper=taper,
                        sl_pct=sl_pct, tp_pct=tp_pct, max_hold=max_hold)
     print(f"prospective: BUY {prospective['lots']} {symbol} @ {prospective['entry']}  "
           f"SL {prospective['sl']}  TP {prospective['tp']}")
@@ -497,6 +533,7 @@ def main() -> None:
         prob=st.prob, threshold=thr, fires=fires, model_fires=st.fires, trend_fc=trend_fc,
         trend_gate_blocked=gate_blocked, prospective=prospective,
         cb_blocked=cb_blocked, cb_move=cb_move, cb_atr=cb_atr, cb_k=cb_k,
+        vol_taper=taper, vol_taper_note=taper_note,
         arm=st.arm, n_train=st.n_train, aux_used=list(st.aux_used),
         aux_rejected=[list(x) for x in st.aux_rejected],
         aux_missing=[list(x) for x in aux_missing],

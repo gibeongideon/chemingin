@@ -1,0 +1,16 @@
+# Hourly at :02:20, one minute after arm B (:01:40) so the A/B twins score the SAME closed H1 bar
+# on the same feed and differ only in sizing. Bridge 18814 seconds already in use: :40 (ftmo-b),
+# :45 (trade-events-ftmo, every 2 min), :15 (xau-advisor-trader-ftmo, *:04/5), :00 (the hourly
+# units at :04/:07/:14). :20 is clear of all of them.
+#
+# Persistent=false: a missed hour is worthless once the bar has moved on, and replaying a backlog
+# on boot would place entries for signals long since over.
+[Unit]
+Description=Hourly ZigZag arm V reconcile on FTMO (vol-taper twin)
+[Timer]
+OnCalendar=*-*-* *:02:20
+Persistent=false
+AccuracySec=30s
+Unit=zigzag-trail-ftmo-v.service
+[Install]
+WantedBy=timers.target

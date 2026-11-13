@@ -1,0 +1,8 @@
+[Unit]
+Description=ZigZag arm V on FTMO — magic 360613, downside-vol size dial (A/B twin of 360608)
+After=mt5-terminal-ftmo.service
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/zigzag-trail-ftmo-v.sh
+TimeoutStartSec=900
