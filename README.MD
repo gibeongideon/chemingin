@@ -17,6 +17,13 @@ partitioned in `RESEARCH-REGIMES.md`).
 
 ---
 
+> **New here, start with these two:**
+> - [`RANK.MD`](RANK.MD) — what survived ~130 pre-registered structures, ranked, in one table.
+> - [`RULES.MD`](RULES.MD) — how research is run here: the anti-repetition protocol, the
+>   controls, the trap checklist and what every study must document.
+>
+> `V5_FINDINGS.md` is the full record including the failures; `BEST_FINDINGS.MD` predates §3cj.
+
 ## 1. Best findings at a glance
 
 | # | Finding | Number | Where |

@@ -1,5 +1,9 @@
 # BEST FINDINGS — the strongest results this project has produced
 
+> **SUPERSEDED as a summary by [`RANK.MD`](RANK.MD)** (2026-11-13). This file stops at §3cj and
+> misses ~30 sections, including financing, the circuit breaker and the vol size dial.
+> Kept for its longer write-ups of the oracle ceiling, the cost wall and the representation ceiling.
+
 The top seven, ranked by **strength of evidence**, not by whether they made money. Five of the
 seven are not tradeable and are here because the measurement itself is solid — that distinction
 is the single most important thing this project has learned, so it is recorded rather than

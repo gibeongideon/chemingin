@@ -1,5 +1,8 @@
 # V5 FINDINGS — settled experiments (do not repeat)
 
+> **Protocol: `RULES.MD`.** **For the short answer, read `RANK.MD`** — the ~20 load-bearing results, ranked.
+> This file is the full record, including everything that failed.
+>
 > **Read `RESEARCH-REGIMES.md` first.** It partitions everything below into prop-firm-constrained
 > findings (regime P), unconstrained findings (regime U, current since 2026-09-04) and
 > invariant findings — plus an explicit resume point for each regime. Several conclusions here
