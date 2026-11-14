@@ -1,0 +1,23 @@
+{
+  "annual_trades": 152.356864443482,
+  "candidate_cagr_matched_risk": 0.0204444396041914,
+  "candidate_maxdd_matched_risk": -0.033239929799752876,
+  "candidate_sharpe": 0.8123944203372087,
+  "candidate_sharpe_2x_cost": 0.6099300262263923,
+  "control_cagr": 0.01830443770372403,
+  "control_maxdd": -0.035675653976892874,
+  "control_sharpe": 0.7294374407149637,
+  "control_sharpe_2x_cost": 0.5164065813465306,
+  "half_1_candidate_sharpe": 0.40325770622561247,
+  "half_1_control_sharpe": 0.20397539016098226,
+  "half_1_dsharpe": 0.1992823160646302,
+  "half_2_candidate_sharpe": 1.206948961921196,
+  "half_2_control_sharpe": 1.2064438243763513,
+  "half_2_dsharpe": 0.0005051375448446027,
+  "matched_t": 0.9073032623591207,
+  "mean_multiplier": 0.9863275982324639,
+  "promotion_pass": false,
+  "shuffle_p95": 0.6852930990529054,
+  "shuffle_pvalue": 0.003,
+  "trades": 1396
+}

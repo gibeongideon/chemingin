@@ -10,6 +10,7 @@ from scripts.v5_zigzag_two_axis_sizing import (
     probability_multiplier,
     shuffle_sharpes,
     volatility_multiplier,
+    ledger_entry,
 )
 
 
@@ -72,3 +73,26 @@ def test_shuffle_sharpes_is_repeatable_from_its_seed():
     second = shuffle_sharpes(trades, m, days, draws=20, seed=20261114)
     np.testing.assert_allclose(first, second)
     assert len(first) == 20
+
+
+def test_ledger_entry_preserves_split_randomisation_and_risk_metrics():
+    metrics = {
+        "candidate_sharpe": 0.8,
+        "control_sharpe": 0.7,
+        "matched_t": 0.9,
+        "shuffle_p95": 0.75,
+        "shuffle_pvalue": 0.02,
+        "candidate_sharpe_2x_cost": 0.6,
+        "half_1_dsharpe": 0.1,
+        "half_2_dsharpe": 0.01,
+        "control_cagr": 0.02,
+        "candidate_cagr_matched_risk": 0.03,
+        "control_maxdd": -0.04,
+        "candidate_maxdd_matched_risk": -0.03,
+        "promotion_pass": False,
+    }
+    text = ledger_entry({"cme": metrics, "switch": metrics})
+    assert "shuffle p 0.020" in text
+    assert "half changes +0.100 / +0.010" in text
+    assert "CAGR +2.00% → +3.00%" in text
+    assert "maxDD -4.00% → -3.00%" in text
