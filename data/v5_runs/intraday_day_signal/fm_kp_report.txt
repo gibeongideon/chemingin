@@ -1,0 +1,15 @@
+KRONOS PAPER PROTOCOL (T 0.6, top-p 0.9, N 10, mean path), source OANDA
+       cell    n  n_indep      first   hit  base_up  mean_bp      ic    ic_z     t    h1    h2  SR_net          PRE        TRAIN         POST       CLEAN  p_cell
+  small_KPd 4985     4985 2007-07-22 50.81    52.28    -2.07 -0.0008  0.0004 -1.31 -1.81  0.10   -0.59 -1.90 (3234) -0.56 (1139)  +0.97 (612) +0.58 (303)   0.893
+  small_KPn 5080     5080 2007-03-12 49.63    49.94    -0.33 -0.0167 -0.0173 -0.27 -0.65  0.41   -0.46 -0.56 (3329) -0.06 (1138)  +0.62 (613) +0.22 (304)   0.596
+  small_KPh 4433     1109 2024-08-14 46.71    55.46    -4.88 -0.0297 -0.0256 -1.62 -0.40 -1.63     NaN            -            - -1.62 (1109) -1.79 (581)   0.942
+small_KPd10 4976      498 2007-07-22 48.19    56.02   -16.10 -0.0280 -0.0226 -1.02 -1.28 -0.07     NaN  -1.80 (324)  +0.80 (114)   +0.22 (60)           -   0.839
+   base_KPd  641      641 2024-05-21 52.73    53.98     7.03  0.0326  0.0362  1.27  2.94 -0.33    0.70            -            -  +1.11 (612) -0.08 (303)   0.119
+   base_KPn  642      642 2024-05-21 47.20    51.71    -3.41 -0.0476 -0.0493 -0.98 -1.06 -0.48   -0.77            -            -  -1.21 (613) -0.07 (304)   0.830
+   base_KPh 2092     1046 2024-09-30 49.43    54.02    -5.33 -0.0329 -0.0290 -1.71 -0.84 -1.49     NaN            -            - -1.71 (1046) -1.43 (580)   0.966
+ base_KPd10  632       64 2024-05-21 46.88    60.94   -50.81 -0.0319 -0.0057 -1.19 -0.35 -1.21     NaN            -            -   -1.06 (61)           -   0.870
+   ic = Spearman(raw signal, outcome) on all decisions - the paper's own forex yardstick is 0.040 (small) / 0.055 (base), pooled over 1,023 pairs; t on non-overlapping decisions; windows = t (n)
+   FAMILY (6 cells, KPd10 informational): best base_KPd t +1.27 vs shifted-outcome null max median +1.34, 95th +2.40, p 0.530
+
+E. THE EMBEDDING AS A FEATURE (Kronos-small hidden state, 512-d; ridge alpha 1000; walk-forward inside POST only)
+   test bars 2,810 (2025-06-12 -> 2026-11-12), independent decisions 703: out-of-sample IC +0.0275, t +0.70; shifted-outcome null median +0.01, 95th +1.45, p 0.185

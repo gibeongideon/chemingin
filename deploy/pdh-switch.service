@@ -1,0 +1,7 @@
+[Unit]
+Description=PDH day-trade executor (V5_FINDINGS §3ex) — Switch demo, magic 360614
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/pdh-switch.sh

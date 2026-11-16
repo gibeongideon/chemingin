@@ -9426,3 +9426,98 @@ worth a forward test is NQ long-only on hourly checks.
 * **Nothing was deployed.** What would change the answer: a live record of resting buy-stop fills
   at Switch (the audit says ≤ 1bp; Switch's 42/42 are stop-LOSSES, not entries); or the same rule
   failing on NQ/BTC under its own pre-registration (not run — it would be a new study).
+
+### §3ew — A pretrained "LLM for candles" as the day's signal and as a feature: nothing, six ways (2026-11-16, `scripts/v5_fm_features.py`, `v5_fm_day_signal.py`, `v5_fm_kronos_paths.py`, `v5_fm_kp_score.py`, `v5_news_oracle.py`)
+
+**Ask:** "i still cannot believe simple LLM model cannot assist, as a feature, maybe we need better
+data manipulation" — and the user then supplied the Kronos paper to read while building.
+
+**Why this was not a repeat.** §3n (Claude reading numeric summaries, 150 bars), §3cc (a hand-made
+45-token candle alphabet) and §3dl (a small BERT trained on gold alone) never used a PRETRAINED
+model. Kronos (arXiv 2508.02739; 24.7M / 102M parameters) IS "better data manipulation": a learned
+candle tokenizer and a decoder pretrained on 12.1B K-lines from 45 exchanges. Chronos-Bolt-small
+(Amazon) is the generic comparison. This is §3as's pooled-panel idea — the one AUC lift that was
+ever real here — taken to its limit. Pre-registered at `264ebb8`, addendum `5ad0167` written after
+reading the paper and BEFORE any outcome was scored. Code vendored unmodified in
+`third_party/kronos` (MIT); the fast inference paths are asserted equal to the reference
+(max diff 4.8e-7 one-step, 1.7e-5 multi-step). Controls 1, 2, 5, 8, 10, 13, 14, 15, 17.
+
+**A control this repo did not have: what did the model see?** The paper states its data ends
+**June 2024** and lists **1,023 FX pairs from 2020-01-31** — gold is almost certainly in the
+corpus. So every Kronos number is split PRE (< 2020-02) / TRAIN (2020-02..2024-06, possibly
+memorised) / POST (≥ 2024-07, the authors' own test period) / CLEAN (> 2025-09-09, after the last
+change to the released weights). A Claude-API backtest was NOT run for the same reason: its
+training memory covers the whole test period, and §3n already measured it on post-cutoff bars.
+
+#### 1. As the day's signal — one-step, as pre-registered (pos = sign of the forecast minus its trailing-250 median)
+
+| cell (OANDA 2007-26) | n | hit | base up | mean bp | cost bp | t | PRE / TRAIN / POST / CLEAN t |
+|---|---|---|---|---|---|---|---|
+| Kronos D1 (the day) | 4,819 | 50.3% | 52.2% | −0.73 | 2.03 | −0.46 | −0.66 / −0.50 / +0.60 / +0.92 |
+| Kronos S8 (NY session) | 5,002 | 49.1% | 50.1% | −2.08 | 2.09 | −1.71 | −1.99 / −0.44 / +0.38 / −0.33 |
+| Kronos H1 (2024-07+) | 13,808 | 50.1% | 51.5% | +0.08 | 0.86 | +0.34 | POST +0.34 / CLEAN −0.06 |
+| Chronos D1 | 5,011 | 49.7% | 52.3% | +0.10 | 2.10 | +0.06 | |
+| Chronos S8 | 5,065 | 50.4% | 49.9% | +0.09 | 2.12 | +0.07 | |
+| Chronos H1 | 125,374 | 49.3% | 50.1% | +0.00 | 2.26 | +0.02 | |
+
+Family: best t **+0.34** vs shifted-outcome null max median +1.20 / 95th +2.43, **p 0.940**. CME
+GC 2010-26: best t +1.01, **p 0.575**. Every hit rate is at or below the share of up bars. Long-only
+variants sit at the 6th-53rd percentile of a random same-size drop on OANDA. **Kill rule met.**
+No memorisation signature either: TRAIN is no better than PRE or POST.
+
+#### 2. The way the authors test it (addendum: T 0.6, top-p 0.9, 10 sampled paths, look-back 80 H1 / 90 D1, horizon 12 / 10)
+
+| cell | IC | t | POST t | note |
+|---|---|---|---|---|
+| daily, next day | −0.001 | −1.31 | +0.97 | |
+| NY session from an 08:00 ET decision (H1 bars) | −0.017 | −0.27 | +0.62 | |
+| H1, 12 bars ahead (Eq. 11), POST only | **−0.030** | −1.62 | −1.62 | paper's forex figure: **+0.040** |
+| daily, 10-day mean path (Eq. 13, the paper's trading signal) | −0.028 | −1.02 | +0.22 | informational |
+
+Family p **0.941**. On gold the paper's own statistic has the WRONG SIGN at the paper's own
+horizon.
+
+**Kronos-base** (102M, the strongest released model on the paper's forex table; compute
+deviation: decisions from 2023-06 only, hourly cell every 6th bar): daily IC +0.033, t **+1.27**
+(first half +2.94, second −0.33, CLEAN −0.08); NY session IC −0.048, t −0.98; H1 12-bar IC
+**−0.033**, t −1.71; 10-day path t −1.19. Six-cell family (small + base): best t +1.27 vs null
+95th +2.40, **p 0.530**. The bigger model does not change the answer. That is not a contradiction of the paper: its 0.040 is pooled over 1,023 pairs (a
+generic model gets 0.033-0.036 and a linear one 0.025 on the same table), and its only trading
+result is a cross-sectional stock book on Chinese A-shares. It never claimed single-asset timing.
+
+#### 3. As a FEATURE
+
+* **Size dial on ZigZag fires** (variant B + breaker, event set fixed, §3eu protocol): Kronos
+  Spearman(feature, R) −0.010 CME / −0.010 Switch, dial **−0.09 / −0.12 Sharpe**, and the INVERSE
+  dial is the one that helps in both sources; Chronos −0.01 / +0.06. Family shuffle p **0.683 /
+  0.331**. Closed.
+* **The embedding itself** (the 512-number hidden state, ridge probe, walk-forward inside POST
+  only — the literal reading of "as a feature"): out-of-sample IC +0.028, t **+0.70**, null 95th
+  +1.45, **p 0.185**. Closed.
+
+#### 4. What the models ARE good at
+
+Range, not direction. Spearman(predicted range, realised) +0.50 to +0.61; PARTIAL after the
+trailing-20 mean range **+0.12 (D1) to +0.38 (H1)** for Kronos, +0.16 to +0.32 for Chronos. Real
+incremental volatility information — and §3at / §3cg already showed perfect foresight of any risk
+quantity does not improve the book. Predicted skew vs where the bar closes in its range: −0.04
+to +0.03, i.e. nothing.
+
+#### 5. Text, where an LLM does have a structural advantage — oracle first (control 5)
+
+10,405 gold headlines 2000-2021 with HUMAN sentiment labels (Sinha & Khandait). The label is the
+ceiling for any model reading the same headline. **Same day: +55.0bp, t +25.9, hit 75.3%** (the
+known answer — 97% of headlines describe what gold already did). **Next session: −0.71bp, t −0.35,
+p 0.648**; after positive days −0.23bp, after negative +1.28bp. No sentiment model was run: none
+can beat its own label. What remains untested is text that is NOT a description of the price —
+scheduled-release actuals, central-bank language — and the repo has no timestamped history of it.
+
+#### Verdict
+
+**A pretrained candle model does not assist on gold: not as the signal, not as a feature, not at
+the authors' settings, not in the window it may have memorised.** With §3n, §3cc and §3dl this is
+six framings; the binding constraint was never the representation (§3ao) and is not the amount of
+pretraining either. Honest scope: one instrument, Kronos-small/base and Chronos-Bolt-small,
+zero-shot. NOT tested: fine-tuning Kronos on gold (walk-forward; §3dl's from-scratch version
+learned nothing), and the cross-sectional use the paper actually demonstrates, which needs a
+universe, not one metal. Nothing deployed. Reopen only with a new TEXT data type.

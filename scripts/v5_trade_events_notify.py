@@ -31,12 +31,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 STATE = ROOT / "data" / "v5_runs" / "trade_events_state.json"
 BOTS = {360595: "Book (XAU+BTC champion)", 360601: "ZigZag (no lock)", 360600: "Trail-runner",
-        360613: "ZigZag-C (limit + lock)"}
+        360613: "ZigZag-C (limit + lock)", 360614: "PDH day-trade (prior-day-high stop, flat 16:40 NY)"}
 ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
                6: "BUY STOP LIMIT", 7: "SELL STOP LIMIT"}
 PEERS_BY_PORT = {
     18815: ("/tmp/xau-btc-switch.lock", "/tmp/zigzag-trail-switch.lock", "/tmp/zigzag-trail-switch-c.lock",
-            "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock"),
+            "/tmp/zigzag-trail-watch.lock", "/tmp/trail-runner.lock", "/tmp/xau-advisor.lock",
+            "/tmp/pdh-switch.lock"),
     18814: ("/tmp/zigzag-trail-ftmo-b.lock", "/tmp/zigzag-trail-ftmo-v.lock",
             "/tmp/zigzag-trail-watch.lock"),
     18817: ("/tmp/xau-darwinex.lock", "/tmp/zigzag-trail-darwinex.lock",
