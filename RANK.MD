@@ -13,7 +13,7 @@ it would change what is deployed, or would let a dead idea back through the door
 | **Law** | a control that kills bad ideas fast; ignoring it has already produced a false positive here |
 | **Bound** | a measured limit that closes a whole family of ideas, so they are never re-run |
 
-**How research is run here: [`RULES.MD`](RULES.MD).** Last updated **2026-11-13**. `BEST_FINDINGS.MD` predates §3cj and is kept only for its longer
+**How research is run here: [`RULES.MD`](RULES.MD).** Last updated **2026-11-16**. `BEST_FINDINGS.MD` predates §3cj and is kept only for its longer
 write-ups of items 8, 16 and 17.
 
 ---
@@ -42,6 +42,7 @@ write-ups of items 8, 16 and 17.
 | 18 | **The giveback family is closed — all five levers** | locking 50% of peak gives **86% wins and −85% return**; to shrink swings cut LOT SIZE, never scale out | **Bound** | §3cx, §3cy, §3dq |
 | 19 | **risk_frac is a pure dial** | Sharpe invariant at **+1.02** across 0.25–4%: sizing moves P&L and drawdown, never edge | **Bound** | §3ap |
 | 20 | **Single-source data only** | FTMO spliced into the H4 files from 2023-06-28 (25 of 38 pairs); all 18 FX D1 files forward-stamp `ret[t+1]` | **Bound** | §3ba, §3bd |
+| 21 | **Intraday on gold: momentum is real everywhere, and LATENCY is the cost** — only a resting stop at the prior server-day high clears it | 7/7 M1 cells t +3.0..+5.0 vs matched hold (2007-26, p 0.0000); six net −0.23..+0.36; **prior-day-high buy-stop +0.76** at a level fill, +0.49 five seconds late, +0.26 an hour late; placebo level p 0.000. Not deployed | **Bound** (+ one lead) | §3ex |
 
 ---
 

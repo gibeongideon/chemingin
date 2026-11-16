@@ -49,3 +49,10 @@ data/free_data/
 data/v5_runs/noise_band_momentum/
 # §3eq-§3eu research output (regenerate with the scripts; not source)
 data/v5_runs/elliott/
+# OANDA XAUUSD M1/H1 from HF bunqi/OANDA_XAUUSD_Gold (2026-11-16, §3ew); regenerable, not source
+data/oanda_hf/
+data/news_gold_hf/
+# §3ew/§3ex intraday day-signal study: bulky regenerable intermediates (reports + PREREGISTRATION stay tracked)
+data/v5_runs/intraday_day_signal/*.parquet
+data/v5_runs/intraday_day_signal/*.npz
+data/v5_runs/intraday_day_signal/*_daily.csv

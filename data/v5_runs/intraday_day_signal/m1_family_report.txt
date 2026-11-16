@@ -1,0 +1,18 @@
+GOLD INTRADAY FAMILY AT M1 (OANDA mid), 2007-01-02 -> 2026-11-12, 5,030 sessions, cost $0.3 round trip, stress $0.6
+
+harness check on 3ef's window 2015-01..2026-06 (3ef filed NY_LS gross +0.81 / net +0.05, NY_LO +0.60 / +0.01): N1 +0.69 / -0.09, N2 +0.49 / -0.11
+
+cell  days  trades_wk  hit  per_trade   nbar  SR_gross    SR  SR_2x    h1    h2  y07_14  y15_26 yrs_pos  t_vs_hold  breakeven  dbl  t_a  p_cell
+  N1  5030       4.74 40.1       6.55  0.018      0.80  0.02  -0.75  0.14 -0.11    0.24   -0.13   10/20       3.58       0.31    0 3.58  0.0010
+  N2  5030       2.51 40.0       5.23  0.206      0.64  0.05  -0.53  0.26 -0.17    0.38   -0.18    8/20       3.17       0.32    0 3.17  0.0034
+  N3  5030      10.18 38.1       8.27  0.021      1.11 -0.23  -1.50 -0.03 -0.44    0.11   -0.46    9/20       4.95       0.25    7 4.95  0.0000
+  N4  5030       5.28 35.4       5.51  0.269      0.87 -0.12  -1.08  0.10 -0.36    0.21   -0.36    7/20       4.45       0.26    7 4.45  0.0000
+  P1  5030       2.50 52.1       7.65  0.371      1.03  0.75   0.46  0.78  0.71    0.84    0.69   17/20       4.26       1.09    0 4.26  0.0000
+  P2  5030       4.20 50.2       4.32  0.074      0.71  0.36   0.01  0.43  0.29    0.35    0.37   12/20       3.00       0.61    0 3.00  0.0058
+  O1  5030       5.00 23.4       0.14 -0.006      0.83 -0.11  -1.05  0.17 -0.41    0.12   -0.28    9/20       3.72       0.26   60 3.72  0.0006
+
+per_trade = mean gross bp per round trip (O1: mean R). breakeven = $ round trip at which net = 0. t_vs_hold / t_a = t of gross - nbar x HOLD.
+dbl = same-minute double touches resolved against the trade.  cost in bp today: 0.73bp at $4,100, 2.50bp at $1,200
+benchmarks: HOLD NY session 1/vol net SR -0.44; HOLD day 1/vol net SR +0.15; gold itself +6.2%/yr over the window
+
+FAMILY (7 cells, signed max studentised mean of a_d, stationary bootstrap block 20, 5000 draws): best N3 t +4.95 vs null max median +0.96, 95th +2.26, p 0.0000

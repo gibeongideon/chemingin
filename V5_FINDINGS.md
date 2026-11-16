@@ -9290,3 +9290,139 @@ CME: Sharpe +0.691 vs +0.628; matched t +0.86; shuffle p95 +0.656; shuffle p 0.0
 Switch: Sharpe +0.812 vs +0.729; matched t +0.91; shuffle p95 +0.685; shuffle p 0.003; 2x-cost Sharpe +0.610; half changes +0.199 / +0.001; CAGR +1.83% → +2.04%; maxDD -3.57% → -3.32%.
 
 Verdict: CLOSED. No live configuration was modified.
+
+### §3ex — The intraday family on gold at M1: momentum is real in all seven cells, one clears cost, and its fill is finally measured (2026-11-16, `scripts/v5_intraday_m1.py`, `v5_pdh_m1_stress.py`, `v5_pdh_fill_audit.py`, `v5_noise_band_book.py`)
+
+**Ask:** "apart from the diversified book, i need a intraday version that is the best ... our aim is to
+have the best signal for the day, risk management to consider. Dont narrow yourself to what this
+repos has done ... try to avoid repetition."
+
+**Why this was not a repeat — a new data type.** OANDA XAUUSD **M1 mid bars, 2006-03 → 2026-11-13,
+7,181,205 bars**, plus 5-SECOND bars for the same span (HF `bunqi/OANDA_XAUUSD_Gold` @ `6e269652`,
+no licence stated — private research use; `data/oanda_hf/`, git-ignored). The repo's own M1 history
+caps at 73 days, which is why §3di filed gold's opening breakout as unmeasurable on M15 and §3ci
+left 47% of the prior-high lead resting on a fill assumption. Alignment checked before any outcome:
+return corr at lag 0 = 0.995 vs `XAUUSD_M15_long.csv`, 0.982 vs Switch M1, 0.992 vs CME GC H1, all
+lags ±1 below 0.013, 0 malformed bars. **2007-2014 had never been seen by any study here.**
+Pre-registered at `264ebb8` (`data/v5_runs/intraday_day_signal/PREREGISTRATION.md`), 7 cells, no
+parameter searched. Cost $0.30 round trip, stress $0.60. Controls 1, 2, 9, 10, 11, 14, 15, 16, 17.
+
+#### 1. The family (5,030 sessions, 2007-01 → 2026-11)
+
+| cell | trades/wk | gross bp | SR gross | **SR net** | 2× cost | halves | 07-14 / 15-26 | t vs matched hold | breakeven |
+|---|---|---|---|---|---|---|---|---|---|
+| N1 noise band, close checks, L/S (§3ef) | 4.7 | +6.6 | 0.80 | +0.02 | −0.75 | +0.14 / −0.11 | +0.24 / −0.13 | +3.58 | $0.31 |
+| N2 same, long-only | 2.5 | +5.2 | 0.64 | +0.05 | −0.53 | +0.26 / −0.17 | +0.38 / −0.18 | +3.17 | $0.32 |
+| N3 noise band, RESTING STOPS, L/S | 10.2 | +8.3 | 1.11 | −0.23 | −1.50 | −0.03 / −0.44 | +0.11 / −0.46 | +4.95 | $0.25 |
+| N4 same, long-only | 5.3 | +5.5 | 0.87 | −0.12 | −1.08 | +0.10 / −0.36 | +0.21 / −0.36 | +4.45 | $0.26 |
+| **P1 prior-day-high buy-stop, long-only** | 2.5 | **+7.7** | 1.03 | **+0.75** | **+0.46** | +0.78 / +0.71 | +0.84 / +0.69 | +4.26 | **$1.09** |
+| P2 prior high/low, first break | 4.2 | +4.3 | 0.71 | +0.36 | +0.01 | +0.43 / +0.29 | +0.35 / +0.37 | +3.00 | $0.61 |
+| O1 09:30 ET 5-min range, 0.1-ATR stop (§3di) | 5.0 | +0.14R | 0.83 | −0.11 | −1.05 | +0.17 / −0.41 | +0.12 / −0.28 | +3.72 | $0.26 |
+
+Family (signed max studentised mean of `gross − n̄ × HOLD`, stationary bootstrap, 5,000 draws):
+best t **+4.95** vs null 95th +2.26, **p 0.0000**. Harness check on §3ef's window: N1 +0.69 / −0.09
+against the filed +0.81 / +0.05 (a different feed; 0.12 apart).
+
+* **Gold's intraday momentum is real in every one of the seven structures** (t +3.0 to +5.0 against
+  holding at matched exposure, 20 years). This is the strongest statement of it in the file.
+* **Six of seven are sub-cost.** Their breakevens are $0.25-0.32 — the live spread itself. §3di's gold
+  opening breakout is now decided on an exact path: gross +0.83, net −0.11. A resting stop at the
+  noise band (N3) raises gross 0.80 → 1.11 and doubles turnover: worse net. Closed.
+* **P1 clears all five pre-registered bars:** (a) family p < 0.05; (b) net ≥ +0.50 and > 0 at 2×;
+  (c) both halves; (d) 2007-14 AND 2015-26; (e) t vs matched hold ≥ 2. It is §3ch's lead, on a new
+  feed, on an exact path, with nine unseen years in which it is *stronger* (+0.84).
+
+#### 2. Trying to break P1 (everything below can only hurt it)
+
+**The placebo level (control 16, 200 circular shifts of the ATR-distance).** PDH net **+0.76** vs
+placebo median +0.19 / 95th +0.42; gross +7.66bp vs +2.71 / +4.76; exposure identical (0.32 vs
+0.35). **p 0.000 on every axis.** §3cj's "an arbitrary level earns 60%" was a 2015-26 H1/M15
+measurement at p 0.05-0.09; on 20 years of exact path the prior-day high earns 2.8× a matched
+level. The level is special. That refines §3cj; it does not contradict its mechanism.
+
+**Execution — where the money actually is.**
+
+| entry (same 2,559 days where applicable) | gross bp | SR net | 2× | t vs hold |
+|---|---|---|---|---|
+| resting stop, filled at the level (M1) | +7.66 | +0.76 | +0.47 | +4.36 |
+| resting stop, gap-aware on 5-SECOND bars | +7.52 | +0.75 | +0.46 | +4.29 |
+| market order ≤ 5 s late | +5.45 | +0.49 | +0.20 | +2.84 |
+| market order ~30 s late | +5.06 | +0.45 | +0.16 | +2.62 |
+| market, open of the minute after the first M1 close above | +4.93 | +0.42 | +0.14 | +2.47 |
+| market after the H1 close above (§3ci's path) | +3.82 | +0.26 | −0.02 | +1.64 |
+| level + 1bp / 2bp / 3bp / 5bp slip | | +0.61 / +0.48 / +0.34 / +0.07 | | |
+
+The last-but-one row reproduces §3ci's failing path (+3.38bp, t +1.68) as the known answer.
+**The 5-second audit answers the question the live fill probe (360599) never could:** in 82.6% of
+breaks a 5S bar opens below the level and trades through it (a resting stop fills at the level); in
+17.4% it opens above (mean gap 5.5bp). Gap-aware, the fill lands **+0.96bp above the level on
+average, median 0.00, 95th +2.0bp, 99th +25bp**. Five seconds later price is +3.05bp away (median
++0.73) — the level is where stops cascade, so **latency is the whole cost**. A server-side resting
+stop is not optional here; a bot that polls and then sends a market order gives up a third of the
+edge in five seconds. Honest range for the real thing: **+0.5 to +0.75 net**, centre ~+0.6.
+Which trades carry it: the 44% of breaks with ≤ 0.5bp overshoot earn +3.8bp; the fast 56% earn
++10-11bp — i.e. the best trades are exactly the ones whose fill is least certain.
+
+**Exit time** is not a lever: 16:00 ET +0.71, 16:55 +0.75, last bar +0.76.
+**Day boundary (exploratory):** the 00:00-UTC day (how §3ch's file was stamped) gives +1.00 net —
+but that day ends at 19:00/20:00 ET, so every trade is carried through the 17:00 ET rollover and
+pays swap. Not comparable, not adopted. The pre-registered MT5 server day is the swap-free one.
+
+**Second sources (control 15), resting stop on each feed's own bars:** CME GC H1 2010-26 net
+**+0.57** (2× +0.31, t +3.45, halves +0.39 / +0.75); Switch M15 2024-26 **+1.62** (t +1.99, short
+and bullish); repo M15 2015-26 **+0.43** (t +1.44, first half +0.15) against +0.74 on OANDA over
+the same window. Same sign everywhere; the M15 feed is the weak one. Do not quote 0.76 as a
+feed-independent number.
+
+**In money, unit notional (control 2).** P1 net CAGR **+6.59%**, Sharpe 0.65, maxDD **−17.1%**,
+Calmar 0.39; gold itself +9.28%, 0.59, **−44.7%**, 0.21. Positive in **17/20** years, beats gold in
+8/20. In gold's down years: 2013 +1 vs −28, 2015 −2 vs −10, 2022 +5 vs 0, 2026 0 vs −10. §3ck's
+reading stands: a better sleeve, a smaller investment — 32% of the time in the market, **and no
+swap**, where the same exposure held on Switch pays 5.75%/yr.
+
+#### 3. Risk management (pre-registered 2c, plus one exploratory ladder)
+
+* **§3eu downside-vol half-size dial:** 0.760 → 0.799, **86th percentile** of a random same-count
+  halving (halves 82 / 71). FAILS the ≥ 95th bar. Halved trades earn +5.0bp against +9.7bp, the
+  right sign and not significant; drawdown not improved. **Not recommended on this rule.**
+* **§3dz circuit breaker:** not applicable — a prior-high break follows a 1-ATR fall the same day
+  7 times in 2,559.
+* **Protective stop, EXPLORATORY (not pre-registered; same entries, exact path):** none +0.76 ·
+  2.0 ATR +0.78 · 1.5 +0.81 · **1.0 +0.83** · 0.75 +0.83 · 0.5 +0.83 · 0.25 **+0.57**. Flat from 0.5 to
+  1.5 ATR, so a catastrophe stop is free insurance; tight stops are the §3bn result again. With
+  the 1-ATR stop: +0.041R per trade, P(full stop) 7.7%, worst trade −1.46R.
+* **The dial (RANK #19), 1-ATR stop:** 0.25% risk → CAGR +1.3%, maxDD −4.1%, worst day −0.37% ·
+  **0.5% → +2.6%, −8.1%, −0.73%** · 1% → +5.1%, −15.7%, −1.46% · 2% → +10.0%, −29.6%, −2.93%.
+  No day worse than −3% at any of these. **Calmar ~0.32: this is a Sharpe-0.6-0.8 sleeve with a low
+  return per unit of drawdown, not a challenge-passer.**
+
+#### 4. RANK #2 applied to the intraday effect (§3ef's rule, unchanged, on other instruments)
+
+CME H1 2010-26, NY session, 60-min checks; GC reproduces §3ef exactly (+0.25 / +0.19).
+
+| cell | SR gross | SR net | 2× | halves | null p |
+|---|---|---|---|---|---|
+| NQ long/short (1.0bp) | 0.59 | +0.35 | +0.10 | +0.14 / +0.57 | 0.011 |
+| **NQ long-only** | 0.75 | **+0.53** | **+0.32** | +0.28 / +0.80 | 0.004 |
+| ES long/short (2.0bp) | 0.65 | +0.05 | −0.55 | | 0.001 |
+| BTC long/short (5.0bp) | 0.65 | +0.31 | −0.02 | +0.32 / +0.33 | 0.007 |
+| BOOK GC+NQ+BTC long/short | 0.92 | +0.42 | −0.07 | +0.19 / +0.68 | 0.000 |
+| **BOOK long-only** | 0.96 | **+0.55** | +0.14 | +0.40 / +0.70 | 0.000 |
+
+Sleeve correlations 0.05-0.09 — the diversification is real and gross rises 0.6-0.7 → 0.92-0.96.
+Family p 0.007. **It clears the letter of the bar on CME and not on the feeds it would trade on:**
+Switch USTEC M15 (2.5 years) +0.01, Binance BTC M15 +0.06, book long-only **+0.23**, negative at
+2× cost; 30-minute checks turn over 50% more than hourly ones. Kill-the-shorts again in three of
+four instruments. **Verdict: real, diversifying, cost-fragile — not deployed.** The one sleeve
+worth a forward test is NQ long-only on hourly checks.
+
+#### Verdict
+
+* **The best intraday version this repo can support is P1:** one resting buy-stop per day at the
+  prior server-day high, long-only, flat before the 17:00 ET rollover, catastrophe stop 1 ATR,
+  0.5% risk. Net Sharpe **~0.6** (0.5-0.75 by fill), no swap, 126 trades a year, 52% wins.
+* It is rules 1, 3 and 16 of `RANK.MD` and nothing else: no swap, no shorts, and a cost it can
+  afford because it trades 2.5 times a week. No signal was added to §3ch; a measurement was.
+* **Nothing was deployed.** What would change the answer: a live record of resting buy-stop fills
+  at Switch (the audit says ≤ 1bp; Switch's 42/42 are stop-LOSSES, not entries); or the same rule
+  failing on NQ/BTC under its own pre-registration (not run — it would be a new study).

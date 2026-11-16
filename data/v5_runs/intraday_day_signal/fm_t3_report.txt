@@ -1,0 +1,15 @@
+T3 AS A FEATURE: size dial on ZigZag variant B + breaker fires (event set fixed; m = 0.5 + expanding rank, mean 1)
+
+   CME: 2185 trades 2012-01-04 -> 2026-11-06, FLAT Sharpe +0.558, expectancy +0.040R
+   kronos k_mu24   coverage 100%  Spearman(f, R) -0.0096 (p 0.655)  dial +0.469 (d -0.090, shuffle p 0.836)  INV +0.597 (d +0.039)  halves d -0.125 / -0.009
+                   Spearman by window: PRE -0.023 (1204)  TRAIN -0.020 (615)  POST +0.024 (366)  CLEAN -0.046 (189)
+   chronos c_mu24  coverage 100%  Spearman(f, R) -0.0024 (p 0.912)  dial +0.550 (d -0.008, shuffle p 0.444)  INV +0.525 (d -0.033)  halves d -0.002 / -0.021
+                   Spearman by window: PRE +0.004 (1204)  TRAIN -0.041 (615)  POST +0.025 (366)  CLEAN +0.130 (189)
+   family (2 features): best dial +0.550 vs shuffled max median +0.573, 95th +0.661, p 0.683
+
+   SWITCH: 1396 trades 2018-01-03 -> 2026-11-05, FLAT Sharpe +0.532, expectancy +0.043R
+   kronos k_mu24   coverage 100%  Spearman(f, R) -0.0095 (p 0.723)  dial +0.408 (d -0.124, shuffle p 0.831)  INV +0.601 (d +0.069)  halves d -0.096 / -0.096
+                   Spearman by window: PRE -0.003 (279)  TRAIN -0.032 (724)  POST +0.006 (393)  CLEAN -0.033 (202)
+   chronos c_mu24  coverage 100%  Spearman(f, R) +0.0179 (p 0.503)  dial +0.593 (d +0.061, shuffle p 0.154)  INV +0.405 (d -0.127)  halves d +0.093 / +0.009
+                   Spearman by window: PRE +0.057 (279)  TRAIN -0.005 (724)  POST +0.004 (393)  CLEAN +0.090 (202)
+   family (2 features): best dial +0.593 vs shuffled max median +0.559, 95th +0.689, p 0.331

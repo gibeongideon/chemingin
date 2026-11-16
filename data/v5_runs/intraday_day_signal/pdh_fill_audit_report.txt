@@ -1,0 +1,30 @@
+P1 FILL AUDIT on OANDA 5-second bars, 2559 trades 2007-01-02 -> 2026-11-12
+trades whose trigger minute has a 5S bar reaching the level: 2538 (99.2%); the rest keep the M1 fill. median 5S bars in the trigger minute: 12
+
+A. WHERE THE FILL LANDS, in bp above the level (same trades):
+   resting stop, gap-aware at 5s  mean  +0.96bp  median  +0.00  75th  +0.00  95th   +2.02  99th  +25.30
+   market, <= 5 s late            mean  +3.05bp  median  +0.73  75th  +3.42  95th  +15.44  99th  +36.83
+   market, ~10 s late             mean  +2.98bp  median  +0.88  75th  +3.79  95th  +15.81  99th  +36.85
+   market, ~30 s late             mean  +3.43bp  median  +1.13  75th  +4.94  95th  +19.40  99th  +44.00
+   close of the trigger MINUTE    mean  +3.41bp  median  +1.05  75th  +4.74  95th  +19.78
+   the 5S bar OPENED above the level (a true gap) in 17.4% of trades; mean gap when it did 5.53bp
+   <= 5 s overshoot by era, mean / median bp: 2007-2012: +2.68 / +0.81  2013-2018: +4.07 / +1.08  2019-2023: +2.43 / +0.50  2024-2026: +3.04 / +0.49
+
+B. THE SAME TRADES RE-PRICED (cost $0.30 round trip on top)
+                                entry  hit  gross_bp  SR_gross   SR  SR_2x   h1    h2 yrs_pos  t_vs_hold  breakeven
+M1 fill at the level (pre-registered) 52.2      7.66      1.04 0.76   0.47 0.79  0.73   17/20       4.36       1.10
+      5S fill at the level, gap-aware 52.1      7.52      1.03 0.75   0.46 0.77  0.72   17/20       4.29       1.09
+                   market <= 5 s late 50.8      5.45      0.78 0.49   0.20 0.45  0.53   13/20       2.84       0.81
+                    market ~10 s late 51.2      5.52      0.79 0.50   0.21 0.45  0.55   13/20       2.89       0.82
+                    market ~30 s late 51.0      5.06      0.74 0.45   0.16 0.37  0.53   14/20       2.62       0.77
+                  5S level + 1bp slip 51.7      6.52      0.90 0.61   0.33 0.66  0.57   15/20       3.53       0.94
+                  5S level + 2bp slip 50.9      5.52      0.76 0.48   0.19 0.54  0.42   13/20       2.78       0.80
+                  5S level + 3bp slip 50.2      4.52      0.63 0.34   0.06 0.42  0.26   12/20       2.03       0.66
+                  5S level + 5bp slip 49.2      2.52      0.36 0.07  -0.21 0.19 -0.04   11/20       0.54       0.38
+
+C. WHICH TRADES CARRY IT (gross bp per trade, M1 level fill): overshoot@5s <= 0.5bp: n 1123 +3.8bp  overshoot@5s 0.5-2bp: n 557 +11.0bp  overshoot@5s 2-5bp: n 393 +10.2bp  overshoot@5s > 5bp: n 465 +10.5bp
+   by entry hour after the 17:00 ET open: 0-3h n 810 +4.5bp  3-9h n 633 +11.1bp  9-15h n 656 +10.9bp  15-24h n 460 +4.0bp
+
+D. DAY BOUNDARY (exploratory sensitivity; 17:00 ET = the MT5 server day is the pre-registered one)
+   17:00 ET day (pre-registered)  trades 2559  gross +7.66bp  SR gross +1.04 net +0.76 2x +0.47  halves +0.79/+0.73  t vs hold +4.36
+   00:00 UTC day                  trades 2521  gross +9.70bp  SR gross +1.29 net +1.00 2x +0.71  halves +0.84/+1.15  t vs hold +5.47

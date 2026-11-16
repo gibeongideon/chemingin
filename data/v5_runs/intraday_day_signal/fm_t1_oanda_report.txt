@@ -1,0 +1,25 @@
+T1 DIRECTION AS MONEY, source OANDA; pos = sign(mu - trailing-250 median), gross, sign fixed
+      cell      n      first   hit  base_up  mean_bp  cost_bp      ic     t    h1    h2  SR_gross  SR_net           PRE         TRAIN          POST        CLEAN  p_cell
+ kronos_D1   4819 2008-03-12 50.30    52.15   -0.731     2.03  0.0031 -0.46 -0.82  0.24     -0.10   -0.40  -0.66 (3068)  -0.50 (1139)   +0.60 (612)  +0.92 (303)   0.659
+ kronos_S8   5002 2007-07-09 49.14    50.08   -2.076     2.09 -0.0157 -1.71 -2.14  0.00     -0.38   -0.77  -1.99 (3251)  -0.44 (1138)   +0.38 (613)  -0.33 (304)   0.958
+ kronos_H1  13808 2024-07-15 50.12    51.48    0.081     0.86  0.0131  0.34  0.65 -0.01      0.20     NaN             -             - +0.34 (13808) -0.06 (6976)   0.390
+chronos_D1   5011 2007-06-14 49.73    52.34    0.101     2.10 -0.0075  0.06  0.79 -0.84      0.01   -0.29  +0.96 (3260)  -1.70 (1139)   -0.01 (612)  +0.30 (303)   0.469
+chronos_S8   5065 2007-04-11 50.42    49.91    0.090     2.12  0.0062  0.07 -0.24  0.45      0.02   -0.38  -0.11 (3314)  -0.34 (1138)   +0.86 (613)  +0.33 (304)   0.472
+chronos_H1 125374 2006-04-06 49.25    50.06    0.001     2.26 -0.0028  0.02  0.29 -0.33      0.00     NaN +0.40 (85239) +1.16 (26077) -2.00 (14058) -1.10 (6976)   0.489
+   hit beside base_up (share of up outcomes); mean_bp per decision beside cost_bp (one round trip at $0.30); t by days; window columns = t (n)
+   FAMILY (6 cells): best kronos_H1 t +0.34 vs shifted-outcome null max median +1.20, 95th +2.43, p 0.940
+
+   LONG-ONLY (long when mu above its trailing median, else flat) vs a RANDOM same-size drop and vs always-long:
+   kronos_D1   long 51% of days: net SR -0.05 vs random drop median +0.03 (pctile 32); always-long net SR +0.04; mean bp selected +1.57 vs skipped +3.08
+   kronos_S8   long 49% of days: net SR -0.52 vs random drop median -0.26 (pctile 6); always-long net SR -0.39; mean bp selected -2.15 vs skipped +2.01
+   chronos_D1  long 51% of days: net SR +0.10 vs random drop median +0.10 (pctile 53); always-long net SR +0.14; mean bp selected +3.11 vs skipped +2.99
+   chronos_S8  long 50% of days: net SR -0.31 vs random drop median -0.31 (pctile 51); always-long net SR -0.42; mean bp selected -0.07 vs skipped -0.25
+
+T2 RANGE AND ASYMMETRY, source OANDA (Spearman; partial = after the trailing-20 mean realised range)
+   kronos_D1   rho(pred range, real) +0.520; trailing-20 baseline +0.552; PARTIAL +0.118;  rho(pred skew, close location) -0.0180
+   kronos_S8   rho(pred range, real) +0.497; trailing-20 baseline +0.490; PARTIAL +0.176;  rho(pred skew, close location) -0.0356
+   kronos_H1   rho(pred range, real) +0.612; trailing-20 baseline +0.514; PARTIAL +0.377;  rho(pred skew, close location) -0.0019
+   chronos_D1  rho(pred range, real) +0.527; trailing-20 baseline +0.559; PARTIAL +0.163;  rho(pred skew, close location) +0.0334
+   chronos_S8  rho(pred range, real) +0.500; trailing-20 baseline +0.486; PARTIAL +0.204;  rho(pred skew, close location) -0.0039
+   chronos_H1  rho(pred range, real) +0.495; trailing-20 baseline +0.404; PARTIAL +0.318;  rho(pred skew, close location) +0.0162
+

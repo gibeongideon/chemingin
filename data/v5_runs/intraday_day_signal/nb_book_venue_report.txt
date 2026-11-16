@@ -1,0 +1,21 @@
+NOISE-BAND INTRADAY MOMENTUM ACROSS INSTRUMENTS, source VENUE, NY 08:00-16:00 ET, 3ef rule unchanged
+cost round trip: GC $0.30, NQ 1.0bp, ES 2.0bp, BTC 5.0bp; SR_2x = double cost
+
+   cell  sessions      first  trades_wk  in_mkt  SR_gross    SR  SR_2x    h1    h2 yrs_pos  null_med  null95     p  SR_hold  t_vs_hold
+  GC_LS      2888 2015-01-02        4.7    0.26      0.81  0.05  -0.70 -0.15  0.25   10/12     -0.88   -0.37 0.001    -0.54        NaN
+  NQ_LS       631 2024-04-22        5.7    0.26      0.32  0.01  -0.29  0.79 -0.66     1/3     -0.39    0.62 0.272    -0.23        NaN
+ BTC_LS      2395 2017-08-17        4.9    0.24      0.61  0.06  -0.49  0.14 -0.05    4/10     -0.73   -0.19 0.005    -0.09        NaN
+BOOK_LS      3061 2015-01-02        NaN     NaN      0.82 -0.04  -0.89 -0.08  0.00    6/12     -1.09   -0.58 0.000      NaN        NaN
+  GC_LO      2888 2015-01-02        2.5    0.14      0.60  0.01  -0.56 -0.09  0.11    6/12     -0.65   -0.19 0.015    -0.54       1.69
+  NQ_LO       631 2024-04-22        3.1    0.14      0.33  0.04  -0.25  1.12 -1.07     1/3     -0.31    0.65 0.261    -0.23       0.38
+ BTC_LO      2395 2017-08-17        2.4    0.12      0.82  0.43   0.04  0.80  0.02    6/10     -0.44    0.07 0.000    -0.09       1.60
+BOOK_LO      3061 2015-01-02        NaN     NaN      0.86  0.23  -0.39  0.24  0.23    6/12     -0.74   -0.31 0.000      NaN        NaN
+
+sleeve correlation (LS, net daily):
+       GC    NQ   BTC
+GC   1.00  0.12  0.02
+NQ   0.12  1.00  0.16
+BTC  0.02  0.16  1.00
+
+BOOK_LS at the sleeves' 1% vol target: ann vol 8.3%, maxDD -34.4%, worst day -3.96%
+FAMILY (6 new cells; GC excluded as the known answer): best BTC_LO SR +0.43 vs day-shift null max median -0.07, 95th +0.75, p 0.139

@@ -1,0 +1,4 @@
+T5 HEADLINE ORACLE: 10,405 headlines, 3,332 dated days with a +/- label, 2,537 scored 2006-03-22 -> 2019-01-31 (OANDA M1)
+   SAME day (known answer): long/short by the label earns +55.0bp, t +25.9, hit 75.3%
+   NEXT session: -0.71bp per day, t -0.35, hit 48.6% vs up-share 50.7%; halves t -0.14 / -0.41; shifted-outcome null 95th +1.57, p 0.648
+   by label: after POSITIVE days next -0.23bp (n 1381); after NEGATIVE +1.28bp (n 1156); all days +0.51bp

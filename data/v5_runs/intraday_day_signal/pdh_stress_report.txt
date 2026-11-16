@@ -1,0 +1,55 @@
+P1 STRESS, OANDA M1 mid, 2007-01-02 -> 2026-11-12, 5,128 days, cost $0.3 round trip
+
+A. EXECUTION and B. EXIT TIME
+                                        variant  trades  per_wk  hit  gross_bp  expo  SR_gross   SR  SR_2x   h1   h2 yrs_pos  t_vs_hold  breakeven
+        resting stop at PDH (as pre-registered)    2559    2.50 52.2      7.66 0.320      1.04 0.76   0.47 0.79 0.73   17/20       4.36       1.10
+market, open of minute after 1st M1 close > PDH    2495    2.43 50.7      4.93 0.308      0.71 0.42   0.14 0.41 0.44   13/20       2.47       0.75
+                           same, 5 minutes late    2494    2.43 50.0      4.37 0.307      0.65 0.36   0.07 0.33 0.39   13/20       2.12       0.68
+     market after the H1 close > PDH (3ci path)    2176    2.12 51.4      3.82 0.246      0.55 0.26  -0.02 0.38 0.16   12/20       1.64       0.58
+                    resting stop, exit 16:55 ET    2558    2.49 52.2      7.52 0.319      1.03 0.75   0.46 0.80 0.70   17/20       4.29       1.09
+                    resting stop, exit 16:00 ET    2553    2.49 52.6      7.25 0.300      0.99 0.71   0.42 0.73 0.68   16/20       4.15       1.05
+              minute-close entry, exit 16:00 ET    2490    2.43 51.0      4.52 0.289      0.66 0.37   0.09 0.36 0.39   12/20       2.28       0.69
+
+   slippage ladder on the resting stop (extra $ per round trip on top of $0.30): +$0.10 -> SR +0.66  +$0.25 -> SR +0.52  +$0.50 -> SR +0.28  +$0.75 -> SR +0.05  +$1.00 -> SR -0.19  +$1.50 -> SR -0.67
+   entry price, minute-close minus resting stop, same 2495 days: mean +4.84bp, median +2.41bp;  stop-only days (wick, no M1 close above): 64, mean -75.04bp
+   entry hour after the 17:00 ET open (share of trades): 0-3h 32%  3-9h 25%  9-15h 26%  15-19h 14%  19-24h 4%
+
+C. PLACEBO LEVEL at another day's ATR-distance above the open (200 circular shifts >= 20 days)
+   SR         PDH +0.760   placebo median +0.190  95th +0.420  p 0.000
+   SR_gross   PDH +1.040   placebo median +0.480  95th +0.720  p 0.000
+   t_vs_hold  PDH +4.360   placebo median +1.160  95th +2.480  p 0.000
+   gross_bp   PDH +7.660   placebo median +2.710  95th +4.761  p 0.000
+   expo       PDH +0.320   placebo median +0.350  95th +0.355  p 1.000
+
+D. IN MONEY, UNIT NOTIONAL (100% of equity long from the fill to the day's end; no vol scaling)
+   P1 net                      CAGR  +6.59%  Sharpe +0.65  maxDD  -17.1%  Calmar 0.39  worst day -8.10%  x3.66
+   HOLD gold (close to close)  CAGR  +9.28%  Sharpe +0.59  maxDD  -44.7%  Calmar 0.21  worst day -9.13%  x6.09
+   year: 2007 +4/+31  2008 +16/+6  2009 +19/+24  2010 +6/+30  2011 +4/+10  2012 +7/+7  2013 +1/-28  2014 +11/-2  2015 -2/-10  2016 +9/+8  2017 +1/+13  2018 -6/-2  2019 +6/+18  2020 +18/+25  2021 -6/-4  2022 +5/-0  2023 +1/+13  2024 +10/+27  2025 +41/+65  2026 +0/-10
+   P1 positive in 17/20 years; beats gold in 8/20; P1 in gold's down years: 2013 +1 vs -28  2014 +11 vs -2  2015 -2 vs -10  2018 -6 vs -2  2021 -6 vs -4  2022 +5 vs -0  2026 +0 vs -10
+
+E. RISK OVERLAYS (pre-registered 2c), each vs a RANDOM same-count control, event set fixed
+   (i) 3eu half size in high downside vol: 1124/2559 trades halved. SR +0.760 -> +0.799 (random median +0.724, pctile 86);  halves +0.85 / +0.75 (pctile 82 / 71);  maxDD -20.0% -> -20.8%;  mean R of halved trades +5.00bp vs kept +9.74bp
+   (ii) 3dz circuit breaker (day already > 1 ATR below its open before the trigger): blocks 7 of 2559 trades -> not applicable to this rule (a prior-high break cannot follow a 1-ATR fall the same day except 7 times)
+
+F. PROTECTIVE STOP at entry - k x ATR14(D1): EXPLORATORY (not pre-registered), same entries, exact M1 path
+      variant  trades  hit  gross_bp   SR  SR_2x   h1   h2  stopped_pct  worst_trade  unit_maxDD  unit_CAGR
+      no stop    2559 52.2      7.66 0.76   0.47 0.79 0.73          0.0        -8.07       -17.1       6.59
+ stop 2.0 ATR    2559 52.2      7.70 0.78   0.49 0.84 0.72          0.8        -8.85       -17.2       6.65
+ stop 1.5 ATR    2559 52.1      7.85 0.81   0.52 0.87 0.74          2.1        -6.64       -17.1       6.87
+ stop 1.0 ATR    2559 52.0      7.84 0.83   0.54 0.93 0.74          7.6        -4.67       -20.2       6.88
+stop 0.75 ATR    2559 51.3      7.57 0.83   0.52 0.87 0.79         15.3        -4.48       -20.2       6.53
+ stop 0.5 ATR    2559 48.9      7.40 0.83   0.51 0.91 0.76         29.2        -2.99       -17.9       6.38
+stop 0.25 ATR    2559 36.7      5.54 0.57   0.18 0.63 0.51         55.1        -1.59       -20.3       4.04
+   ATR14(D1) as % of price: median 1.42%, 2025-26 2.07%
+
+   RISK DIAL on the 1-ATR stop variant (R = net P&L / the 1-ATR stop distance; one trade per day at most):
+   R per trade: mean +0.041, sd 0.578, worst -1.46, best +3.59, P(R <= -1) 7.7%
+   risk 0.25%/trade: CAGR +1.29%  maxDD  -4.1%  worst day -0.37%  worst week -0.66%  days <= -3%: 0  Sharpe +0.80
+   risk 0.50%/trade: CAGR +2.56%  maxDD  -8.1%  worst day -0.73%  worst week -1.33%  days <= -3%: 0  Sharpe +0.80
+   risk 1.00%/trade: CAGR +5.08%  maxDD -15.7%  worst day -1.46%  worst week -2.65%  days <= -3%: 0  Sharpe +0.80
+   risk 2.00%/trade: CAGR +9.96%  maxDD -29.6%  worst day -2.93%  worst week -5.30%  days <= -3%: 0  Sharpe +0.80
+
+G. SECOND SOURCES (resting stop at PDH on that feed's own bars; same cost)
+   m15    2015-02-13 -> 2026-06-15: trades 1476, gross +4.85bp, SR gross +0.71 net +0.43 2x +0.15, halves +0.15/+0.71, t vs hold +1.44   | OANDA M1 same window: net +0.74, t +2.93
+   cme    2010-07-19 -> 2026-11-06: trades 2083, gross +5.18bp, SR gross +0.84 net +0.57 2x +0.31, halves +0.39/+0.75, t vs hold +3.45   | OANDA M1 same window: net +0.71, t +3.91
+   switch 2024-06-05 -> 2026-11-04: trades 341, gross +11.37bp, SR gross +1.72 net +1.62 2x +1.51, halves +1.38/+1.88, t vs hold +1.99   | OANDA M1 same window: net +1.77, t +2.45
