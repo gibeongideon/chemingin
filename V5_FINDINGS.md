@@ -9521,3 +9521,62 @@ pretraining either. Honest scope: one instrument, Kronos-small/base and Chronos-
 zero-shot. NOT tested: fine-tuning Kronos on gold (walk-forward; §3dl's from-scratch version
 learned nothing), and the cross-sectional use the paper actually demonstrates, which needs a
 universe, not one metal. Nothing deployed. Reopen only with a new TEXT data type.
+
+### §3ey — The PDH day-trade executor: built, replay-verified against its own backtest, LIVE on the Switch demo (magic 360614, 2026-11-16, `scripts/v5_pdh_executor.py`, `scripts/v5_pdh_replay.py`, `tests/test_v5_pdh_executor.py`, `deploy/pdh-switch.*`)
+
+**Ask:** "go to the Next step and build executer of our best findings" — then "run on Switch account".
+
+**What runs.** §3ex's P1 rule with the deployment choices it measured:
+
+| element | setting | why |
+|---|---|---|
+| entry | one resting BUY STOP per server day at the prior server-day high (yesterday's D1 bar on the broker's chart) | §3ex P1; server day 17:00→17:00 NY = the tested day |
+| direction | long only; no TP, trail or breakeven | RANK #3, §3bl, §3co |
+| stop | 1.0 × ATR14(D1) below the level, on the ORDER | exploratory in §3ex, flat 0.5-1.5 ATR; server-side if the bot dies |
+| exit | flat by **23:40 server = 16:40 NY**; the order EXPIRES server-side at the same minute | no swap, never overnight (RANK #1); exit time is not a lever (+0.71..+0.76) |
+| size | 0.5% of **balance** on the 1-ATR stop (0.07 lots at $141k, ATR $97) | balance, not equity: this account is hand-traded |
+| skip | a day that OPENS at/above the level; US holiday early closes (list to 2027-12-31, loud when stale) | a buy stop cannot rest below the market; 23:40 can be after an early close |
+| late break | inside 10 minutes of the open → market buy, labelled; later → "missed", never chased | §3ex fill audit: latency is the cost |
+
+**Backtest of exactly this variant (OANDA M1 2007-26, $0.30):** net Sharpe +0.79, +0.039R per trade
+(sd 0.574), 51% wins, 126 trades/yr; at 0.5% risk CAGR +2.4%, maxDD −7.8% (−15.7R), worst cumulative-R
+drawdown −16.1R. Skipping open-above days: 5.6% of trades at −8.1bp — noticed after the fact, so the
+deployed variant's +0.89 is **not** the expectation. Honest live figure stays **~+0.6**.
+
+**Verification — the live code path against its own backtest.** `v5_pdh_replay.py` drives the
+unchanged `Runner` through a simulated MT5 broker (ask-triggered stops, server-side expiry,
+bid-triggered stop-loss) on OANDA M1, on the exact timer schedule. One year, 2024-07 → 2025-07:
+**258 days, levels and ATR identical to 0.005, all 133 backtest trades taken, entry prices identical,
+per-trade return corr 0.9997.** It also exercised the safety net for real: Labor Day 2025 closed
+at 21:29 server, the position survived the cut-off, and the stale-exit closed it at the next open —
+which is why the holiday list exists. 16 unit tests cover every branch (place, fill+exit, stop at −1R,
+gap skip, expiry, vanished order not re-placed, early-break market entry, missed, holiday, stale
+exit, kill rule, dry run writes nothing). Found by the tests before deployment: `numpy_array or []`
+in two places (would have crashed every run), a placement failure that would have closed the day
+instead of retrying, and state saved only at the end of a run.
+
+**Deployment (VPS, user systemd).** Switch 40080430 (DEMO, hedging), bridge 18815, XAUUSDs, magic
+**360614**, wrapper `deploy/pdh-switch.sh` (flock `/tmp/pdh-switch.lock`, `NOTIFY_NO_TELEGRAM=1`),
+timer `*:04/5:05` (exit attempts 23:44:05 / 23:49:05 / 23:54:05 server) plus every minute 01-12 past
+UTC 22 and 23 (covers the 01:01 server open in both DST regimes). State `pdh_switch_state.json`, log
+`pdh_switch_log.csv` + `pdh-switch.log`. Bridge etiquette: never `shutdown()`; waits ≤ 15 s for the
+short peers; the hourly ZigZag jobs were measured holding the bridge ~2 and ~5 min from :01, so they
+are not waited for; 5-try connect. `v5_trade_events_notify.py`: 360614 added to `BOTS` (phone gets
+TRADABLE / TRADED / CLOSED) and `/tmp/pdh-switch.lock` to its 18815 peers. VPS copy backed up as
+`v5_trade_events_notify.py.bak-20261116` (it was byte-identical to HEAD before the change).
+
+**First live order:** 2026-11-16 19:27:44 server, buy stop **#52289890**, 0.07 lots at **3923.10**
+(Friday's high), stop 3826.13, risk $678.81 (0.48%), broker read-back *expires 2026-11-16 23:40:00
+server* — the server-frame expiry is right on the real broker. A second run was a verified no-op.
+
+**Pre-registered kill rules (in the code; they stop NEW entries, an open position is still taken
+flat):** (1) mean entry slip of the last 40 resting-stop fills > 2.0bp — §3ex puts a gap-aware fill
+at +0.96bp and the edge at ~+0.48 Sharpe by +2bp; (2) cumulative-R drawdown −25R (1.5 × the 20-year
+worst). A P&L verdict is NOT possible early: the SE of mean R at 120 trades is ~0.05R against an
+expected +0.04R. What the first months CAN show: the slippage distribution (Switch so far: 2/2
+earlier buy-stops at this level filled at exactly the level, 42/42 stop-losses exact), the fill
+rate, and that exits happen before the rollover. `python scripts/v5_pdh_executor.py --report`.
+
+**Hazards carried forward:** the account is hand-traded (magic 0) — sizing ignores equity, but a
+hand-closed position is logged as `closed_external` and a hand-deleted order as `vanished` (not
+re-placed); the holiday list must be extended before 2028; disarm only while flat.

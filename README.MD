@@ -63,6 +63,8 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 
 **Switch demo order-placers (since 2026-11-06): exactly three — Book 360595, ZigZag 360601, Trail-runner 360600.**
 
+**Since 2026-11-16 also the PDH day-trade executor, magic 360614 (§3ex, deployment §3ey)** — the one intraday rule that passed its pre-registered bars: a resting buy stop at the prior server-day high, 1-ATR server-side stop, flat by 16:40 New York (no swap), 0.5% of balance per trade. `scripts/v5_pdh_executor.py --report` reads its log. (Status of the other Switch magics: Book and Trail-runner timers have been disabled since 2026-11-11, "Only zigzag to run"; 360614 was added at the user's explicit request.)
+
 **Darwinex demo (3000112593, bridge 18817), concurrently since 2026-11-06: the same three — Book 360605 (gold only: Darwinex lists no BTC), ZigZag 360606, Trail-runner 360607.** Telegram reports TRADABLE / TRADED / CLOSED and a Saturday weekly P/L for both accounts.
 
 **FTMO demo (1515233856, $100k, bridge 18814), since 2026-11-09: ZigZag best variant — magic 360608, no profit lock, 3 ATR trail, take-profit 4.3R (§3dr).** Same rule as Darwinex 360606; Switch 360601 runs the user's lock ladder + trend gate (live A/B).
@@ -81,6 +83,7 @@ position = forecast × 10% vol-target / EWM vol (half-life 42 H4 bars), buffer 0
 | **360611** | Advisor BIAS executor, **long/short** — flip-and-hedge, +$50 rescue on a kept leg | FTMO demo, 18814 | **live 2026-11-10**, 5-min — a live test of §3de/§3bz, not an established edge |
 | **360612** | The same arm, **long-only** — a SELL call opens nothing. The control | FTMO demo, 18814 | **live 2026-11-10**, 5-min — isolates the short leg §3bz measured at −0.29..−0.52 Sharpe |
 | **360600** | Trail-runner: long-only buy-stop at the prior-day high + 3-ATR trail (`INTRADAY-TRAIL-SPEC.md`) | Switch | live, 5-min — the §3ch/§3dm lead |
+| **360614** | **PDH day-trade**: one resting buy stop per server day at the prior-day high, long-only, stop 1.0×ATR14 server-side, order expires and position closes by 23:40 server (16:40 NY), 0.5% of BALANCE (`scripts/v5_pdh_executor.py`, `deploy/pdh-switch.*`) | Switch demo, 18815 | **live 2026-11-16**, every 5 min at :04/5:05 + every minute 01-12 past UTC 22/23 (the 01:01 server open) — §3ex net +0.76 at a level fill, ~+0.6 honest; kill rules: entry slip > 2bp over 40 fills, or −25R |
 | ~~360599~~ | Fill probe | Switch | **stopped 2026-11-06** — trail-runner's live fills now supply the slippage data |
 | — | `xau-advisor` (5-min) + `advisor-notify` / `zigzag-notify` | Telegram + email | notifications |
 

@@ -631,6 +631,9 @@ class Runner:
                     print("  the level was crossed while the order was being placed -> treat as the break")
                     action, why = "market", "crossed the level while the stop was being placed"
                     ref = float(t2.ask)
+            if action == "place" and r is None and not self.execute:
+                print("  (dry) the buy stop above would rest until it fills or expires at the cut-off")
+                return
             if action == "place":
                 ok = rc in DONE
                 ticket = int(getattr(r, "order", 0) or 0) if r is not None else 0
@@ -658,6 +661,9 @@ class Runner:
                            sl=round(ask - stop_dist, digits), tp=0.0, deviation=30, magic=MAGIC, comment="pdh-late",
                            type_filling=self.fill_type))
         rc = int(getattr(r, "retcode", 0) or 0)
+        if r is None and not self.execute:
+            print("  (dry) the market buy above would be sent")
+            return
         ok = rc in DONE
         ticket = int(getattr(r, "order", 0) or 0) if r is not None else 0
         self.record(event="enter_market" if ok else "enter_failed", entry="market", level=round(pdh, 2),
