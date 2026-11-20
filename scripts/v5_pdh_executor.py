@@ -70,6 +70,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "data" / "v5_runs"
 
 MAGIC = 360614
+VENUE = "Switch"               # alert text only; main() sets it from --tag
 STOP_ATR = 1.0
 ATR_DAYS = 14
 RISK_FRAC = 0.005
@@ -250,7 +251,7 @@ def alert(subject: str, body: str) -> None:
     try:
         sys.path.insert(0, str(ROOT))
         from scripts.v5_notify import notify  # noqa: PLC0415
-        notify(f"[pdh] {subject}", body + f"\n\nmagic {MAGIC}, Switch demo. scripts/v5_pdh_executor.py", subject)
+        notify(f"[pdh] {subject}", body + f"\n\nmagic {MAGIC}, {VENUE} demo. scripts/v5_pdh_executor.py", subject)
     except Exception as exc:  # noqa: BLE001
         print(f"  (alert failed: {type(exc).__name__}: {exc})")
 
@@ -681,8 +682,8 @@ class Runner:
 
 
 def main() -> int:
-    global MAGIC
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    global MAGIC, VENUE
+    ap =argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--port", type=int, default=18815)
     ap.add_argument("--symbol", default="XAUUSDs")
     ap.add_argument("--magic", type=int, default=MAGIC)
@@ -691,6 +692,7 @@ def main() -> int:
     ap.add_argument("--report", action="store_true", help="summarise the log; no bridge")
     a = ap.parse_args()
     MAGIC = a.magic
+    VENUE = a.tag.upper() if a.tag != "switch" else "Switch"
     files = Files(a.tag)
     if a.report:
         print(report(files.rows()))

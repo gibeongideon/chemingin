@@ -31,7 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 STATE = ROOT / "data" / "v5_runs" / "trade_events_state.json"
 BOTS = {360595: "Book (XAU+BTC champion)", 360601: "ZigZag (no lock)", 360600: "Trail-runner",
-        360613: "ZigZag-C (limit + lock)", 360614: "PDH day-trade (prior-day-high stop, flat 16:40 NY)"}
+        360613: "ZigZag-C (limit + lock)", 360614: "PDH day-trade (prior-day-high stop, flat 16:40 NY)",
+        360615: "PDH day-trade FTMO (prior-day-high stop, flat 16:40 NY)"}
 ORDER_TYPES = {2: "BUY LIMIT", 3: "SELL LIMIT", 4: "BUY STOP", 5: "SELL STOP",
                6: "BUY STOP LIMIT", 7: "SELL STOP LIMIT"}
 PEERS_BY_PORT = {

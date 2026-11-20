@@ -1,0 +1,29 @@
+# PDH day-trade executor (FTMO demo, magic 360615). Host clock = UTC.
+#
+# FTMO server clock verified 2026-11-20 = Switch clock (UTC+2, NY+7), so the schedule is identical,
+# shifted +20 s so it never starts in the same second as pdh-switch.
+# 1) Every 5 minutes at :05 seconds on minutes 04,09,...,59. With the 23:40 server cut-off the exit
+#    attempts land at 23:44:05, 23:49:05 and 23:54:05 server — three tries before the 23:58 close
+#    (Fridays 23:54). Server = New York + 7h, a whole number of hours from UTC, so the minutes match.
+# 2) Every minute 01-12 at :05 past UTC hours 22 and 23: the server session opens at 01:01, which is
+#    22:01 UTC in summer (server UTC+3) and 23:01 UTC in winter (UTC+2). This burst puts the buy stop
+#    on the book within about a minute of the open; in §3ex the breaks of the first minutes were the
+#    best trades. In the other hour of the pair the burst runs are harmless (break or mid-session).
+#
+# Slot choice: written for bridge 18815 (Switch); on 18814 the peers are trail-watch :50, trade-events-ftmo,
+# ZigZag B :01:40 and V :02:20 hourly. The 5-try connect absorbs a collision.
+# The executor waits up to 15 s for the short jobs and retries the connect 5 times.
+# Persistent=false: a missed slot is worthless later; the next slot re-reads everything.
+[Unit]
+Description=PDH day-trade executor, every 5 min + the session-open burst (FTMO demo, magic 360615)
+
+[Timer]
+OnCalendar=*-*-* *:04/5:25
+OnCalendar=*-*-* 22,23:01..12:25
+OnBootSec=240sec
+Persistent=false
+AccuracySec=2s
+Unit=pdh-ftmo.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=PDH day-trade executor (V5_FINDINGS §3ex) — FTMO demo, magic 360615
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/pdh-ftmo.sh
