@@ -9580,3 +9580,42 @@ rate, and that exits happen before the rollover. `python scripts/v5_pdh_executor
 **Hazards carried forward:** the account is hand-traded (magic 0) — sizing ignores equity, but a
 hand-closed position is logged as `closed_external` and a hand-deleted order as `vanished` (not
 re-placed); the holiday list must be extended before 2028; disarm only while flat.
+
+---
+
+### §3ez — ZigZag SL RECOVERY (2x-lot buy at the stop, tight stop + trail): 0/48, every cell loses (2026-11-19, `scripts/v5_zigzag_sl_recovery.py`)
+
+**User, 2026-11-19:** *"if the buy reaches the SL, add a double lot order in the SL with tight SL, with
+trailing loss to recover"* — *"if it goes well, no order to place"*. Different from §3ds (which added
+BEFORE the stop): here the order fires only AFTER a losing stop-out, as a fresh 2x buy at the stop price.
+
+**Setup:** base = live variant B + circuit breaker (P ≥ 0.60, 3 ATR stop/trail, TP 4.3R, hold 120),
+event set fixed, recovery additive (doesn't block later fires). 62% of base trades are losing
+stop-outs and trigger it (CME 1,238 / Switch 833). Grid: tight stop = trail = k ∈ {0.5, 1.0, 1.5} ATR ×
+{TRAIL, TRAIL+TP at loss recovered} × fill {A: at stop price on the stop bar, pessimistic; B: next
+open} × breaker on/off. Control: the same trade shape entered at random hours (2,000 resamples).
+
+**Results — 0/24 cells pass in either source; all 48 lower book Sharpe:**
+
+| | recovery own-R | random-hour own-R | book dSharpe | maxDD (base −5.9 / −7.6%) |
+|---|---|---|---|---|
+| CME, range over cells | −0.06 .. −0.23 | −0.01 .. −0.16 | **−0.30 .. −0.63** | −8.1 .. −22.4% |
+| Switch | −0.07 .. −0.33 | −0.03 .. −0.18 | **−0.35 .. −0.74** | −11.8 .. −20.7% |
+
+- Vol-matched paired t −2.2 .. −8.0 in every cell; both halves worse in every cell.
+- **The recovery entry is WORSE than a random hour** (null p 0.64–1.00): a 3-ATR stop-out marks a
+  down-move that continues, so a tight-stop buy there is stopped again ~65–75% of the time.
+- TRAIL+TP raises the win rate to 41–58% and loses MORE per trade (win rate vs money, again).
+- Worst single base-loss + recovery-loss pair: −1.6 .. −3.0R of the base unit.
+
+**Verdict:** do not deploy. Fifth confirmation the recovery/martingale family is leverage on losers
+(§3l, §3bo, §3ds, §3ep); new here is that the stop-out moment is a *below-random* long entry.
+
+**§3ez-2 — the user's corrected spec (2026-11-20): a NEW fire arriving while an earlier buy is open and
+near its stop is taken at 2x instead of skipped** (`scripts/v5_zigzag_nearsl_add.py`). Near = close −
+current stop ≤ z ATR, z ∈ {0.5, 1.0, 1.5, any}; the add exits like a ZigZag trade (NORMAL) or with a tight
+0.5/1.0 ATR stop + trail. Nulls: random hours, and random NON-fire bars equally near the stop.
+**0/9 cells pass in both sources; every cell lowers book Sharpe (−0.04 .. −0.37).** z 0.5 fires only
+9–14 times in 9–15 years. The NORMAL add earns ≈0R (−0.21 .. +0.04): no better than a non-fire bar in the
+same near-stop state (p_state 0.30–0.98), i.e. the signal adds nothing once the trade is losing. Tight
+stops lose −0.08 .. −0.40R. maxDD up to −16% (CME) / −19% (Switch) when all overlapping fires are taken.
