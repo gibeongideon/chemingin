@@ -517,7 +517,7 @@ def main() -> None:
         print(f"  guards: action={action}  phase {state['phase']} "
               f"progress {prog:+.2f}% (target +{state['phase_target_frac']*100:.0f}%)  "
               f"day {day_dd:+.2f}% (lock -{cg.DAILY_GUARD_FRAC*100:.1f}%)  "
-              f"total {tot_dd:+.2f}% (halt -{cg.OVERALL_HALT_FRAC*100:.0f}%)")
+              f"total {tot_dd:+.2f}% (halt -{cg.OVERALL_HALT_FRAC*100:.1f}%)")
 
         row = dict(time_utc=datetime.now(timezone.utc).strftime("%F %T"),
                    account=acct.login, balance=round(balance, 2),

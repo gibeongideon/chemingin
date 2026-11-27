@@ -398,8 +398,17 @@ class Runner:
             print("NOT LOGGED IN")
             return 2
         if int(ai.trade_mode) != 0:
-            print(f"REFUSING: account {ai.login} trade_mode {ai.trade_mode} is not DEMO")
-            return 1
+            allow = getattr(self.a, "allow_real_login", None)
+            if allow is None or int(ai.login) != int(allow):
+                print(f"REFUSING: account {ai.login} trade_mode {ai.trade_mode} is not DEMO "
+                      f"(a prop account must be named explicitly with --allow-real-login)")
+                return 1
+            print(f"  account {ai.login} trade_mode {ai.trade_mode}: allowed by --allow-real-login (prop challenge)")
+        # Prop-rule bookkeeping (Goat Pay Later, 2026-11-27): track the starting balance and the highest
+        # equity seen, every run, so decide() can stop entries at the target or before the trailing floor.
+        if getattr(self.a, "halt_dd", None) or getattr(self.a, "target_frac", None):
+            self.st.setdefault("initial", float(ai.balance))
+            self.st["peak_equity"] = max(float(self.st.get("peak_equity") or 0.0), float(ai.equity), float(ai.balance))
         if int(ai.margin_mode) != 2:
             print(f"REFUSING: account {ai.login} margin_mode {ai.margin_mode} is not HEDGING")
             return 1
@@ -572,6 +581,20 @@ class Runner:
         m, sym, tick = self.m, self.sym, self.tick
         halted = (self.st.get("halt") or {}).get("reason")
         if not halted:
+            init, peak, eq = self.st.get("initial"), self.st.get("peak_equity"), float(ai.equity)
+            tf, hd = getattr(self.a, "target_frac", None), getattr(self.a, "halt_dd", None)
+            prop = None
+            if tf and init and eq >= init * (1 + tf):
+                prop = f"PROFIT TARGET reached: equity {eq:,.2f} >= {init * (1 + tf):,.2f} (+{100 * tf:.1f}%)"
+            elif hd and init and peak and eq <= peak - hd * init:
+                prop = (f"TRAILING HALT: equity {eq:,.2f} <= peak {peak:,.2f} - {100 * hd:.1f}% of {init:,.0f} "
+                        f"(firm floor sits lower; stopped before it)")
+            if prop:
+                halted = prop
+                if self.execute:
+                    self.st["halt"] = dict(reason=prop, since=str(self.srv_now))
+                    alert("PROP RULE STOP — no new entries", prop)
+        if not halted:
             reason, kst = kill_status(self.rows)
             if reason:
                 halted = reason
@@ -689,6 +712,12 @@ def main() -> int:
     ap.add_argument("--magic", type=int, default=MAGIC)
     ap.add_argument("--tag", default="switch", help="state/log file suffix")
     ap.add_argument("--execute", action="store_true", help="send orders and write state/log")
+    ap.add_argument("--allow-real-login", type=int, default=None,
+                    help="permit THIS login although the broker flags it real (prop challenge accounts)")
+    ap.add_argument("--halt-dd", type=float, default=None,
+                    help="stop new entries once equity <= peak equity - X x initial (trailing max-loss rules)")
+    ap.add_argument("--target-frac", type=float, default=None,
+                    help="stop new entries once equity >= initial x (1 + X) (challenge profit target)")
     ap.add_argument("--report", action="store_true", help="summarise the log; no bridge")
     a = ap.parse_args()
     MAGIC = a.magic

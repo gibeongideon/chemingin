@@ -167,7 +167,7 @@ def build(cfg_path: Path, state_path: Path, port: int):
         f"    {p.symbol:14s} {'BUY ' if p.type == 0 else 'SELL'} {p.volume:6.2f} "
         f"@ {p.price_open:<10.2f} P/L {p.profit:+8.2f}" for p in ps) or "    (flat)"
 
-    body = f"""{firm} {cfg['model'].upper()} Challenge — Daily Summary
+    body = f"""{firm} {cfg.get('plan', cfg['model'].upper())} Challenge — Daily Summary
 {d:%A %d %b %Y}  (platform day)   account {a.login} @ {a.server}
 
 BALANCE / EQUITY   {a.balance:,.2f} / {a.equity:,.2f} {a.currency}
@@ -187,7 +187,7 @@ COMPLIANCE         {compliance:6.1f}%   (violations today: {viol})
 Guards: flatten at -{cfg['guards']['daily_guard_frac']*100:.1f}% daily / halt -{cfg['guards']['overall_halt_frac']*100:.1f}% total.
 Book: {', '.join(sum(cfg.get('classes', {}).values(), []))}   magic {magic}
 """
-    subj = (f"[{firm} {cfg['model'].upper()}] {d:%d %b} — eq {a.equity:,.0f} {a.currency}, "
+    subj = (f"[{firm} {cfg.get('plan', cfg['model'].upper())}] {d:%d %b} — eq {a.equity:,.0f} {a.currency}, "
             f"P{phase} {prog:.0f}% to target, compliance {compliance:.0f}%"
             + (f"  ⚠ {len(restricted)} SLEEVE BLOCKED" if restricted else ""))
     return subj, body

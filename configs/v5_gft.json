@@ -99,5 +99,6 @@
   "_min_days_note": "GFT requires 3 PROFITABLE days per step. The report counts trading days; a slow book reaching +10% in under 3 profitable days is not realistic, but check before requesting promotion.",
   "report_notify": true,
   "_port_note": "Bridge 18819 = prefix ~/.mt5h, display :106 (xvfb8), unit mt5-terminal-goat. ExecStop pkills 'rpyc.*18819': never run an inline command containing that text.",
-  "_data_note": "SIGNAL: the H4 gold file is data/XAUUSDs_H4_switch.csv, refreshed every 4h by the Switch book job (deploy/xau-btc-switch.sh) - this book trades the SAME forecast as Switch 360595. The GFT wrapper only READS it and gates on freshness against GoatFunded's own newest closed H4 bar. D1 gold/BTC panel: refresh_d1_panel.py (shared)."
+  "_data_note": "SIGNAL: the H4 gold file is data/XAUUSDs_H4_switch.csv, refreshed every 4h by the Switch book job (deploy/xau-btc-switch.sh) - this book trades the SAME forecast as Switch 360595. The GFT wrapper only READS it and gates on freshness against GoatFunded's own newest closed H4 bar. D1 gold/BTC panel: refresh_d1_panel.py (shared).",
+  "plan": "2-Step Promo 100K"
 }
