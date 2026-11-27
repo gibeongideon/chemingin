@@ -1,0 +1,95 @@
+{
+  "created_on": "2026-11-27",
+  "purpose": "LABS001 'Daily rewards' 100K ($99): target 5% (1 phase), daily loss 1%, max loss 3% STATIC (EOD), min days 0, split 85%. XAU+BTC book with an intraday daily guard and CUSHION SIZING on the static floor (scripts/v5_lab001_buffer.py).",
+  "firm": "LAB (LABS001) - FILL IN firm name",
+  "model": "ftmo",
+  "vol": 0.05,
+  "magic": 360616,
+  "run_id": "v5-lab001",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo)",
+  "reset_tz": "UTC+3",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": [
+      "XAUCHAMP"
+    ],
+    "crypto": [
+      "BTC"
+    ]
+  },
+  "symbols": {
+    "_note": "FILL IN the lab broker's exact names; verify trade_mode 4 and symbol_select both before the first pass (empty Market Watch trap).",
+    "XAUCHAMP": {
+      "fp_symbol": "XAUUSD",
+      "class": "xau",
+      "tf": "H4"
+    },
+    "BTC": {
+      "fp_symbol": "BTCUSD",
+      "class": "crypto",
+      "tf": "D1"
+    }
+  },
+  "guards": {
+    "daily_guard_frac": 0.006,
+    "overall_halt_frac": 0.027,
+    "phase_targets": {
+      "1": 0.05,
+      "2": 0.05
+    },
+    "_note": "daily 0.6% of the day anchor: leaves 0.4% for exit slippage under the firm's 1% (slip 0.4%+ fails the account). overall halt at -2.7% from initial = $97,300, just above the firm's STATIC $97,000 floor. phase target 5% -> realize_target then sticky 'complete' (flat, await funded credentials). FUNDED: set phase_targets to 99.0 (off) so the book keeps trading, and keep a ~3% buffer (withdraw only above $103k) - see v5_lab001_buffer.py funded table."
+  },
+  "min_trading_days": 0,
+  "news_filter": {
+    "enabled": true,
+    "currencies": [
+      "USD"
+    ],
+    "impact": "High",
+    "before_min": 30,
+    "after_min": 30,
+    "major_before_min": 60,
+    "major_after_min": 45,
+    "close_in_profit": true,
+    "refresh_minutes": 60,
+    "cache_file": "data/news_cache.json"
+  },
+  "stop_loss_pct_per_position": 0.01,
+  "class_weights": {
+    "xau": 0.5,
+    "crypto": 0.5
+  },
+  "port": 0,
+  "session": {
+    "_note": "Evening no-increase gate OFF, matching the FTMO deployment of this same book. It was measured on the 4-sleeve book, not this 2-sleeve one, and BTC trades 24/7 so a nightly block is a materially different constraint for the crypto sleeve. Set disabled=false to restore.",
+    "no_increase_from": [
+      17,
+      0
+    ],
+    "no_increase_until": [
+      1,
+      5
+    ],
+    "disabled": true
+  },
+  "session_ref_symbol": "XAUUSDs",
+  "bottom_gate": {
+    "_note": "OFF. Measured as HARMFUL in 3bm (18/18 cells negative) and re-confirmed in 3bn: at p>=0.60/8h, buying at market earned -22.80bp where the detector FIRED and +17.85bp where it did NOT (gap 40.65bp, t -5.23). Adverse selection, not noise.",
+    "enabled": false,
+    "threshold": 0.6,
+    "max_wait_hours": 24,
+    "train_bars": 20000,
+    "h1_bars": 24000
+  },
+  "account": "Switch Markets, login 40080430, SwitchMarkets-Live, $100k USD. VERIFIED 2026-10-19: trade_mode 0 = DEMO (the server is named -Live but the ACCOUNT is a demo), margin_mode 2 = hedging, leverage 1:100, 2,064 symbols, terminal trade_allowed true.",
+  "account_type": "PROP CHALLENGE",
+  "_vol_note": "5% book vol at 1x cushion. Simulated (v5_lab001_buffer.py, guard 0.6%, cushion sizing): pass ~90% / ~4 months at 0.1% guard slip, ~74% at 0.3% slip, 0% daily-limit fails. 3-4% is equally safe and slower.",
+  "_reset_tz_note": "FILL IN: the firm's DAILY-LOSS reset time. Set it so the day anchor matches their day; a wrong zone splits one firm-day across two anchors.",
+  "cushion_sizing": {
+    "floor_frac": 0.03,
+    "cap": 2.0,
+    "_note": "size x (equity - 97,000)/3,000, clipped [0, 2]: 1x at start, 2x at +3%, -> 0 near the floor."
+  },
+  "_stop_loss_note": "Broker-side stop per symbol at 1% of equity: if the VPS dies, two sleeves can lose at most ~2%, inside the 3% static wall. It does NOT protect the 1% DAILY limit - the 2-minute guard timer does.",
+  "_port_note": "FILL IN after the new terminal is provisioned (next free bridge)."
+}

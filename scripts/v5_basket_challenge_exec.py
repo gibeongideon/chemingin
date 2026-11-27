@@ -568,6 +568,15 @@ def main() -> None:
         # cfg["class_weights"] optionally tilts them away from equal class risk;
         # absent, the engine keeps its historical equal-risk behaviour.
         targets = target_leverage(model, cfg.get("classes"), cfg.get("class_weights"))
+        # Cushion sizing (OFF unless the config has a "cushion_sizing" block): scale every
+        # sleeve by the cushion above a STATIC floor. See challenge_guards.cushion_multiplier.
+        cs = cfg.get("cushion_sizing")
+        if cs:
+            cm = cg.cushion_multiplier(state, equity, float(cs["floor_frac"]), float(cs.get("cap", 2.0)))
+            floor_usd = state["initial_balance"] * (1 - float(cs["floor_frac"]))
+            print(f"  CUSHION SIZING: equity {equity:,.2f} vs static floor {floor_usd:,.2f} "
+                  f"-> size x{cm:.2f} (cap {float(cs.get('cap', 2.0)):.1f})")
+            targets = {k: v * cm for k, v in targets.items()}
         plans, n_mapped, blocked = [], 0, []
 
         # Evening gate, evaluated ONCE so every sleeve in this pass sees one clock.

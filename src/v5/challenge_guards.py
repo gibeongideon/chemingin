@@ -141,5 +141,20 @@ def decide(state: dict, balance: float, equity: float,
     return state, "trade"
 
 
+def cushion_multiplier(state: dict, equity: float, floor_frac: float,
+                       cap: float = 2.0) -> float:
+    """CUSHION SIZING on a STATIC floor (LABS001 plan, scripts/v5_lab001_buffer.py, 2026-11-27).
+
+    The firm's floor is fixed at initial x (1 - floor_frac). Size scales with the cushion above it:
+        m = (equity - floor) / (initial x floor_frac),   clipped to [0, cap]
+    m = 1.0 at the start balance, 2.0 once the cushion has doubled (e.g. +3% on a 3% floor), and
+    falls toward 0 as equity approaches the floor, so the book cannot size itself through the wall.
+    """
+    init = float(state["initial_balance"])
+    floor = init * (1.0 - floor_frac)
+    m = (float(equity) - floor) / (init * floor_frac)
+    return float(min(max(m, 0.0), cap))
+
+
 def _has_floating(balance: float, equity: float, tol: float = 1e-6) -> bool:
     return abs(equity - balance) > tol * max(abs(balance), 1.0)

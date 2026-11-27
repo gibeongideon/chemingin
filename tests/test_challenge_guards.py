@@ -74,3 +74,13 @@ def test_phase2_fresh_budget_and_target():
     # overall halt still anchored to INITIAL balance
     s2, a2 = decide(s, 108_000, 91_900, T0)
     assert a2 == "halt"
+
+
+def test_cushion_multiplier_static_floor():
+    from src.v5.challenge_guards import cushion_multiplier
+    st = {"initial_balance": 100_000.0}
+    assert cushion_multiplier(st, 100_000, 0.03) == 1.0          # start: full cushion = 1x
+    assert abs(cushion_multiplier(st, 101_500, 0.03) - 1.5) < 1e-9
+    assert cushion_multiplier(st, 110_000, 0.03) == 2.0          # capped
+    assert abs(cushion_multiplier(st, 98_500, 0.03) - 0.5) < 1e-9
+    assert cushion_multiplier(st, 96_000, 0.03) == 0.0           # at/below the floor -> flat
