@@ -1,0 +1,103 @@
+{
+  "created_on": "2026-11-27",
+  "purpose": "GOAT FUNDED TRADER 2-step promo 100K (account 315531833, GoatFunded-Server, PHASE 1). XAU+BTC book (same recipe as Switch 360595) with a 2-minute intraday daily guard and CUSHION SIZING on the static 8% floor. Simulated in scripts/v5_gft_check.py: guard 2% + cushion at a 9% dial = ~80% to pass BOTH steps, median ~11 months, 0% daily-limit fails.",
+  "firm": "Goat Funded",
+  "model": "ftmo",
+  "vol": 0.09,
+  "magic": 360617,
+  "run_id": "v5-gft",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo)",
+  "reset_tz": "NY+7",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": [
+      "XAUCHAMP"
+    ],
+    "crypto": [
+      "BTC"
+    ]
+  },
+  "symbols": {
+    "_note": "VERIFIED LIVE 2026-11-27 on 315531833 (60 symbols, suffix .x): XAUUSD.x contract 100 oz, vmin 0.01, step 0.01, vmax 20, IOC only, stops_level 5, swap long -62.47 pts; BTCUSD.x contract 1 BTC, vmin 0.01, vmax 50, IOC only, spread ~$65 (10.6bp, vs Switch $36.8), swap -15%/yr both sides. Also listed: ETHUSD.x, BRENT.x, NAS100.x.",
+    "XAUCHAMP": {
+      "fp_symbol": "XAUUSD.x",
+      "class": "xau",
+      "tf": "H4"
+    },
+    "BTC": {
+      "fp_symbol": "BTCUSD.x",
+      "class": "crypto",
+      "tf": "D1"
+    }
+  },
+  "guards": {
+    "daily_guard_frac": 0.02,
+    "overall_halt_frac": 0.075,
+    "phase_targets": {
+      "1": 0.1,
+      "2": 0.05
+    },
+    "_note": "daily: flatten at -2.0% of the day anchor (max of balance/equity at the first pass of the server day) = 1% headroom under the firm's 3% for exit slippage. Checked every 2 minutes by deploy/gft-guard.sh (--guard-only). overall: permanent halt at -7.5% of initial = $92,500, above the STATIC $92,000 floor. target: at +10% equity the guard closes the book (realize_target), then 'complete' latches FLAT until Step-2 credentials arrive -> new account re-anchors the state; then run --advance-phase so the target becomes 5%. FUNDED: needs the 1% FLOATING-LOSS guard (not built yet) and phase_targets 99.0."
+  },
+  "min_trading_days": 3,
+  "news_filter": {
+    "enabled": true,
+    "currencies": [
+      "USD"
+    ],
+    "impact": "High",
+    "before_min": 30,
+    "after_min": 30,
+    "major_before_min": 60,
+    "major_after_min": 45,
+    "close_in_profit": true,
+    "refresh_minutes": 60,
+    "cache_file": "data/news_cache.json"
+  },
+  "stop_loss_pct_per_position": 0.03,
+  "class_weights": {
+    "xau": 0.5,
+    "crypto": 0.5
+  },
+  "port": 18819,
+  "session": {
+    "_note": "Evening no-increase gate OFF, matching the FTMO deployment of this same book. It was measured on the 4-sleeve book, not this 2-sleeve one, and BTC trades 24/7 so a nightly block is a materially different constraint for the crypto sleeve. Set disabled=false to restore.",
+    "no_increase_from": [
+      17,
+      0
+    ],
+    "no_increase_until": [
+      1,
+      5
+    ],
+    "disabled": true
+  },
+  "session_ref_symbol": "XAUUSD.x",
+  "bottom_gate": {
+    "_note": "OFF. Measured as HARMFUL in 3bm (18/18 cells negative) and re-confirmed in 3bn: at p>=0.60/8h, buying at market earned -22.80bp where the detector FIRED and +17.85bp where it did NOT (gap 40.65bp, t -5.23). Adverse selection, not noise.",
+    "enabled": false,
+    "threshold": 0.6,
+    "max_wait_hours": 24,
+    "train_bars": 20000,
+    "h1_bars": 24000
+  },
+  "account": "Switch Markets, login 40080430, SwitchMarkets-Live, $100k USD. VERIFIED 2026-10-19: trade_mode 0 = DEMO (the server is named -Live but the ACCOUNT is a demo), margin_mode 2 = hedging, leverage 1:100, 2,064 symbols, terminal trade_allowed true.",
+  "account_type": "PROP CHALLENGE (trade_mode 2 = real-flagged; the executor needs --live)",
+  "firm_limits": {
+    "daily": 0.03,
+    "maxloss": 0.08,
+    "_note": "FIRM rules, read from the user's table 2026-11-27: Step1 10% / Step2 5% / Funded none; daily drawdown 3% all stages; max loss 8% STATIC (funded: static until first payout); min PROFITABLE days 3 / 3 / 4 per payout; consistency 40% funded only; floating loss limit 1% of all open trades FUNDED ONLY; max daily profit $3,000 funded only; payout cap $2,000; split 80%."
+  },
+  "_vol_note": "9% book vol at 1x cushion (sim best for pass rate x time). Size = 9% x cushion multiplier (0..2).",
+  "_reset_tz_note": "Server clock verified 2026-11-27 = UTC+2 with D1 bars at 00:00 and H1 bars 01-23, i.e. NY+7 (17:00 New York day). NY+7 follows US DST, so the daily anchor stays on the server's day all year.",
+  "cushion_sizing": {
+    "floor_frac": 0.08,
+    "cap": 2.0,
+    "_note": "size x (equity - 92,000) / 8,000, clipped [0, 2]: 1x at start, 2x at +8%, -> 0 near the floor. Resets per phase only if initial_balance re-anchors (new account)."
+  },
+  "_stop_loss_note": "Broker-side stop per symbol capping its loss at 3% of equity: if the VPS dies, the two sleeves can lose at most ~6%, inside the 8% static wall. It does NOT protect the 3% daily limit; the 2-minute guard does.",
+  "_min_days_note": "GFT requires 3 PROFITABLE days per step. The report counts trading days; a slow book reaching +10% in under 3 profitable days is not realistic, but check before requesting promotion.",
+  "report_notify": true,
+  "_port_note": "Bridge 18819 = prefix ~/.mt5h, display :106 (xvfb8), unit mt5-terminal-goat. ExecStop pkills 'rpyc.*18819': never run an inline command containing that text.",
+  "_data_note": "SIGNAL: the H4 gold file is data/XAUUSDs_H4_switch.csv, refreshed every 4h by the Switch book job (deploy/xau-btc-switch.sh) - this book trades the SAME forecast as Switch 360595. The GFT wrapper only READS it and gates on freshness against GoatFunded's own newest closed H4 bar. D1 gold/BTC panel: refresh_d1_panel.py (shared)."
+}

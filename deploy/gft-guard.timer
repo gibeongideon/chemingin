@@ -1,0 +1,11 @@
+[Unit]
+Description=Goat Funded 2-minute guard (daily -2%, halt -7.5%, target)
+
+[Timer]
+OnCalendar=*-*-* *:00/2:40
+Persistent=false
+AccuracySec=2s
+Unit=gft-guard.service
+
+[Install]
+WantedBy=timers.target

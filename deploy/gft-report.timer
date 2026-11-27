@@ -1,0 +1,10 @@
+[Unit]
+Description=Goat Funded end-of-day report, 16:50 New York = 23:50 server
+
+[Timer]
+OnCalendar=Mon..Fri 16:50 America/New_York
+Persistent=false
+Unit=gft-report.service
+
+[Install]
+WantedBy=timers.target

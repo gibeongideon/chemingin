@@ -1,0 +1,11 @@
+[Unit]
+Description=Goat Funded trade events to the phone, every 2 min
+
+[Timer]
+OnCalendar=*-*-* *:01/2:10
+Persistent=false
+AccuracySec=2s
+Unit=trade-events-gft.service
+
+[Install]
+WantedBy=timers.target

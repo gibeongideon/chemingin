@@ -1,0 +1,11 @@
+[Unit]
+Description=Goat Funded book reconcile every 4h (after the Switch H4 refresh at 0/4:50)
+
+[Timer]
+OnCalendar=*-*-* 0/4:57:30
+Persistent=false
+AccuracySec=5s
+Unit=gft.service
+
+[Install]
+WantedBy=timers.target

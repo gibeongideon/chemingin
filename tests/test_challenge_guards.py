@@ -84,3 +84,16 @@ def test_cushion_multiplier_static_floor():
     assert cushion_multiplier(st, 110_000, 0.03) == 2.0          # capped
     assert abs(cushion_multiplier(st, 98_500, 0.03) - 0.5) < 1e-9
     assert cushion_multiplier(st, 96_000, 0.03) == 0.0           # at/below the floor -> flat
+
+
+def test_ny_plus_7_server_day_follows_us_dst():
+    from src.v5 import challenge_guards as cg
+    tz = cg.NYPlus(7)
+    # winter (EST): 21:59 UTC is still the old server day, 22:00 UTC starts the next one (UTC+2)
+    assert datetime(2026, 11, 27, 21, 59, tzinfo=timezone.utc).astimezone(tz).strftime("%F %H") == "2026-11-27 23"
+    assert datetime(2026, 11, 27, 22, 0, tzinfo=timezone.utc).astimezone(tz).strftime("%F %H") == "2026-11-28 00"
+    # summer (EDT): the boundary moves to 21:00 UTC (UTC+3)
+    assert datetime(2026, 7, 15, 21, 0, tzinfo=timezone.utc).astimezone(tz).strftime("%F %H") == "2026-07-16 00"
+    cg.set_reset_tz("NY+7")
+    assert cg.platform_date(datetime(2026, 11, 27, 22, 30, tzinfo=timezone.utc)) == "2026-11-28"
+    cg.set_reset_tz("UTC+3")

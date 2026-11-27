@@ -16,13 +16,56 @@ firm's rules. Fractions are of the anchor/initial, not of current equity.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 
 UTC3 = timezone(timedelta(hours=3))
 
 # Reset timezone for the daily anchor. FundingPips = UTC+3; FTMO = 00:00
 # CE(S)T (Europe/Prague, DST-aware). Executor sets RESET_TZ from config.
 RESET_TZ = UTC3
+
+
+class NYPlus(tzinfo):
+    """New York wall clock + h hours: the "NY+7" server day most MT5 brokers use (00:00 server =
+    17:00 New York in BOTH DST regimes, so UTC+2 in winter and UTC+3 in summer). A fixed UTC+N
+    reset drifts by an hour for ~8 months a year; this one cannot."""
+
+    def __init__(self, h: int = 7):
+        from zoneinfo import ZoneInfo
+        self.h, self.ny = h, ZoneInfo("America/New_York")
+
+    def utcoffset(self, dt):
+        if dt is None:
+            return timedelta(hours=self.h - 5)
+        return self.ny.utcoffset(dt.replace(tzinfo=None) - timedelta(hours=self.h)) + timedelta(hours=self.h)
+
+    def dst(self, dt):
+        return timedelta(0)
+
+    def tzname(self, dt):
+        return f"NY+{self.h}"
+
+    def fromutc(self, dt):
+        ny = dt.replace(tzinfo=timezone.utc).astimezone(self.ny)
+        return (ny.replace(tzinfo=None) + timedelta(hours=self.h)).replace(tzinfo=self)
+
+
+def tz_by_name(name: str | None):
+    """Shared name -> tzinfo for the executor and the daily report. None if not recognised."""
+    key = (name or "").strip().lower()
+    if key in ("ny+7", "server", "nyplus7"):
+        return NYPlus(7)
+    if key in ("utc+3", "fp", "fundingpips"):
+        return UTC3
+    if key in ("cet", "cest", "ftmo", "europe/prague"):
+        try:
+            from zoneinfo import ZoneInfo
+            return ZoneInfo("Europe/Prague")
+        except Exception:
+            return timezone(timedelta(hours=2))
+    if key.startswith("utc") and (key[3:] or "").lstrip("+-").isdigit():
+        return timezone(timedelta(hours=int(key[3:])))
+    return None
 
 
 def set_reset_tz(name: str | None) -> None:
@@ -32,6 +75,9 @@ def set_reset_tz(name: str | None) -> None:
     if not name:
         return
     key = name.strip().lower()
+    if key in ("ny+7", "server", "nyplus7"):
+        RESET_TZ = NYPlus(7)
+        return
     if key in ("utc+3", "fp", "fundingpips"):
         RESET_TZ = UTC3
         return

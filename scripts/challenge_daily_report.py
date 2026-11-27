@@ -50,6 +50,10 @@ def broker_restrictions(m, symmap):
 
 
 def tz_from(name: str):
+    from src.v5.challenge_guards import tz_by_name   # NY+7 server day etc., shared with the executor
+    tz = tz_by_name(name)
+    if tz is not None:
+        return tz
     key = (name or "").strip().lower()
     if key in ("cet", "cest", "ftmo", "europe/prague"):
         try:
@@ -111,7 +115,11 @@ def build(cfg_path: Path, state_path: Path, port: int):
     firm = cfg.get("firm", "Challenge")
     magic = cfg["magic"]
     tz = tz_from(cfg.get("reset_tz"))
-    daily_lim, max_lim = model["daily"], model["maxloss"]
+    # The FIRM's limits. `model` only selects the sizing dial, so a config whose firm differs from
+    # its model (GFT 3%/8% sized on the "ftmo" dial) states its real limits in "firm_limits".
+    fl = cfg.get("firm_limits") or {}
+    daily_lim = float(fl.get("daily", model["daily"]))
+    max_lim = float(fl.get("maxloss", model["maxloss"]))
     targets = {int(k): float(v) for k, v in cfg["guards"]["phase_targets"].items()}
     min_days = int(cfg.get("min_trading_days", 0))
 
@@ -123,7 +131,7 @@ def build(cfg_path: Path, state_path: Path, port: int):
     floating = sum(p.profit for p in ps)
     tdays = trading_days(m, magic, tz)
     restricted = broker_restrictions(m, cfg.get("symbols", {}))
-    m.shutdown()
+    # NO m.shutdown(): the bridge is shared by every job on this terminal (2026-11-06 purge).
 
     st = json.loads(state_path.read_text()) if state_path.exists() else {}
     init = st.get("initial_balance", a.balance)
@@ -176,7 +184,7 @@ COMPLIANCE         {compliance:6.1f}%   (violations today: {viol})
   Daily-loss  limit -{daily_lim*100:.0f}%   | worst today {worst:+.2f}%  | used {daily_used:4.0f}%  | headroom {100-daily_used:4.0f}%
   Max-loss    limit -{max_lim*100:.0f}%  | current    {total_dd:+.2f}%  | used {max_used:4.0f}%  | headroom {100-max_used:4.0f}%
 
-Guards: flatten at -{cfg['guards']['daily_guard_frac']*100:.1f}% daily / halt -{cfg['guards']['overall_halt_frac']*100:.0f}% total.
+Guards: flatten at -{cfg['guards']['daily_guard_frac']*100:.1f}% daily / halt -{cfg['guards']['overall_halt_frac']*100:.1f}% total.
 Book: {', '.join(sum(cfg.get('classes', {}).values(), []))}   magic {magic}
 """
     subj = (f"[{firm} {cfg['model'].upper()}] {d:%d %b} — eq {a.equity:,.0f} {a.currency}, "
@@ -185,7 +193,17 @@ Book: {', '.join(sum(cfg.get('classes', {}).values(), []))}   magic {magic}
     return subj, body
 
 
+_NOTIFY = False
+
+
 def send(subj, body):
+    """Configs may opt into the shared notifier (Telegram + Resend + SMTP) with "report_notify": true;
+    the VPS cannot reach SMTP directly, so SMTP-only reports never arrive there."""
+    if _NOTIFY:
+        from scripts.v5_notify import notify  # noqa: PLC0415
+        notify(subj, body, subj)
+        print(f"notified: {subj}")
+        return
     e = {}
     mf = ROOT / ".env.mail"
     if mf.exists():
@@ -208,6 +226,7 @@ if __name__ == "__main__":
     ap.add_argument("--state", required=True)
     ap.add_argument("--port", type=int, default=18812)
     args = ap.parse_args()
+    _NOTIFY = bool(json.loads(Path(args.config).read_text()).get("report_notify"))
     subj, body = build(Path(args.config), Path(args.state), args.port)
     if subj is None:
         print("report failed:", body); sys.exit(1)

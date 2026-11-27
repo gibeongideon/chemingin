@@ -1,0 +1,7 @@
+[Unit]
+Description=Goat Funded 315531833 — trade-events-gft (magic 360617, bridge 18819)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trade-events-gft.sh
