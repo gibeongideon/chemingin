@@ -410,8 +410,20 @@ class Runner:
             self.st.setdefault("initial", float(ai.balance))
             self.st["peak_equity"] = max(float(self.st.get("peak_equity") or 0.0), float(ai.equity), float(ai.balance))
         if int(ai.margin_mode) != 2:
-            print(f"REFUSING: account {ai.login} margin_mode {ai.margin_mode} is not HEDGING")
-            return 1
+            if not getattr(self.a, "allow_netting", False):
+                print(f"REFUSING: account {ai.login} margin_mode {ai.margin_mode} is not HEDGING")
+                return 1
+            # NETTING (Goat Pay Later 315531834): one net position per symbol, so ANY other trade on this
+            # symbol would merge into ours and our exit would close it too. Refuse to act if one exists.
+            foreign = [p for p in (m.positions_get(symbol=sym) or []) if int(p.magic) != MAGIC]
+            if foreign:
+                print(f"REFUSING (netting): {len(foreign)} position(s) on {sym} not opened by magic {MAGIC} "
+                      f"(magic {[int(p.magic) for p in foreign]}); on a netting account they would merge with ours")
+                if self.execute and not self.st.get("netting_warned"):
+                    alert("netting conflict", f"Foreign position on {sym}; the PDH bot is standing aside until it is gone.")
+                    self.st["netting_warned"] = True
+                return 1
+            self.st.pop("netting_warned", None)
         m.symbol_select(sym, True)
         si, tick = m.symbol_info(sym), m.symbol_info_tick(sym)
         if si is None or tick is None or not tick.ask:
@@ -440,7 +452,7 @@ class Runner:
         spread = float(tick.ask - tick.bid)
         positions = [p for p in (m.positions_get(symbol=sym) or []) if int(p.magic) == MAGIC]
         orders = [o for o in (m.orders_get(symbol=sym) or []) if int(o.magic) == MAGIC]
-        print(f"account {ai.login} @ {ai.server} (DEMO, hedging)  server {self.srv_now}  balance ${ai.balance:,.2f}")
+        print(f"account {ai.login} @ {ai.server} ({'DEMO' if int(ai.trade_mode) == 0 else 'PROP'}, {'hedging' if int(ai.margin_mode) == 2 else 'NETTING'})  server {self.srv_now}  balance ${ai.balance:,.2f}")
         print(f"  {sym} bid {tick.bid:.2f} ask {tick.ask:.2f} spread {spread:.2f} | prior-day high {pdh:.2f} | "
               f"ATR14 {atr:.2f} | today high so far {float(today_bar.high) if today_bar is not None else float('nan'):.2f}")
         print(f"  magic {MAGIC}: {len(positions)} position(s), {len(orders)} order(s); "
@@ -714,6 +726,8 @@ def main() -> int:
     ap.add_argument("--execute", action="store_true", help="send orders and write state/log")
     ap.add_argument("--allow-real-login", type=int, default=None,
                     help="permit THIS login although the broker flags it real (prop challenge accounts)")
+    ap.add_argument("--allow-netting", action="store_true",
+                    help="permit a NETTING account (refuses to act while any foreign position is on the symbol)")
     ap.add_argument("--halt-dd", type=float, default=None,
                     help="stop new entries once equity <= peak equity - X x initial (trailing max-loss rules)")
     ap.add_argument("--target-frac", type=float, default=None,

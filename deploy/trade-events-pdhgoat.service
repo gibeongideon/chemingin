@@ -1,0 +1,7 @@
+[Unit]
+Description=Goat Pay Later 315531834 — trade-events-pdhgoat (magic 360618, bridge 18820)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trade-events-pdhgoat.sh

@@ -1,0 +1,7 @@
+[Unit]
+Description=Goat Pay Later PDH end-of-day report
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/pdh-goat-report.sh

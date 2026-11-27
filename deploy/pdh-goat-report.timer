@@ -1,0 +1,10 @@
+[Unit]
+Description=Goat Pay Later PDH end-of-day report, 16:52 New York
+
+[Timer]
+OnCalendar=Mon..Fri 16:52 America/New_York
+Persistent=false
+Unit=pdh-goat-report.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Goat Pay Later trade events to the phone, every 2 min
+
+[Timer]
+OnCalendar=*-*-* *:01/2:30
+Persistent=false
+AccuracySec=2s
+Unit=trade-events-pdhgoat.service
+
+[Install]
+WantedBy=timers.target
