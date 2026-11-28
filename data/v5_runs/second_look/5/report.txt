@@ -1,0 +1,11 @@
+KNOWN ANSWER: PDH net SR +0.760 (§3ex +0.75), gross +1.044, trades 2559
+
+D1 prev-session above band (PRIMARY): halved 1952/2559 trades
+  SR +0.633 (dSR -0.127)  pctile vs random dial 11.6%  halves -0.110/-0.140  2x cost pctile 11.2%
+  mean gross per trade: full-size group +2.99bp vs half-size group +9.11bp
+
+D2 same-day above band at entry: halved 336/2559 trades
+  SR +0.740 (dSR -0.020)  pctile vs random dial 43.4%  halves -0.035/-0.004  2x cost pctile 49.8%
+  mean gross per trade: full-size group +7.81bp vs half-size group +6.66bp
+
+VERDICT: not revived (primary fail)

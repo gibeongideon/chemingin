@@ -9619,3 +9619,48 @@ current stop ≤ z ATR, z ∈ {0.5, 1.0, 1.5, any}; the add exits like a ZigZag 
 9–14 times in 9–15 years. The NORMAL add earns ≈0R (−0.21 .. +0.04): no better than a non-fire bar in the
 same near-stop state (p_state 0.30–0.98), i.e. the signal adds nothing once the trade is losing. Tight
 stops lose −0.08 .. −0.40R. maxDD up to −16% (CME) / −19% (Switch) when all overlapping fires are taken.
+
+---
+
+### §3fa — SECOND-LOOK ROUND: 10 failed ideas re-tested with fixed yardsticks, new data and combinations (2026-11-28, `scripts/v5_second_look_{1..10,d}.py`, pre-registration `data/v5_runs/second_look/PREREG.md`)
+
+**User, 2026-11-28:** *"give one more shot on the methods that did not work … clever combination or testing in a
+different way … select 10 most promising … especially the old ones. Plan first."*
+
+**Ground rules (from the plan).**
+- Pre-registered before any run; Phase B/C cells were appended before each of those studies ran.
+- One data feed per study, with a known-answer control cell in each.
+- Matched-vol paired t, and a random dial for size dials.
+- Success = matched-vol Sharpe **or** prop pass rate vs the deployed book (user's choice).
+
+| # | Idea (orig. §) | Why it might flip | Result | Verdict |
+|---|---|---|---|---|
+| 1 | Champion meta-label trim (§3p) | Rejected on a RAW paired t | Raw −2.2..−2.7 → **matched-vol +0.84..+2.73**. b=0.5 S1 (M15→H4, 2018+) t +2.73, survives 2× cost, beats the shuffle null. OANDA 2012+ only +0.89 | Qualified survivor (b=0.5) |
+| 2 | High-vol taper (§3ac) | Never tested out of sample on gold | CME GC 2012-17: t **−0.42**, 2nd half −0.59, prop 12.7% → 8.0% | Closed for good |
+| 3 | Hysteresis long-only (§3bz) on the prop yardstick | Its DD win was vs an unscaled H1 "champion" | At matched vol its DD is WORSE (−22.0% vs −19.8%), t −0.87, prop −1.4pp | Closed (exposure, not skill) |
+| 3' | Corr-aware sizing (§3q) | — | Best of 103 trials with no frozen rule | Dropped (selection) |
+| 4 | 6 vetoes as size dials on ZigZag | §3eu: a dial beats a veto | None passes. **Y2UP** (+0.113/+0.117) and **CHAMP** (+0.107/+0.089) are positive in both halves in both sources but miss Switch's 95% bar; family p 0.135/0.325 | Leads only |
+| 5 | PDH × noise-band dial | Untested combination (§3ef) | Wrong sign: after an up-momentum NY day PDH earns +3.0bp vs +9.1bp; dial 11.6th pctile | Closed |
+| 6 | PDH on 24 OANDA instruments (PREREG_ROUND2 Study A, never run) | Gold-only so far | Kill rule NOT hit (11/23 non-gold longs net+); family p 0.0000 (USDJPY L t +5.15, BTC L/S, metals). **No book passes** (BOOK_WF 0.76, t vs gold +0.20) | Book fails; BTC-PDH and USDJPY-PDH = leads |
+| 7 | Fast intraday trend at $0.25/$0.12 + swap (§3aa) | Mispriced at $0.44, no swap | Fast long-only = holding gold (T1 t −0.02); adding it to the champion hurts (t −0.47); flat-night −2.47 | Closed |
+| 8 | §3ak best trigger on unseen OANDA 2008-14 | Died for lack of events | 275 fires, excess −39bp, bootstrap p 0.81 | Closed for good |
+| 9 | Index overnight (16:00 → 09:30 ET) + reversal on 24h CFDs (§3b) | "Verified dead" at the wrong bar boundary | Overnight premium real gross (SPX +2.0bp/night) but financing + spread exceed it; sleeves hurt the book (t −2.3) | Closed (right reason now) |
+| 10a | G10 FX carry (§3ah open) | Never run | Net SR −0.27, both halves negative | Closed |
+| 10b | Crypto trend vs each coin's own hold (§3bp "unproven") | DSR could not judge it | **Pooled matched-vol t +2.74, 5/5 coins, halves +2.70/+1.18**; without financing +2.38. Breadth adds nothing (5-coin = BTC-only, t 0.00) | **REVIVED: the BTC sleeve is real timing skill** |
+| D | #1 trim inside the deployed XAU+BTC book | Combine survivors | SR 1.118 → 1.183, maxDD −12.5 → −10.7%, t +1.33 (both halves +). Prop: raw +7.9pp but deployed guard+cushion setup only +3.1pp | Not revived (right direction, under the bar) |
+
+**Side finding that matters for a live arm: §3eu's vol-taper backtest had a one-bar lookahead.**
+- `v5_zigzag_vol_taper.py:92` reads the gate on the ENTRY bar's close, which isn't known when the order goes in.
+- Causally (signal bar), CME drops from +0.109 (96.5%) to **+0.056 (84.5%)**, while Switch holds at +0.192 (98%).
+- Only 22 of 2,000 trades flip. The live arm V (360613) computes the gate on closed bars and stays justified on Switch, but its CME support is below the bar.
+
+**What the round established.**
+1. **Two old rejections used the wrong yardstick.** §3p's trim and §3bz's hysteresis both looked like drawdown wins. Matched vol separates them: the trim keeps real skill (t up to +2.73), the hysteresis was just lower exposure.
+2. **The crypto sleeve is real timing, not beta.** It is the one outright revival, and it strengthens the deployed book's BTC leg.
+3. **The PDH stop-cascade is a cross-asset effect** (metals, JPY, BTC). Retail costs keep broad books from beating gold alone.
+4. **Several "dead" verdicts were reached for the wrong reason** (§3b's boundary, §3aa's cost) and are now dead for the right one. They need never be re-opened.
+
+**Next, if pursued (each needs its own pre-registration):**
+- BTC-PDH as a second PDH arm. The 5-second fill audit comes first.
+- A combined Y2UP+CHAMP dial on ZigZag, with fresh months.
+- The trim on the gold sleeve via a live A/B. It is positive everywhere, never significant.

@@ -1,0 +1,8 @@
+common window 2018-06-06 -> 2026-06-15 (2079 days)
+  KNOWN ANSWER  hysteresis raw: SR +0.867 maxDD -20.2% exposure 0.46   (§3bz: +0.932 / -19.6%)
+  champion H4 vol-targeted: SR +1.128 maxDD -19.8%
+  hysteresis AT CHAMPION VOL: SR +0.867 maxDD -22.0%
+  matched-vol paired t -0.87 (-3.71%/yr)  halves -1.09/-0.42  corr +0.63
+  prop GFT 2-step static @9% dial: champion pass 25.8% daily-fail 71.7% dd-fail 2.4% | hysteresis pass 24.4% daily-fail 73.7% dd-fail 1.8%
+
+VERDICT: not revived

@@ -1,0 +1,8 @@
+PHASE D: deployed XAU+BTC book vs the same book with the gold sleeve trimmed (b=0.5), 2018-01-01 -> 2026-06-15
+  KNOWN ANSWER: base book SR +1.118 (account-chooser book on this window; full-history ~1.28)
+  base  SR +1.118  maxDD -12.5%
+  trim  SR +1.183  maxDD -10.7%
+  matched-vol paired t +1.33 (+0.57%/yr at equal vol)  halves +1.59/+0.50
+  prop GFT 2-step static @9%, raw left tail (no guard): base pass 25.6% (8.8 mo, daily-fail 67.7%) | trim pass 33.5% (9.8 mo, daily-fail 58.2%)
+  prop GFT 2-step static @9%, deployed GFT setup (guard 2% + cushion): base pass 69.9% (12.0 mo, daily-fail 0.0%) | trim pass 73.0% (12.0 mo, daily-fail 0.0%)
+VERDICT: Sharpe arm fail | prop arm fail

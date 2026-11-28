@@ -1,0 +1,10 @@
+C $0.25 swap +0% hold  <- PRIMARY            fast SR +0.588  hold SR +0.592  T1 t -0.02 | champ SR +0.803  50/50 SR +0.760  T2 t -0.47 halves -0.64/-0.07  corr +0.68
+C $0.25 swap +0% flat-night                  fast SR +0.233  hold SR -0.073  T1 t +1.63 | champ SR +0.803  50/50 SR +0.568  T2 t -2.47 halves -1.67/-1.80  corr +0.66
+C $0.25 swap -6% hold                        fast SR +0.506  hold SR +0.466  T1 t +0.21 | champ SR +0.803  50/50 SR +0.715  T2 t -0.94 halves -1.36/-0.08  corr +0.68
+C $0.25 swap -6% flat-night                  fast SR +0.233  hold SR -0.073  T1 t +1.63 | champ SR +0.803  50/50 SR +0.568  T2 t -2.47 halves -1.67/-1.80  corr +0.66
+C $0.12 swap +0% hold                        fast SR +0.641  hold SR +0.592  T1 t +0.26 | champ SR +0.809  50/50 SR +0.792  T2 t -0.19 halves -0.40/+0.10  corr +0.68
+C $0.12 swap +0% flat-night                  fast SR +0.368  hold SR +0.051  T1 t +1.69 | champ SR +0.809  50/50 SR +0.645  T2 t -1.73 halves -1.05/-1.34  corr +0.67
+C $0.12 swap -6% hold                        fast SR +0.560  hold SR +0.467  T1 t +0.50 | champ SR +0.809  50/50 SR +0.747  T2 t -0.66 halves -1.12/+0.09  corr +0.68
+C $0.12 swap -6% flat-night                  fast SR +0.368  hold SR +0.051  T1 t +1.69 | champ SR +0.809  50/50 SR +0.645  T2 t -1.73 halves -1.06/-1.34  corr +0.67
+
+PRIMARY VERDICT: not revived (T1 -0.02, T2 -0.47, halves -0.64/-0.07)

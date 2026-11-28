@@ -1,0 +1,18 @@
+SECOND LOOK #1 — §3p champion meta-label trim (run 2026-11-28, scripts/v5_second_look_1.py; cells in cells.csv)
+
+S1 M15->H4 single feed, OOS 2018+: CHAMPION SR +1.079 (known answer §3p 1.041), maxDD -17.0%; mean AUC 0.589
+  prop base (GFT 2-step static, 9% dial, no guard): pass 25.3%, daily-fail 71.1%
+  b=1.0 PRIMARY: SR +1.266, maxDD -9.4%; raw t -2.30 | MATCHED-VOL t +1.99, halves +0.23/+2.47, yrs+ 7/9;
+                 null p95 1.155 < 1.266; 2x cost t +1.68; prop 27.0% (+1.7pp), daily-fail 69.6%  -> fail (t 1.99 < 2.00)
+  b=0.5:         SR +1.170, maxDD -13.2%; raw t -2.18 | MATCHED-VOL t +2.73, halves +0.59/+3.18, yrs+ 7/9;
+                 null p95 1.116 < 1.170; 2x cost t +2.60; prop 29.3% (+3.9pp), daily-fail 67.0%  -> SHARPE ARM PASS
+S2 OANDA H1->H4, OOS 2012+ (2012-17 unseen): CHAMPION SR +0.785, maxDD -20.3%; mean AUC 0.614
+  prop base: pass 20.1%, daily-fail 73.7%
+  b=1.0: SR +0.818, maxDD -15.2%; raw t -2.71 | MATCHED-VOL t +0.84, halves +0.11/+1.32, yrs+ 7/15; 2x t +0.50; prop +1.9pp
+  b=0.5: SR +0.799, maxDD -17.8%; raw t -2.71 | MATCHED-VOL t +0.89, halves +0.51/+1.18, yrs+ 7/15; 2x t +0.84; prop -0.4pp
+
+VERDICT: the old rejection used the wrong yardstick (raw t -2.2..-2.7 flips to matched-vol t +0.84..+2.73 in all 4 cells).
+PRIMARY b=1.0 misses the pre-registered bar by 0.01 (t 1.99). Secondary b=0.5 meets the Sharpe-arm bar in S1 (t 2.73 >
+Bonferroni-2 2.24, survives 2x cost, both halves, beats the null) with S2 positive (+0.89) but weak. Prop arm not met
+(+1.7..+3.9pp vs +5pp needed; gold-only book's raw left tail is dominated by daily breaches). Status: QUALIFIED SURVIVOR
+(b=0.5) carried to Phase D as a trim on the gold sleeve of the XAU+BTC book; not deployable on its own.

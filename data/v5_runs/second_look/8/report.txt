@@ -1,0 +1,7 @@
+OANDA H4 gold, evaluated window 2008-02-21 -> 2014-12-31 (never seen by §3ak)
+trigger trend=1 & mom24=0 & vol=2 -> LONG 24 H4 bars
+  fires 275  non-overlapping n 31
+  excess -39.2bp  net -41.9bp (cost 2.77bp)
+  block-bootstrap p 0.814   NON-OVERLAPPING t +0.22
+  §3ak reference: discovery t +1.43 (n 19), holdout t +0.70 (n 24), same sign
+VERDICT: not revived

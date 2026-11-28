@@ -1,0 +1,23 @@
+
+=== KNOWN-ANSWER: M15->H4 2018-26 (selection window): eval 2018-01-02 -> 2026-06-15 (2189 days) ===
+  BASE champion  SR +1.079  maxDD -19.8%
+  TAPER          SR +1.300  maxDD -13.2%  exposure kept 0.57
+  MATCHED-VOL paired t +1.33  yrs+ 5/9   2x cost t +1.24
+  halves: 1st base +0.66 taper +0.83 t +0.73 | 2nd base +1.46 taper +1.78 t +1.41
+
+=== PRIMARY: CME GC H4 2012-17 (unseen): eval 2012-01-03 -> 2017-12-29 (1539 days) ===
+  BASE champion  SR +0.117  maxDD -23.7%
+  TAPER          SR +0.060  maxDD -20.2%  exposure kept 0.68
+  MATCHED-VOL paired t -0.42  yrs+ 4/6   2x cost t -0.47
+  halves: 1st base -0.22 taper -0.17 t +0.35 | 2nd base +0.37 taper +0.25 t -0.59
+  prop (GFT 2-step static, 9% dial): base pass 12.7% daily-fail 66.0% | taper pass 8.0% daily-fail 78.7%
+
+=== SUPPLEMENTARY (not prereg): OANDA H4 2009-17: eval 2009-01-02 -> 2017-12-29 (2439 days) ===
+  BASE champion  SR +0.570  maxDD -22.8%
+  TAPER          SR +0.706  maxDD -18.9%  exposure kept 0.69
+  MATCHED-VOL paired t +1.19  yrs+ 5/9   2x cost t +1.12
+  halves: 1st base +0.87 taper +1.14 t +1.68 | 2nd base +0.19 taper +0.12 t -0.41
+  prop (GFT 2-step static, 9% dial): base pass 17.4% daily-fail 71.3% | taper pass 15.8% daily-fail 78.4%
+
+PRIMARY VERDICT (CME 2012-17): FAIL  (t -0.42, halves +0.35/-0.59, prop 12.7% -> 8.0%)
+wrote /home/rock/Desktop/2026_Projects/Trader36/MT5/data/v5_runs/second_look/2/cells.csv

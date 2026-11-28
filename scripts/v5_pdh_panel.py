@@ -95,8 +95,8 @@ def build(sym: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     Lg[row[ok], slot[ok]] = A["low"][ok]
     hi6 = np.fmax.reduce([np.roll(Hg, k, axis=1) for k in range(1, 7)])
     lo6 = np.fmin.reduce([np.roll(Lg, k, axis=1) for k in range(1, 7)])
-    for k in range(1, 7):                              # roll wraps: the first slots have no full window
-        hi6[:, :k][np.isnan(Hg[:, :k]) | True] = np.nan if k == 6 else hi6[:, :k]
+    # roll wraps: the first 6 slots have no full window (a crashing redundant loop was removed
+    # 2026-11-28, second-look #6; this line already did the masking, and only Study C uses rng30)
     hi6[:, :6], lo6[:, :6] = np.nan, np.nan
     rng30 = hi6 - lo6
     norm30 = pd.DataFrame(rng30).rolling(20, min_periods=10).mean().shift(1).to_numpy()

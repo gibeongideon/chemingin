@@ -1,0 +1,45 @@
+================================================================================================================
+CME 2012-01-01 -> 2026-11-06 (14.8y): 2000 trades, base SR +0.421 (halves +0.24/+0.62)   dial: size 0.5 when the gate says bad
+================================================================================================================
+  gate                          bad%      SR     dSR  pctile  dSR h1  dSR h2      z
+  KNOWN: downside-vol taper      45%  +0.478  +0.056   85.5%  +0.125  -0.004  +1.06
+  G_SHORT                         2%  +0.452  +0.031   96.5%  +0.005  +0.063  +1.74
+  SMA50                          74%  +0.501  +0.080   91.0%  -0.102  +0.209  +1.37
+  PRIOR_LOW                       2%  +0.402  -0.019   13.0%  -0.007  -0.031  -1.10
+  LEMA                           50%  +0.501  +0.079   93.0%  -0.073  +0.198  +1.36
+  CHAMP                          45%  +0.529  +0.107   97.5%  +0.002  +0.174  +1.94
+  Y2UP                           58%  +0.535  +0.113   99.5%  +0.094  +0.126  +1.96
+  family max-stat over the 6 gates: best z +1.96 (Y2UP), family p 0.135
+================================================================================================================
+SWITCH 2018-01-01 -> 2026-11-05 (8.8y): 1334 trades, base SR +0.483 (halves -0.09/+1.03)   dial: size 0.5 when the gate says bad
+================================================================================================================
+  gate                          bad%      SR     dSR  pctile  dSR h1  dSR h2      z
+  KNOWN: downside-vol taper      48%  +0.675  +0.192  100.0%  +0.325  +0.079  +2.34
+  G_SHORT                         4%  +0.491  +0.008   58.5%  +0.015  +0.017  +0.26
+  SMA50                          68%  +0.608  +0.124   94.0%  +0.217  +0.038  +1.55
+  PRIOR_LOW                       2%  +0.458  -0.025    6.5%  -0.036  -0.009  -1.43
+  LEMA                           38%  +0.557  +0.074   81.5%  -0.024  +0.141  +1.00
+  CHAMP                          34%  +0.573  +0.089   94.0%  +0.081  +0.075  +1.42
+  Y2UP                           58%  +0.600  +0.117   94.5%  +0.138  +0.104  +1.52
+  family max-stat over the 6 gates: best z +1.55 (SMA50), family p 0.325
+
+VERDICT per gate (pass = >=95th pctile AND both halves positive in BOTH sources, family p < 0.05 in both):
+  G_SHORT    not revived   cme: dSR +0.031 pct 96% halves +0.00/+0.06  switch: dSR +0.008 pct 58% halves +0.02/+0.02
+  SMA50      not revived   cme: dSR +0.080 pct 91% halves -0.10/+0.21  switch: dSR +0.124 pct 94% halves +0.22/+0.04
+  PRIOR_LOW  not revived   cme: dSR -0.019 pct 13% halves -0.01/-0.03  switch: dSR -0.025 pct 6% halves -0.04/-0.01
+  LEMA       not revived   cme: dSR +0.079 pct 93% halves -0.07/+0.20  switch: dSR +0.074 pct 82% halves -0.02/+0.14
+  CHAMP      not revived   cme: dSR +0.107 pct 98% halves +0.00/+0.17  switch: dSR +0.089 pct 94% halves +0.08/+0.07
+  Y2UP       not revived   cme: dSR +0.113 pct 100% halves +0.09/+0.13  switch: dSR +0.117 pct 94% halves +0.14/+0.10
+
+KNOWN-ANSWER DISCREPANCY RESOLVED (2026-11-28): §3eu (scripts/v5_zigzag_vol_taper.py:92) reads the downside-vol gate on
+the ENTRY bar (t_in), whose close is not known when the order is placed -> a one-bar lookahead. Only 22/2000 CME and
+5/1334 Switch trades flip, but on CME it doubles the effect:
+  CME    entry bar +0.109 (96.5%)  ->  causal signal bar +0.056 (84.5%)   [fails the 95% bar causally]
+  Switch entry bar +0.215 (99.5%)  ->  causal signal bar +0.192 (98.0%)   [still passes]
+This study uses the causal signal bar for every gate.
+
+VERDICT #4: no gate revived under the pre-registered bar. Dials behave better than the old vetoes: Y2UP (+0.113/+0.117,
+both halves both sources, 99.5%/94.5%) and CHAMP (+0.107/+0.089, both halves both sources, 97.5%/94.0%) miss only on
+Switch's 95% bar; family p 0.135 (CME) / 0.325 (Switch). PRIOR_LOW is dead (13%/6.5%). G_SHORT fires on 2-4% of trades
+only (no power). Status: Y2UP + CHAMP = leads (consistent sign, 4/4 halves), carried to Phase D only if a combined
+dial is pre-registered there.
