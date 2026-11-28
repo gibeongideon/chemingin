@@ -142,6 +142,8 @@ def main() -> int:
         ai = mt5.account_info()
         is_demo = ("demo" in str(getattr(ai, "server", "")).lower()
                    or getattr(ai, "trade_mode", 0) == 0)
+        if not is_demo and cfg.get("allow_real_login") and int(getattr(ai, "login", 0)) == int(cfg["allow_real_login"]):
+            is_demo = True                                         # named prop-challenge account
         info = tick = None
         for i in range(3):
             if i:

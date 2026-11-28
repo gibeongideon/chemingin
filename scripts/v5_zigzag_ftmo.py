@@ -170,6 +170,11 @@ def main() -> None:
         raise SystemExit(f"bridge {port} init failed after 3 tries: {_last}")
     ai = mt5.account_info()
     is_demo = "demo" in str(getattr(ai, "server", "")).lower() or getattr(ai, "trade_mode", 0) == 0
+    # A prop CHALLENGE account is real-flagged by the broker; it may be traded only when named explicitly
+    # in the config (Goat Funded A/B, data/v5_runs/zigzag_dial_ab/PREREG.md).
+    if not is_demo and cfg.get("allow_real_login") and int(getattr(ai, "login", 0)) == int(cfg["allow_real_login"]):
+        is_demo = True
+        print(f"  account {ai.login} is real-flagged; allowed by config allow_real_login (prop challenge)")
     print(f"account {ai.login} @ {ai.server}   equity ${ai.equity:,.2f}   "
           f"{'DEMO' if is_demo else '*** NOT FLAGGED DEMO ***'}")
 

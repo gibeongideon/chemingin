@@ -19,3 +19,9 @@
 2. **PERFORMANCE (at 6 and 12 months).** Matched-vol paired t of the daily P&L (trim vs control), maxDD both arms. The backtest effect is about +0.6%/yr at equal vol, so 12 months cannot reach t 2. The pre-registered decision is therefore:
    - **(a) promote the trim to the live XAU+BTC books** only if, after 12 months, the matched-vol t is ≥ 0 AND trim maxDD ≤ control maxDD AND fidelity held;
    - **(b) abandon** if the matched-vol t is ≤ −1.5 at any review, or fidelity fails twice.
+
+## Venue change (2026-11-28, before any live pass)
+- **What moved.** At the user's choice ("testing against GOATFunded spread and other metrics"), the A/B runs on the Goat 2-step challenge account 315531833 instead of the FTMO demo: CONTROL 360619 / TRIM 360620, `configs/v5_trim_ab_goat_{control,trim}.json`, job `deploy/trim-ab-goat.sh` (0/4:59:30).
+- **Guards.** Both arms carry the book's challenge guards (daily 2%, halt 7.5%, cushion sizing, targets 10%/5%), evaluated every 2 minutes in `deploy/gft-guard.sh` alongside the book. A breach flattens all three.
+- **Dial.** The vol dial is 0.045 (half the book's), so the arms add bounded gold risk to the live challenge.
+- **Caveat.** At this size a gold arm is about 0.01-0.03 lots, so trim-vs-control lot differences are coarse. The FIDELITY readout (logged multiplier vs offline re-score) is unaffected. The performance readout will be noisier than planned. Readouts and decision rules are otherwise unchanged.

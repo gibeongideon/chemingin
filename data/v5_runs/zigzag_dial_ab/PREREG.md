@@ -30,3 +30,11 @@
 - CME 2012-26: dSR +0.181, 99.0th pctile vs shuffled multipliers, halves +0.054/+0.259, mean size 0.57
 - Switch 2018-26: +0.173, 96.0th pctile, halves +0.211/+0.115, mean size 0.62
 This is the expected effect the forward arm will be judged against. It is not evidence by itself: the two gates were picked from a family of six.
+
+## Venue change (2026-11-28, before any live pass)
+- **What moved.** At the user's choice, the arms run on the Goat Pay Later account 315531834 (bridge 18820, `XAUUSD.x`, aux `EURUSD.x`/`GBPUSD.x`/`USDJPY.x`):
+  - B-goat 360624 (control, flat size), `configs/v5_zigzag_goat_b.json`
+  - D-goat 360625 (B + dials), `configs/v5_zigzag_goat_d.json`
+- **Trailing.** Both are in the every-minute trail watcher.
+- **Allowance.** `allow_real_login` 315531834 allows the real-flagged prop account.
+- **FTMO arm D.** The FTMO arm D files were written but never enabled. FTMO arm V was added to the watcher (it had only been trailed hourly). Readouts and decision rules unchanged.

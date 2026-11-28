@@ -12,7 +12,7 @@ exec 9>/tmp/trade-events-gft.lock
 flock -n 9 || { echo "$(date -u +%FT%TZ) previous run still going, skipping" >> "$LOG"; exit 0; }
 echo "===== $(date -u +%FT%TZ) $*" >> "$LOG"
 $PY scripts/v5_trade_events_notify.py --port 18819 --label GOAT \
-    --bots "360617=Goat book (XAU+BTC)" --milestones "50,100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500" --no-sl-hint "$@" >> "$LOG" 2>&1
+    --bots "360617=Goat book (XAU+BTC),360619=Trim A/B control,360620=Trim A/B trim" --milestones "50,100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500" --no-sl-hint "$@" >> "$LOG" 2>&1
 # ^ ONE comma-separated argument. Three separate quoted words (2026-11-10 18:59 -> 11-11 11:00,
 #   477 runs) made argparse exit 2 on every pass, so NO FTMO trade event reached Telegram.
 echo "exit=$?" >> "$LOG"

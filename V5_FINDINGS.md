@@ -9664,3 +9664,39 @@ different way … select 10 most promising … especially the old ones. Plan fir
 - BTC-PDH as a second PDH arm. The 5-second fill audit comes first.
 - A combined Y2UP+CHAMP dial on ZigZag, with fresh months.
 - The trim on the gold sleeve via a live A/B. It is positive everywhere, never significant.
+
+### §3fb — Follow-ups to §3fa: BTC-PDH replicates on a second feed; three forward tests armed on the Goat accounts (2026-11-28)
+
+**BTC-PDH, Stage 1 (`scripts/v5_btc_pdh_audit.py`, prereg `data/v5_runs/btc_pdh/PREREG.md`).** The frozen PDH rule on Binance spot BTCUSDT 1-minute, 2017-08 → 2026-10, an independent feed. Weekdays, days built from all 7 so Monday's level is Sunday's high, as the live executor reads it.
+
+| entry | 4.5bp (prereg) | **Goat 10.6bp** | 2× Goat |
+|---|---|---|---|
+| resting stop at the level | **+0.82** (halves +1.12/+0.51, t_a +2.77) | **+0.62** (+0.97/+0.27) | +0.28 (+0.70/−0.16) |
+| market, 1 minute late | +0.54 | +0.34 (2nd half −0.08) | −0.01 |
+
+- It replicates, at a smaller size than OANDA's +1.46. Breakeven is 29.6bp.
+- Being late costs about a third of the edge, so only a resting server-side stop is viable.
+- At Goat's $65 BTC spread it still passes the primary bar, but the 2019-26 half is thin.
+
+**Standing directive (user, 2026-11-28):** test against GoatFunded's spread and rules, not FTMO's.
+
+**Armed (forward tests; decision rules in each PREREG):**
+1. **BTC-PDH fill probe:** Goat Pay Later 315531834, `BTCUSD.x`, magic 360621, weekdays only, no holiday skip.
+   - New executor flags: `--weekdays-only`, `--ignore-holidays`.
+   - Kill: slip > 2bp over 40 fills, or −25R.
+2. **Gold-sleeve meta-trim A/B:** Goat 2-step 315531833, control 360619 vs trim 360620.
+   - Model: `scripts/v5_trim_model.py`, a yearly §3p fold fitted on the VPS.
+   - Executor key `meta_trim`, fail-open.
+   - Both arms run under the book's challenge guards in the 2-minute guard. Readouts in `data/v5_runs/trim_ab/PREREG.md`.
+3. **ZigZag Y2UP × CHAMP dial:** Goat Pay Later, B-goat 360624 vs D-goat 360625.
+   - New executor key `size_dials` (product, fail-open), and `allow_real_login` for prop accounts.
+   - DGS2 from `scripts/fetch_dgs2.py` (FRED, falling back to the US Treasury CSV, because FRED times out intermittently from the VPS).
+   - The in-sample combined dial (descriptive) was +0.181 CME (99th) / +0.173 Switch (96th), both halves.
+
+**Fix found on the way:** FTMO ZigZag arm V (360613) was missing from the every-minute trail watcher. It had been trailed only hourly while its control B was trailed every minute, so the V-vs-B comparison mixed the vol taper with trail cadence. Added. FTMO-demo versions of the three tests were written but never enabled.
+
+**RANK.MD updated:**
+- row 7 amended (lookahead)
+- row 21 cross-asset
+- new rows 23 (crypto trend = Live), 24 (matched-vol law), 25 (decision-bar law)
+- an accidental pasted block and a duplicate row removed

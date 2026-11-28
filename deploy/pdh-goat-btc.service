@@ -1,0 +1,7 @@
+[Unit]
+Description=PDH day-trade executor (V5_FINDINGS §3ex) — Goat Pay Later, magic 360621 BTC
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/pdh-goat-btc.sh

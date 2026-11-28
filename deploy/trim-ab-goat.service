@@ -1,0 +1,7 @@
+[Unit]
+Description=Gold-sleeve META TRIM A/B on Goat 2-step (control 360619 + trim 360620)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trim-ab-goat.sh

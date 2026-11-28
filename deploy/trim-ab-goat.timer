@@ -1,0 +1,11 @@
+[Unit]
+Description=Gold-sleeve META TRIM A/B on Goat, every 4h after the book (0/4:57:30)
+
+[Timer]
+OnCalendar=*-*-* 0/4:59:30
+Persistent=false
+AccuracySec=5s
+Unit=trim-ab-goat.service
+
+[Install]
+WantedBy=timers.target
