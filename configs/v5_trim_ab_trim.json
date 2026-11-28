@@ -1,0 +1,84 @@
+{
+  "created_on": "2026-11-28",
+  "purpose": "Gold-sleeve META TRIM A/B — TRIM arm (champion x (1 - 0.5 p_bad)). data/v5_runs/trim_ab/PREREG.md",
+  "firm": "FTMO-Demo A/B",
+  "model": "ftmo",
+  "vol": 0.2,
+  "magic": 360620,
+  "run_id": "v5-trim-ab-trim",
+  "engine": "scripts/v5_basket_challenge.py::target_leverage (model=ftmo)",
+  "reset_tz": "NY+7",
+  "reconcile_buffer": 0.25,
+  "classes": {
+    "xau": [
+      "XAUCHAMP"
+    ]
+  },
+  "symbols": {
+    "_note": "FTMO XAUUSD, 100 oz, no suffix",
+    "XAUCHAMP": {
+      "fp_symbol": "XAUUSD",
+      "class": "xau",
+      "tf": "H4"
+    }
+  },
+  "guards": {
+    "daily_guard_frac": 0.1,
+    "overall_halt_frac": 0.2,
+    "phase_targets": {
+      "1": 99.0,
+      "2": 99.0
+    },
+    "_note": "Loose on purpose: an A/B must never be decided by a guard. Both arms identical."
+  },
+  "min_trading_days": 0,
+  "news_filter": {
+    "enabled": true,
+    "currencies": [
+      "USD"
+    ],
+    "impact": "High",
+    "before_min": 30,
+    "after_min": 30,
+    "major_before_min": 60,
+    "major_after_min": 45,
+    "close_in_profit": true,
+    "refresh_minutes": 60,
+    "cache_file": "data/news_cache.json"
+  },
+  "stop_loss_pct_per_position": 0.03,
+  "class_weights": {
+    "xau": 1.0
+  },
+  "port": 18814,
+  "session": {
+    "_note": "Evening no-increase gate OFF, matching the FTMO deployment of this same book. It was measured on the 4-sleeve book, not this 2-sleeve one, and BTC trades 24/7 so a nightly block is a materially different constraint for the crypto sleeve. Set disabled=false to restore.",
+    "no_increase_from": [
+      17,
+      0
+    ],
+    "no_increase_until": [
+      1,
+      5
+    ],
+    "disabled": true
+  },
+  "session_ref_symbol": "XAUUSD",
+  "bottom_gate": {
+    "_note": "OFF. Measured as HARMFUL in 3bm (18/18 cells negative) and re-confirmed in 3bn: at p>=0.60/8h, buying at market earned -22.80bp where the detector FIRED and +17.85bp where it did NOT (gap 40.65bp, t -5.23). Adverse selection, not noise.",
+    "enabled": false,
+    "threshold": 0.6,
+    "max_wait_hours": 24,
+    "train_bars": 20000,
+    "h1_bars": 24000
+  },
+  "account": "Switch Markets, login 40080430, SwitchMarkets-Live, $100k USD. VERIFIED 2026-10-19: trade_mode 0 = DEMO (the server is named -Live but the ACCOUNT is a demo), margin_mode 2 = hedging, leverage 1:100, 2,064 symbols, terminal trade_allowed true.",
+  "account_type": "DEMO (FTMO-Demo 1515427365)",
+  "_vol_note": "0.20 for lot resolution on a demo (data/v5_runs/trim_ab/PREREG.md); identical in both arms.",
+  "meta_trim": {
+    "symbol": "XAUCHAMP",
+    "b": 0.5,
+    "model": "data/v5_runs/trim_ab/model.joblib",
+    "_note": "§3p champ-meta label, yearly fold, scripts/v5_trim_model.py; fail-open = untrimmed"
+  }
+}

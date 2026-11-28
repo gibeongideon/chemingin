@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily FRED DGS2 fetch, twice a day
+
+[Timer]
+OnCalendar=*-*-* 13,22:15:00
+Persistent=true
+Unit=fetch-fred.service
+
+[Install]
+WantedBy=timers.target

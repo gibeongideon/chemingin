@@ -1,0 +1,7 @@
+[Unit]
+Description=Gold-sleeve META TRIM A/B on FTMO-Demo (control 360619 + trim 360620)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/trim-ab.sh

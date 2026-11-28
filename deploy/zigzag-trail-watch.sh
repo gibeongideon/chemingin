@@ -13,7 +13,7 @@ flock -n 9 || { echo "$(date -u +%FT%TZ) previous run still going, skipping" >> 
 # A/B FAIRNESS: the C arms are in the SAME loop as their B partners so both ratchet at the same
 # minute cadence. Unequal trailing cadence would be a second confound on top of the entry and
 # exit differences the experiment is actually testing.
-for c in configs/v5_zigzag_trail_switch.json configs/v5_zigzag_trail_switch_c.json configs/v5_zigzag_trail_fp.json configs/v5_zigzag_trail_darwinex.json configs/v5_zigzag_trail_ftmo_b.json configs/v5_zigzag_trail_darwinex_c.json; do
+for c in configs/v5_zigzag_trail_switch.json configs/v5_zigzag_trail_switch_c.json configs/v5_zigzag_trail_fp.json configs/v5_zigzag_trail_darwinex.json configs/v5_zigzag_trail_ftmo_b.json configs/v5_zigzag_trail_ftmo_v.json configs/v5_zigzag_trail_ftmo_d.json configs/v5_zigzag_trail_darwinex_c.json; do
     $PY scripts/v5_zigzag_trail_watch.py --config "$c" --execute >> "$LOG" 2>&1 \
         || echo "$(date -u +%FT%TZ) $c exit=$?" >> "$LOG"
 done

@@ -1,0 +1,7 @@
+[Unit]
+Description=Daily FRED DGS2 fetch (ZigZag arm D Y2UP dial)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/trader/MT5
+ExecStart=/home/trader/MT5/deploy/fetch-fred.sh

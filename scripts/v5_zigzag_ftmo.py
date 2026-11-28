@@ -338,6 +338,53 @@ def main() -> None:
             taper_note = f"error {exc!r} -> FAIL-OPEN (full size)"
         print(f"  vol taper: {taper_note}")
 
+    # ---- §3fa #4 SIZE DIALS (config `size_dials`, absent = off): Y2UP and CHAMP as half-size dials,
+    # combined as a PRODUCT (data/v5_runs/zigzag_dial_ab/PREREG.md). Each reads data known at the signal
+    # bar and FAILS OPEN at x1.0 on any problem.
+    sd = cfg.get("size_dials") or {}
+    dial_notes = []
+    if sd.get("champion"):
+        c = sd["champion"]
+        try:
+            from src.v5.xau_dual_signals import champion_signal  # noqa: PLC0415
+            h4 = pd.read_csv(ROOT / c["h4_csv"], usecols=["time", "close"], parse_dates=["time"])
+            h4 = h4.drop_duplicates("time").set_index("time").sort_index()
+            h4 = h4[h4.index + pd.Timedelta(hours=4) <= srv_now] if srv_now is not None else h4
+            lag_h = (df.index[-1] - h4.index[-1]).total_seconds() / 3600
+            if lag_h > 12:
+                dial_notes.append(f"champion: H4 file {lag_h:.0f}h behind -> FAIL-OPEN")
+            else:
+                fc_ = float(champion_signal(h4["close"]).iloc[-1])
+                if fc_ < float(c.get("min_forecast", 0.5)):
+                    taper *= float(c.get("mult", 0.5))
+                dial_notes.append(f"champion fc {fc_:.2f} ({'x' + str(c.get('mult', 0.5)) if fc_ < float(c.get('min_forecast', 0.5)) else 'x1.0'})")
+        except Exception as exc:                                        # noqa: BLE001
+            dial_notes.append(f"champion: error {exc!r} -> FAIL-OPEN")
+    if sd.get("y2up"):
+        c = sd["y2up"]
+        try:
+            f = pd.read_csv(ROOT / c["fred_csv"])
+            f.columns = ["date", "v"]
+            f["date"] = pd.to_datetime(f["date"])
+            f["v"] = pd.to_numeric(f["v"], errors="coerce")
+            today = (srv_now or pd.Timestamp.utcnow().tz_localize(None)).normalize()
+            f = f.dropna()[lambda x: x["date"] < today]                  # published data only (t-1)
+            age = (today - f["date"].iloc[-1]).days
+            lb = int(c.get("lookback_bd", 63))
+            if age > int(c.get("max_age_days", 10)) or len(f) <= lb:
+                dial_notes.append(f"y2up: DGS2 {age}d old -> FAIL-OPEN")
+            else:
+                now_v, then_v = float(f["v"].iloc[-1]), float(f["v"].iloc[-1 - lb])
+                up = now_v > then_v
+                if up:
+                    taper *= float(c.get("mult", 0.5))
+                dial_notes.append(f"y2up: DGS2 {now_v:.2f} vs {then_v:.2f} {lb}bd ago ({'x' + str(c.get('mult', 0.5)) if up else 'x1.0'})")
+        except Exception as exc:                                        # noqa: BLE001
+            dial_notes.append(f"y2up: error {exc!r} -> FAIL-OPEN")
+    if dial_notes:
+        taper_note = f"{taper_note}; dials: " + "; ".join(dial_notes) + f" -> size x{taper}"
+        print(f"  size dials: {'; '.join(dial_notes)} -> combined size x{taper}")
+
     risk_usd_p = ai.equity * risk_frac * taper
     if exit_mode == "atr_trail":
         stop_dist_p = trail_atr * atr_h1

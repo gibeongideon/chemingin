@@ -1,0 +1,11 @@
+[Unit]
+Description=Gold-sleeve META TRIM A/B, every 4h after the Switch H4 refresh (0/4:50)
+
+[Timer]
+OnCalendar=*-*-* 0/4:58:30
+Persistent=false
+AccuracySec=5s
+Unit=trim-ab.service
+
+[Install]
+WantedBy=timers.target

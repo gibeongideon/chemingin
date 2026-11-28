@@ -577,6 +577,21 @@ def main() -> None:
             print(f"  CUSHION SIZING: equity {equity:,.2f} vs static floor {floor_usd:,.2f} "
                   f"-> size x{cm:.2f} (cap {float(cs.get('cap', 2.0)):.1f})")
             targets = {k: v * cm for k, v in targets.items()}
+        # Meta TRIM on one sleeve (OFF unless the config has a "meta_trim" block): leverage x (1 - b*p_bad),
+        # p_bad from the §3p champion meta-label model (scripts/v5_trim_model.py, data/v5_runs/trim_ab).
+        # FAIL-OPEN: any error leaves the sleeve untrimmed, i.e. identical to the control arm.
+        mt = cfg.get("meta_trim")
+        if mt and mt.get("symbol") in targets:
+            try:
+                import os as _os
+                from scripts.v5_trim_model import p_bad as _p_bad
+                pb, pbar = _p_bad(_os.environ["XAU_H4_CSV"], ROOT / mt["model"])
+                mm = 1.0 - float(mt.get("b", 0.5)) * pb
+                print(f"  META TRIM {mt['symbol']}: p_bad {pb:.3f} (bar {pbar}) -> leverage x{mm:.3f}")
+                targets[mt["symbol"]] = targets[mt["symbol"]] * mm
+                state["meta_trim_last"] = dict(p_bad=round(pb, 4), mult=round(mm, 4), bar=pbar)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  META TRIM failed open ({type(exc).__name__}: {exc}) -> sleeve untrimmed")
         plans, n_mapped, blocked = [], 0, []
 
         # Evening gate, evaluated ONCE so every sleeve in this pass sees one clock.

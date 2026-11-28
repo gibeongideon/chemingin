@@ -7,39 +7,7 @@
 **Ranking criterion.** Not interestingness — *load-bearing-ness*. A finding ranks high if removing  
    
  it would change what is deployed, or would let  
-1-Step CFDs · MetaTrader 5  
-Starter Edition  
-Available until sold out · no account limit  
-ACCOUNT SIZE  
-Evaluation  
-Profit target  
-5% · \$5,000  
-Max daily loss  
-1% · \$1,000  
-Trailing EOD max loss  
-3% · \$3,000  
-Minimum trading days  
-None  
-Time limit  
-6 months  
-Master  
-Max daily loss  
-1% · \$1,000  
-Trailing EOD max loss  
-3% · \$3,000  
-Reward unlock  
-3% profit  
-Min daily profit to request  
-\$200  
-Max per request  
-\$1,000 profit  
-Reward cycle  
-Daily  
-Reward split  
-85%  
-Activation fee  
-\$0  
-\$99Limited Time Only a dead idea back through the door. Three tiers:  
+a dead idea back through the door. Three tiers:  
   
 |  |  |  
 | - | - |  
@@ -49,7 +17,7 @@ Activation fee
 | **Bound** |  a measured limit that closes a whole family of ideas, so they are never re-run |  
   
    
-**How research is run here:** [**`RULES.MD`.** Last updated **2026-11-16**. `BEST_FINDINGS.MD` predates §3cj and is kept only for its longer  
+**How research is run here:** [**`RULES.MD`.** Last updated **2026-11-28**. `BEST_FINDINGS.MD` predates §3cj and is kept only for its longer  
    
  write-ups of items 8, 16 and 17.](RULES.MD "RULES.MD")  
   
@@ -65,7 +33,7 @@ Activation fee
 | 4 |  **A ratcheting 3-ATR trail beats every alternative exit** |  trail **1.091** vs fixed SL/TP 1.014 vs signal-flip 0.828 |  **Live** |  §3bn |  
 | 5 |  **A high take-profit helps; a low one hurts** |  TP at 4.3R t **+2.78**, better in both halves; TP at +\$700 t −2.4 |  **Live** |  §3dr |  
 | 6 |  **Intraday circuit breaker** — no new buys once the day is already down > 1 ATR |  CME 0.21 → **0.56** (t +4.12, p 0.000), Switch 0.42 → 0.53 (p 0.005); passes in both sources |  **Live** |  §3dz |  
-| 7 |  **Downside-vol SIZE DIAL — half size, do not skip** |  **16/16** cells ≥ 95th pctile, improving both halves in both sources; maxDD −5.81% → **−2.80%** at better CAGR |  **Live** |  §3eu |  
+| 7 |  **Downside-vol SIZE DIAL — half size, do not skip** |  **16/16** cells ≥ 95th pctile as first measured — **AMENDED 2026-11-28 (§3fa):** that backtest read the gate on the ENTRY bar (one-bar lookahead). Causal: Switch +0.192 (98th pctile, still passes), CME +0.056 (84.5th, **fails**). Live arm V uses closed bars; evidence now rests on Switch alone |  **Live** (one source) |  §3eu, §3fa |  
 | 8 |  **Measure the ORACLE CEILING before building a detector** (control #5) |  top oracle **+1.252** vs best detector **+0.090** — closed pivot detection outright |  **Law** |  §3as, §3ao |  
 | 9 |  **Accuracy is payoff-blind** (control #8) |  a **5.9σ** AUC improvement produced **−0.702** Sharpe |  **Law** |  §3au |  
 | 10 |  **Benchmark against buy-and-hold, never against zero** (control #2) |  COT 0/36, external playbook 0/60 — every "win" was a loss against simply holding gold |  **Law** |  §3bg, §3bk |  
@@ -79,15 +47,17 @@ Activation fee
 | 18 |  **The giveback family is closed — all five levers** |  locking 50% of peak gives **86% wins and −85% return**; to shrink swings cut LOT SIZE, never scale out |  **Bound** |  §3cx, §3cy, §3dq |  
 | 19 |  **risk_frac is a pure dial** |  Sharpe invariant at **+1.02** across 0.25–4%: sizing moves P&L and drawdown, never edge |  **Bound** |  §3ap |  
 | 20 |  **Single-source data only** |  FTMO spliced into the H4 files from 2023-06-28 (25 of 38 pairs); all 18 FX D1 files forward-stamp `ret[t+1]` |  **Bound** |  §3ba, §3bd |  
-| 21 |  **Intraday on gold: momentum is real everywhere, and LATENCY is the cost** — only a resting stop at the prior server-day high clears it |  7/7 M1 cells t +3.0..+5.0 vs matched hold (2007-26, p 0.0000); six net −0.23..+0.36; **prior-day-high buy-stop +0.76** at a level fill, +0.49 five seconds late, +0.26 an hour late; placebo level p 0.000. **LIVE on the Switch demo since 2026-11-16 as magic 360614** (§3ey) |  **Bound** (+ one lead) |  §3ex, §3ey |  
+| 21 |  **Intraday on gold: momentum is real everywhere, and LATENCY is the cost** — only a resting stop at the prior server-day high clears it |  7/7 M1 cells t +3.0..+5.0 vs matched hold (2007-26, p 0.0000); six net −0.23..+0.36; **prior-day-high buy-stop +0.76** at a level fill, +0.49 five seconds late, +0.26 an hour late; placebo level p 0.000. **LIVE on the Switch demo since 2026-11-16 as magic 360614** (§3ey), FTMO 360615, Goat Pay Later 360618. **Cross-asset (§3fa #6):** 24 instruments, family p 0.0000 (metals, JPY longs, BTC both sides) but no book beats gold alone; BTC-PDH long net +1.46 is the lead being forward-tested |  **Live** + lead |  §3ex, §3ey, §3fa |  
 | 22 |  **Pretrained candle/time-series models forecast RANGE, not direction** |  Kronos + Chronos, two protocols, two sources: direction family p 0.94; H1 IC **−0.030** vs the paper's forex 0.040; ZigZag dial wrong-signed; embedding probe p 0.185; headline ORACLE next-day t −0.35 |  **Bound** |  §3ew |  
-| 22 |  **A pretrained candle model is not the missing ingredient either** |  Kronos + Chronos zero-shot on gold: direction p 0.94 / 0.58, paper-protocol IC −0.030 vs the paper's pooled +0.040, ZigZag dial p 0.68 / 0.33, embedding probe p 0.19; human-labelled headlines: same day t +25.9, next day t −0.35 |  **Bound** |  §3ew |  
+| 23 |  **Crypto trend is real timing skill, not beta** — the BTC sleeve earns its place over simply holding |  champion recipe vs each coin's OWN hold at matched vol: pooled t **+2.74**, 5/5 coins (BTC +2.50), both halves; **+2.38 with financing removed**. 5-coin breadth adds nothing (t 0.00) — keep BTC only. Settles what §3bp's DSR could not |  **Live** |  §3fa #10b, §3bp |
+| 24 |  **Gate de-risking overlays at MATCHED VOLATILITY** (raw paired t is wrong for any overlay that holds less) |  raw t rejected §3p's trim (−2.30) whose matched-vol t is **+2.73**, and flattered §3bz's hysteresis whose drawdown edge was just 46% exposure (matched t −0.87) |  **Law** |  §3fa #1, #3 |
+| 25 |  **Read every gate on the bar you DECIDE on, never the entry bar** |  a one-bar lookahead on 1% of trades doubled the CME vol-taper effect (+0.056 → +0.109) and moved it from the 84th to the 96th percentile |  **Law** |  §3fa #4 |
   
    
   
 ---  
 **The one line that matters**  
-Items 1–7 are everything that ever made money here — and **four of the seven are cost or risk**  
+Items 1–7 (plus 23, which validates the live BTC sleeve) are everything that ever made money here — and **four of the seven are cost or risk**  
    
  **decisions, not signals**. Items 8–20 are what the \~130 failures bought: the laws and bounds that  
    

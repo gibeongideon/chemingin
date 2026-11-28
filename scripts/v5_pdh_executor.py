@@ -162,12 +162,16 @@ def expiration_epoch(srv_now: pd.Timestamp) -> int:
 
 
 def plan_entry(*, srv_now: pd.Timestamp, level: float, ask: float, spread: float, today_high_bid: float | None,
-               open_ask: float | None, minutes_open: float | None, halted: str | None) -> tuple[str, str]:
+               open_ask: float | None, minutes_open: float | None, halted: str | None,
+               weekdays_only: bool = False, ignore_holidays: bool = False) -> tuple[str, str]:
     """What to do when nothing is outstanding and today's decision has not been made.
-    Returns (action, reason), action in place | market | skip | missed | halt."""
+    Returns (action, reason), action in place | market | skip | missed | halt.
+    weekdays_only / ignore_holidays: for 24/7 instruments (BTC-PDH, data/v5_runs/btc_pdh/PREREG.md)."""
     if halted:
         return "halt", halted
-    if str(srv_now.date()) in HOLIDAYS:
+    if weekdays_only and srv_now.dayofweek >= 5:
+        return "skip", "weekend server day (--weekdays-only)"
+    if not ignore_holidays and str(srv_now.date()) in HOLIDAYS:
         return "skip", "US holiday early close / closure"
     if srv_now >= cutoff_ts(srv_now):
         return "skip", "past the 23:40 server cut-off"
@@ -626,7 +630,9 @@ class Runner:
         action, why = plan_entry(srv_now=self.srv_now, level=pdh, ask=float(tick.ask), spread=spread,
                                  today_high_bid=today_high,
                                  open_ask=None if first_open is None else first_open + spread,
-                                 minutes_open=minutes_open, halted=halted)
+                                 minutes_open=minutes_open, halted=halted,
+                                 weekdays_only=getattr(self.a, "weekdays_only", False),
+                                 ignore_holidays=getattr(self.a, "ignore_holidays", False))
         print(f"  DECISION for server day {day}: {action} — {why}")
         dec = dict(day=day, decision=action, why=why, level=round(pdh, 2), atr=round(atr, 2), at=str(self.srv_now))
         if action in ("skip", "missed", "halt"):
@@ -726,6 +732,8 @@ def main() -> int:
     ap.add_argument("--execute", action="store_true", help="send orders and write state/log")
     ap.add_argument("--allow-real-login", type=int, default=None,
                     help="permit THIS login although the broker flags it real (prop challenge accounts)")
+    ap.add_argument("--weekdays-only", action="store_true", help="no new entry on Saturday/Sunday server days (24/7 symbols)")
+    ap.add_argument("--ignore-holidays", action="store_true", help="do not skip US holiday early closes (crypto)")
     ap.add_argument("--allow-netting", action="store_true",
                     help="permit a NETTING account (refuses to act while any foreign position is on the symbol)")
     ap.add_argument("--halt-dd", type=float, default=None,

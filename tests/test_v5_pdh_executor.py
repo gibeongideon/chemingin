@@ -237,3 +237,13 @@ def test_dry_run_writes_nothing(tmp_path):
     assert r.run() == 0
     assert not fake.sent and not fake.orders
     assert not files.log.exists() and not files.state.exists()
+
+
+def test_plan_entry_crypto_flags():
+    kw = dict(srv_now=pd.Timestamp("2026-11-28 10:00"), level=2010.0, ask=2000.0, spread=0.3,      # a Saturday
+              today_high_bid=2005.0, open_ask=1999.0, minutes_open=300.0, halted=None)
+    assert X.plan_entry(**kw)[0] == "place"                                    # default: weekends are traded
+    assert X.plan_entry(**kw, weekdays_only=True)[0] == "skip"
+    th = {**kw, "srv_now": pd.Timestamp("2026-11-26 10:00")}                    # Thanksgiving, a Thursday
+    assert X.plan_entry(**th)[0] == "skip"
+    assert X.plan_entry(**th, ignore_holidays=True)[0] == "place"
